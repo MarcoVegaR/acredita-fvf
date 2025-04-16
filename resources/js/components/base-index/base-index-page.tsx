@@ -8,6 +8,8 @@ import AppLayout from "@/layouts/app-layout";
 import { ColumnDef } from "@tanstack/react-table";
 import { type BreadcrumbItem } from "@/types";
 import { useToast } from "../../hooks/use-toast";
+import { usePage } from "@inertiajs/react";
+import { Button } from "@/components/ui/button";
 
 // Tipo genérico para la entidad
 export interface Entity {
@@ -18,12 +20,30 @@ export interface Entity {
 }
 
 // Opciones para cada tipo de índice
+// Interfaz para definir los permisos requeridos para acciones
+export interface PermissionRequirements {
+  // Permisos para operaciones principales
+  show?: string;    // Para ver detalles (antes 'view')
+  create?: string;  // Para crear nuevos registros
+  edit?: string;    // Para editar registros existentes
+  delete?: string;  // Para eliminar registros
+  
+  // Alias para compatibilidad (view = show)
+  view?: string;
+  
+  // Más genérico para casos especiales
+  [key: string]: string | undefined;
+}
+
 export interface BaseIndexOptions<T extends Entity> {
   // Configuración básica
   title: string;
   subtitle?: string;
   endpoint: string;
   breadcrumbs: BreadcrumbItem[];
+  
+  // Permisos requeridos para las acciones
+  permissions?: PermissionRequirements;
   
   // Estadísticas para mostrar en tarjetas (una o múltiples)
   stats?: Array<{
@@ -66,6 +86,7 @@ export interface BaseIndexOptions<T extends Entity> {
     show: boolean;
     label: string;
     onClick?: () => void;
+    permission?: string; // Permiso requerido para el botón nuevo
   };
   
   // Acciones de fila personalizables
@@ -73,16 +94,19 @@ export interface BaseIndexOptions<T extends Entity> {
     view?: {
       enabled: boolean;
       label: string;
+      permission?: string; // Permiso requerido para ver
       handler?: (row: T) => void;
     };
     edit?: {
       enabled: boolean;
       label: string;
+      permission?: string; // Permiso requerido para editar
       handler?: (row: T) => void;
     };
     delete?: {
       enabled: boolean;
       label: string;
+      permission?: string; // Permiso requerido para eliminar
       confirmMessage?: (row: T) => string;
       handler?: (row: T) => void;
     };
@@ -120,6 +144,15 @@ export function BaseIndexPage<T extends Entity>({
   options 
 }: BaseIndexPageProps<T>) {
   const { toast } = useToast();
+  const { auth } = usePage().props as any;
+  
+  // Función para verificar si el usuario tiene un permiso específico
+  const hasPermission = React.useCallback((permission?: string): boolean => {
+    if (!permission) return true; // Si no se requiere permiso, permitir
+    if (!auth?.user?.permissions) return false; // Si no hay permisos disponibles, denegar
+    
+    return auth.user.permissions.includes(permission);
+  }, [auth?.user?.permissions]);
   
   // Manejador genérico para cambios de paginación
   const handlePaginationChange = React.useCallback(({ pageIndex, pageSize }: { pageIndex: number; pageSize: number }) => {
@@ -272,87 +305,118 @@ export function BaseIndexPage<T extends Entity>({
      
   }, [options.endpoint, filters]);
   
-  // Renderiza las acciones de fila basadas en la configuración
+  // Renderiza las acciones de fila basadas en la configuración y permisos
   const renderRowActions = (row: T) => {
+    // Si no hay acciones configuradas, no renderizar nada
     if (!options.rowActions) return null;
     
-    // Definimos una interfaz más completa para las acciones
-    type ActionType = {
-      enabled: boolean;
-      label: string;
-      handler: (row: T) => void;
-      confirmMessage?: string;
-      icon?: React.ReactNode;
-    };
+    // Verificar permisos para cada acción
+    const canView = hasPermission(
+      options.rowActions.view?.permission || 
+      options.permissions?.show || // Primero buscar 'show'
+      options.permissions?.view || // Por compatibilidad, buscar 'view'
+      `${options.moduleName}.show`
+    );
     
-    const actions: Record<string, ActionType> = {};
+    const canEdit = hasPermission(
+      options.rowActions.edit?.permission || 
+      options.permissions?.edit || 
+      `${options.moduleName}.edit`
+    );
     
-    // Acción Ver
-    if (options.rowActions.view?.enabled) {
-      actions.view = {
-        enabled: true,
-        label: options.rowActions.view.label,
-        handler: options.rowActions.view.handler || 
-                 ((row) => router.visit(`${options.endpoint}/${row.id}`)),
-      };
-    }
+    const canDelete = hasPermission(
+      options.rowActions.delete?.permission || 
+      options.permissions?.delete || 
+      `${options.moduleName}.delete`
+    );
     
-    // Acción Editar
-    if (options.rowActions.edit?.enabled) {
-      actions.edit = {
-        enabled: true,
-        label: options.rowActions.edit.label,
-        handler: options.rowActions.edit.handler || 
-                 ((row) => router.visit(`${options.endpoint}/${row.id}/edit`)),
-      };
-    }
-    
-    // Acción Eliminar
-    if (options.rowActions.delete?.enabled) {
-      actions.delete = {
-        enabled: true,
-        label: options.rowActions.delete.label,
-        confirmMessage: options.rowActions.delete.confirmMessage?.(row) || 
-                        `¿Está seguro que desea eliminar este registro?`,
-        handler: options.rowActions.delete.handler || 
-                 ((row) => {
-                   router.delete(`${options.endpoint}/${row.id}`, {
-                     onSuccess: () => {
-                       toast({
-                         title: "Registro eliminado",
-                         description: "El registro ha sido eliminado correctamente.",
-                         variant: "success",
-                       });
-                     },
-                   });
-                 }),
-      };
-    }
-    
-    // Acciones personalizadas
-    if (options.rowActions.custom) {
-      options.rowActions.custom.forEach((action, index) => {
-        actions[`custom${index}`] = {
-          enabled: true,
-          label: action.label,
-          icon: action.icon,
-          handler: action.handler,
-        };
-      });
-    }
-    
-    return <DataTableRowActions row={row} actions={actions} />;
+    return (
+      <DataTableRowActions
+        row={row}
+        actions={{
+          // Acción de ver detalles
+          view: options.rowActions.view && canView ? {
+            enabled: options.rowActions.view.enabled,
+            label: options.rowActions.view.label,
+            handler: (row) => {
+              if (options.rowActions?.view?.handler) {
+                options.rowActions.view.handler(row);
+              } else {
+                router.get(`${options.endpoint}/${row.id}`);
+              }
+            },
+          } : undefined,
+          
+          // Acción de editar
+          edit: options.rowActions.edit && canEdit ? {
+            enabled: options.rowActions.edit.enabled,
+            label: options.rowActions.edit.label,
+            handler: (row) => {
+              if (options.rowActions?.edit?.handler) {
+                options.rowActions.edit.handler(row);
+              } else {
+                router.get(`${options.endpoint}/${row.id}/edit`);
+              }
+            },
+          } : undefined,
+          
+          // Acción de eliminar
+          delete: options.rowActions.delete && canDelete ? {
+            enabled: options.rowActions.delete.enabled,
+            label: options.rowActions.delete.label,
+            confirmMessage: options.rowActions.delete.confirmMessage?.(row),
+            handler: (row) => {
+              if (options.rowActions?.delete?.handler) {
+                options.rowActions.delete.handler(row);
+              } else {
+                router.delete(
+                  `${options.endpoint}/${row.id}`,
+                  {
+                    onSuccess: () => {
+                      toast({
+                        title: "Eliminado correctamente",
+                        description: `El registro ha sido eliminado correctamente`,
+                      });
+                    },
+                  }
+                );
+              }
+            },
+          } : undefined,
+        }}
+      />
+    );
   };
   
-  // Configuración del botón nuevo (igual que antes pero ahora se usará en el encabezado)
-  // Mantenemos la misma lógica para compatibilidad con implementaciones existentes
-  const newButtonConfig = options.newButton?.show ? {
-    showNewButton: true,
-    newButtonProps: {
-      label: options.newButton.label,
-      onClick: options.newButton.onClick || (() => router.visit(`${options.endpoint}/create`)),
+  // Manejador para el botón de nuevo
+  const handleNewClick = React.useCallback(() => {
+    if (options.newButton?.onClick) {
+      options.newButton.onClick();
+    } else {
+      router.get(`${options.endpoint}/create`);
     }
-  } : undefined;
+  }, [options.endpoint, options.newButton]);
+  
+  // Comprobar si debe mostrar el botón de nuevo (basado en permisos)
+  const showNewButton = React.useMemo(() => {
+    if (!options.newButton?.show) return false;
+    
+    // Verificar permisos para el botón nuevo
+    const requiredPermission = options.newButton?.permission || 
+                              options.permissions?.create || 
+                              `${options.moduleName}.create`;
+                              
+    return hasPermission(requiredPermission);
+  }, [options.newButton, options.permissions, options.moduleName, hasPermission]);
+  
+  // Log para aclarar cómo se están aplicando los permisos
+  React.useEffect(() => {
+    console.log('Permisos aplicados en BaseIndexPage:', {
+      módulo: options.moduleName,
+      permisos: auth?.user?.permissions,
+      permisosConfigurados: options.permissions
+    });
+  }, [options.moduleName, options.permissions, auth?.user?.permissions]);
 
   // Ya no necesitamos una key para forzar el remontaje porque estamos usando preserveState: true
   // Esto permite que el componente mantenga su estado interno mientras los datos se actualizan
@@ -366,23 +430,18 @@ export function BaseIndexPage<T extends Entity>({
         <div className="flex flex-col space-y-3 mb-5">
           <div className="flex justify-between items-center">
             <div className="flex flex-col">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {options.title}
-              </h1>
+              <h1 className="text-2xl font-bold tracking-tight">{options.title}</h1>
               {options.subtitle && (
                 <p className="text-sm text-muted-foreground mt-1.5">
                   {options.subtitle}
                 </p>
               )}
             </div>
-            {newButtonConfig && (
-              <button 
-                onClick={newButtonConfig.newButtonProps.onClick}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium inline-flex items-center gap-1.5 shadow-sm transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
-                {newButtonConfig.newButtonProps.label}
-              </button>
+            {showNewButton && (
+              <Button onClick={handleNewClick} className="ml-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                {options.newButton!.label}
+              </Button>
             )}
           </div>
           

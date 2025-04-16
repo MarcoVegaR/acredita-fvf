@@ -4,19 +4,29 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Users } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Settings, Users } from 'lucide-react';
 import AppLogo from './app-logo';
+import { usePermissions } from '@/hooks/use-permissions';
 
-const mainNavItems: NavItem[] = [
+// Define los elementos de navegación con sus permisos requeridos
+const mainNavItems: (NavItem & { permission?: string })[] = [
     {
         title: 'Dashboard',
         href: '/dashboard',
         icon: LayoutGrid,
+        // No requiere permiso especial
     },
     {
         title: 'Usuarios',
         href: '/users',
         icon: Users,
+        permission: 'users.index', // Requiere permiso para ver listado de usuarios
+    },
+    {
+        title: 'Roles',
+        href: '/roles',
+        icon: Settings,
+        permission: 'roles.index', // Requiere permiso para ver listado de roles
     },
 ];
 
@@ -34,6 +44,12 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    // Utilizamos el hook personalizado para gestionar permisos
+    const { filterByPermission } = usePermissions();
+    
+    // Filtra los elementos de navegación basados en permisos
+    const filteredNavItems = filterByPermission(mainNavItems);
+    
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -49,7 +65,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={filteredNavItems} />
             </SidebarContent>
 
             <SidebarFooter>

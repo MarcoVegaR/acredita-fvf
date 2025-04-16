@@ -28,6 +28,14 @@ export default function Index({ users, filters = {} }: UsersIndexProps) {
     subtitle: "Administra los usuarios y permisos del sistema",
     endpoint: "/users",
     
+    // Configuración de permisos Spatie
+    permissions: {
+      view: "users.show",
+      create: "users.create",
+      edit: "users.edit",
+      delete: "users.delete"
+    },
+    
     // Estadísticas para mostrar en las tarjetas (array con múltiples tarjetas)
     stats: [
       { 
@@ -75,19 +83,23 @@ export default function Index({ users, filters = {} }: UsersIndexProps) {
     newButton: {
       show: true,
       label: "Nuevo Usuario",
+      permission: "users.create",  // Permiso específico para este botón
     },
     rowActions: {
       view: {
         enabled: true,
         label: "Ver detalles",
+        permission: "users.show",  // Permiso específico para esta acción
       },
       edit: {
         enabled: true,
         label: "Editar",
+        permission: "users.edit",  // Permiso específico para esta acción
       },
       delete: {
         enabled: true,
         label: "Eliminar",
+        permission: "users.delete",  // Permiso específico para esta acción
         confirmMessage: (user: User) => `¿Está seguro que desea eliminar al usuario ${user.name}?`,
       },
     },

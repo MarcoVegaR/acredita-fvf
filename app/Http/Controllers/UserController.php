@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -69,9 +70,12 @@ class UserController extends Controller
      */
     public function create()
     {
-        // Aquí se podría agregar lógica para cargar datos adicionales,
-        // como roles cuando se implemente Spatie Permission
-        return $this->respondWithSuccess('users/create');
+        // Cargar los roles disponibles para asignar al usuario
+        $roles = Role::all();
+        
+        return $this->respondWithSuccess('users/create', [
+            'roles' => $roles
+        ]);
     }
 
     /**
@@ -99,7 +103,13 @@ class UserController extends Controller
                 'password' => Hash::make($data['password']),
             ]);
             
-            // Asignar roles si fuera necesario (cuando se implemente Spatie)
+            // Asignar roles si se proporcionan
+            if ($request->has('roles')) {
+                $user->assignRole($request->input('roles'));                
+            } else {
+                // Asignar el rol de usuario por defecto
+                $user->assignRole('user');
+            }
             
             DB::commit();
             
@@ -140,11 +150,16 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        // Aquí se podría cargar información adicional como roles
-        // cuando se implemente Spatie Permission
+        // Cargar los roles disponibles
+        $roles = Role::all();
+        
+        // Obtener los roles asignados al usuario
+        $userRoles = $user->roles->pluck('name');
         
         return $this->respondWithSuccess('users/edit', [
-            'user' => $user
+            'user' => $user,
+            'roles' => $roles,
+            'userRoles' => $userRoles
         ]);
     }
 
@@ -180,7 +195,10 @@ class UserController extends Controller
             
             $user->update($userData);
             
-            // Actualizar roles si fuera necesario (cuando se implemente Spatie)
+            // Actualizar roles si se proporcionan
+            if ($request->has('roles')) {
+                $user->syncRoles($request->input('roles'));
+            }
             
             DB::commit();
             

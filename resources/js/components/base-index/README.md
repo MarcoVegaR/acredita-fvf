@@ -17,10 +17,13 @@ Este documento proporciona una guía sobre cómo utilizar el patrón Base Index 
    - [Filtrado](#filtrado)
    - [Exportación](#exportación)
    - [Acciones de fila](#acciones-de-fila)
+   - [Sistema de permisos](#sistema-de-permisos)
 5. [Integración con Backend](#integración-con-backend)
 6. [Notificaciones y mensajes flash](#notificaciones-y-mensajes-flash)
 7. [Seguridad de tipos](#seguridad-de-tipos)
-8. [Ejemplos completos](#ejemplos-completos)
+8. [Sistema de permisos](#sistema-de-permisos)
+9. [Ejemplos completos](#ejemplos-completos)
+10. [Solución de problemas comunes](#solución-de-problemas-comunes)
 
 ## Introducción
 
@@ -32,6 +35,7 @@ Características principales:
 - **Interfaz visual mejorada** con diseño responsive y jerarquía visual clara
 - **Tipado seguro** con TypeScript para prevenir errores
 - **Acciones de fila** con confirmación integrada mediante AlertDialog
+- **Control de acceso granular** basado en permisos de usuario para todas las funcionalidades
 
 ## Componentes disponibles
 
@@ -46,6 +50,7 @@ El patrón Base Index incluye los siguientes componentes:
 - `DataTableRowActions`: Acciones por fila (ver, editar, eliminar, personalizadas) con confirmación integrada.
 - `StatisticCards`: Tarjetas con estadísticas relevantes al módulo.
 - `Utilidades de traducción`: Sistema centralizado para gestionar etiquetas de columnas.
+- `Integración con Spatie Permissions`: Control de acceso basado en permisos para todas las acciones usando el hook `usePermissions`.
 
 ## Métodos de implementación
 
@@ -150,19 +155,29 @@ export default function Index({ users, filters = {} }: UsersIndexProps) {
       show: true,
       label: "Nuevo Usuario",
     },
+    // Sistema de permisos para controlar acceso a funcionalidades
+    permissions: {
+      create: "users.create",
+      view: "users.show",
+      edit: "users.edit",
+      delete: "users.delete",
+    },
     // Acciones de fila con confirmación integrada
     rowActions: {
       view: {
         enabled: true,
         label: "Ver detalles",
+        permission: "users.show", // Se verificará el permiso específico
       },
       edit: {
         enabled: true,
         label: "Editar",
+        permission: "users.edit",
       },
       delete: {
         enabled: true,
         label: "Eliminar",
+        permission: "users.delete",
         confirmMessage: (user: User) => `¿Está seguro que desea eliminar al usuario ${user.name}?`,
       },
     },
@@ -202,6 +217,72 @@ interface User {
   active: boolean;
   createdAt: string;
 }
+```
+
+## Sistema de permisos
+
+El componente BaseIndexPage incluye una integración completa con el sistema de permisos de Spatie. Esta integración se gestiona a través del hook personalizado `usePermissions` que proporciona una interfaz unificada para verificar permisos en toda la aplicación.
+
+### Configuración de permisos
+
+Para implementar permisos en tu página de índice, añade la propiedad `permissions` a la configuración:
+
+```tsx
+const indexOptions = {
+  // Otras opciones...
+  permissions: {
+    view: "module.index",     // Permiso para ver la lista
+    create: "module.create",  // Permiso para crear
+    edit: "module.edit",      // Permiso para editar
+    delete: "module.delete",  // Permiso para eliminar
+  },
+};
+```
+
+### Permisos en acciones de fila
+
+Cada acción de fila puede tener su propio permiso:
+
+```tsx
+rowActions: {
+  view: {
+    enabled: true,
+    label: "Ver detalles",
+    permission: "products.show", // Permiso específico para esta acción
+  },
+  // Otras acciones...
+}
+```
+
+### Uso del hook usePermissions
+
+Si necesitas verificar permisos en otras partes de tu aplicación:
+
+```tsx
+import { usePermissions } from '@/hooks/use-permissions';
+
+function MyComponent() {
+  const { hasPermission } = usePermissions();
+  
+  return (
+    <div>
+      {hasPermission('users.create') && (
+        <Button>Crear Usuario</Button>
+      )}
+    </div>
+  );
+}
+```
+
+### Filtrado de elementos por permiso
+
+Puedes filtrar arrays de elementos basados en permisos:
+
+```tsx
+const { filterByPermission } = usePermissions();
+
+// Filtra elementos de navegación basados en permisos
+const visibleMenuItems = filterByPermission(allMenuItems);
 ```
 
 ### Paso 3: Configurar las columnas
@@ -590,7 +671,154 @@ toast.error("Error", {
 });
 ```
 
+## Solución de problemas comunes
+
+### Los permisos no se reflejan en la interfaz
+
+Si los elementos protegidos por permisos no se muestran correctamente:
+
+1. **Verificar configuración del middleware en Laravel 12**
+   ```php
+   // En bootstrap/app.php
+   $middleware->alias([
+       'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+       // Otros aliases...
+   ]);
+   ```
+
+2. **Asegurar la correcta serialización de permisos**
+   ```php
+   // En HandleInertiaRequests.php
+   'permissions' => $request->user()->getAllPermissions()->pluck('name')->toArray(),
+   ```
+
+3. **Comprobar los logs de consola**
+   - Verificar que `auth.user.permissions` contiene los permisos esperados
+
+4. **Limpiar caché tras cambios**
+   ```bash
+   php artisan optimize:clear
+   ```
+
+### El componente BaseIndexPage no respeta los permisos
+
+Verifica que la configuración de permisos está correctamente definida:
+
+```tsx
+permissions: {
+  create: "module.create",
+  edit: "module.edit",
+  // etc.
+},
+```
+
 ## Ejemplos completos
+
+### Implementación completa de un índice de productos
+
+```tsx
+// products/index.tsx
+import React from "react";
+import { BaseIndexPage } from "@/components/base-index/base-index-page";
+import { columns, type Product } from "./columns";
+import { PageProps } from "@inertiajs/core";
+
+interface ProductsIndexProps extends PageProps {
+  products: {
+    data: Product[];
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+  };
+  filters?: {
+    search?: string;
+    sort?: string;
+    order?: "asc" | "desc";
+    page?: number;
+    per_page?: number;
+  };
+}
+
+export default function Index({ products, filters = {} }: ProductsIndexProps) {
+  // Configuración centralizada para el índice de productos
+  const indexOptions = {
+    title: "Gestión de Productos",
+    subtitle: "Administre todos los productos de su inventario",
+    endpoint: "/products",
+    moduleName: "products", // Identificador para traducciones de columnas
+    breadcrumbs: [
+      { title: "Dashboard", href: "/dashboard" },
+      { title: "Productos", href: "/products" },
+    ],
+    // Tarjetas de estadísticas relevantes
+    stats: [
+      { value: 584, label: "Total Productos", icon: "shopping-bag", color: "blue" },
+      { value: 42, label: "Sin stock", icon: "alert-triangle", color: "red" },
+      { value: 128, label: "Nuevos este mes", icon: "trending-up", color: "green" },
+    ],
+    columns: columns,
+    searchableColumns: ["name", "sku", "category"],
+    searchPlaceholder: "Buscar por nombre, SKU o categoría",
+    filterableColumns: ["category", "status"],
+    defaultSorting: [{ id: "id", desc: true }],
+    exportOptions: {
+      enabled: true,
+      fileName: "productos",
+      exportTypes: ["excel", "csv", "print"] as ("excel" | "csv" | "print")[],
+    },
+    newButton: {
+      show: true,
+      label: "Nuevo Producto",
+    },
+    // Sistema completo de permisos
+    permissions: {
+      create: "products.create",
+      view: "products.show",
+      edit: "products.edit",
+      delete: "products.delete",
+    },
+    rowActions: {
+      view: {
+        enabled: true,
+        label: "Ver detalles",
+        permission: "products.show",
+      },
+      edit: {
+        enabled: true,
+        label: "Editar",
+        permission: "products.edit",
+      },
+      delete: {
+        enabled: true,
+        label: "Eliminar",
+        permission: "products.delete",
+        confirmMessage: (product: Product) => 
+          `¿Está seguro que desea eliminar el producto ${product.name}?`,
+      },
+      // Acción personalizada con permiso específico
+      custom: [
+        {
+          label: "Actualizar stock",
+          icon: "refresh-cw",
+          permission: "products.manage_inventory",
+          onClick: (product: Product) => {
+            // Lógica para actualizar el stock
+          },
+        },
+      ],
+    },
+  };
+
+  return (
+    <BaseIndexPage<Product> 
+      data={products} 
+      filters={filters} 
+      options={indexOptions} 
+    />
+  );
+}
+```
 
 ### Vista de índice básica
 
