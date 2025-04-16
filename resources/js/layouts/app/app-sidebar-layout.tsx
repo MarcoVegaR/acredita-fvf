@@ -2,6 +2,8 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { Toaster } from '@/components/ui/sonner';
+import { FlashMessages } from '@/components/flash-messages';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren } from 'react';
 
@@ -13,6 +15,9 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 {children}
             </AppContent>
+            {/* Sistema de notificaciones con sonner */}
+            <Toaster position="top-right" closeButton richColors />
+            <FlashMessages />
         </AppShell>
     );
 }

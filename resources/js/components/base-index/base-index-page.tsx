@@ -1,0 +1,482 @@
+import React from "react";
+import { Head } from "@inertiajs/react";
+import { DataTable } from "@/components/base-index";
+import { DataTableRowActions } from "@/components/base-index/data-table-row-actions";
+import { router } from "@inertiajs/react";
+import { SortingState } from "@tanstack/react-table";
+import AppLayout from "@/layouts/app-layout";
+import { ColumnDef } from "@tanstack/react-table";
+import { type BreadcrumbItem } from "@/types";
+import { useToast } from "../../hooks/use-toast";
+
+// Tipo genérico para la entidad
+export interface Entity {
+  id: number;
+  // Usamos unknown en lugar de any para mejorar la seguridad de tipos
+  // pero manteniendo la flexibilidad para propiedades dinámicas
+  [key: string]: unknown;
+}
+
+// Opciones para cada tipo de índice
+export interface BaseIndexOptions<T extends Entity> {
+  // Configuración básica
+  title: string;
+  subtitle?: string;
+  endpoint: string;
+  breadcrumbs: BreadcrumbItem[];
+  
+  // Estadísticas para mostrar en tarjetas (una o múltiples)
+  stats?: Array<{
+    value: number | string;
+    label: string;
+    icon?: string; // nombre del icono (optional)
+    color?: string; // color del icono (optional)
+  }>;
+  
+  /**
+   * Nombre del módulo al que pertenece esta tabla (ej: "users", "roles")
+   * Se utiliza para obtener traducciones adecuadas para las columnas
+   */
+  moduleName?: string;
+  
+  /**
+   * Texto personalizado para el placeholder del campo de búsqueda
+   */
+  searchPlaceholder?: string;
+  
+  /**
+   * Columnas que se incluirán en la búsqueda global
+   */
+  searchableColumns?: string[];
+  
+  // Columnas y configuración de la tabla
+  columns: ColumnDef<T>[];
+  filterableColumns?: string[];
+  defaultSorting?: { id: string; desc: boolean }[];
+  
+  // Configuración de exportación
+  exportOptions?: {
+    enabled: boolean;
+    fileName?: string;
+    exportTypes?: ("excel" | "csv" | "print" | "copy")[];
+  };
+  
+  // Configuración del botón nuevo
+  newButton?: {
+    show: boolean;
+    label: string;
+    onClick?: () => void;
+  };
+  
+  // Acciones de fila personalizables
+  rowActions?: {
+    view?: {
+      enabled: boolean;
+      label: string;
+      handler?: (row: T) => void;
+    };
+    edit?: {
+      enabled: boolean;
+      label: string;
+      handler?: (row: T) => void;
+    };
+    delete?: {
+      enabled: boolean;
+      label: string;
+      confirmMessage?: (row: T) => string;
+      handler?: (row: T) => void;
+    };
+    custom?: Array<{
+      label: string;
+      handler: (row: T) => void;
+      icon?: React.ReactNode;
+    }>;
+  };
+}
+
+// Props para el componente BaseIndexPage
+interface BaseIndexPageProps<T extends Entity> {
+  data: {
+    data: T[];
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+  };
+  filters?: {
+    search?: string;
+    sort?: string;
+    order?: "asc" | "desc";
+    page?: number;
+    per_page?: number;
+  };
+  options: BaseIndexOptions<T>;
+}
+
+// Componente base para páginas de índice
+export function BaseIndexPage<T extends Entity>({ 
+  data, 
+  filters = {}, 
+  options 
+}: BaseIndexPageProps<T>) {
+  const { toast } = useToast();
+  
+  // Manejador genérico para cambios de paginación
+  const handlePaginationChange = React.useCallback(({ pageIndex, pageSize }: { pageIndex: number; pageSize: number }) => {
+    // Verificar si realmente hay un cambio antes de disparar una navegación
+    const newPage = pageIndex + 1;
+    const newPerPage = pageSize;
+    
+    // Solo disparar la navegación si hay un cambio real en la página o tamaño
+    if (newPage !== data.current_page || newPerPage !== data.per_page) {
+      // Usar router.get() en lugar de router.visit() con preserveState: true
+      router.get(
+        options.endpoint, 
+        {
+          ...filters,
+          page: newPage,
+          per_page: newPerPage,
+        }, 
+        {
+          // Preservar el estado para evitar recrear completamente el componente
+          preserveState: true,
+          // Mantener la posición de scroll para mejor experiencia de usuario
+          preserveScroll: true,
+          // No crear una nueva entrada en el historial
+          replace: true,
+          // Verificar antes de continuar con la visita
+          onBefore: () => {
+            // Evitar bucles de navegación
+            const currentUrl = window.location.href;
+            const targetUrl = new URL(options.endpoint, window.location.origin);
+            const searchParams = new URLSearchParams();
+            
+            // Agregar todos los filtros convirtiéndolos a string
+            Object.entries(filters).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                searchParams.append(key, String(value));
+              }
+            });
+            
+            // Agregar los parámetros de paginación
+            searchParams.set("page", String(newPage));
+            searchParams.set("per_page", String(newPerPage));
+            
+            targetUrl.search = searchParams.toString();
+            
+            // Si estamos intentando navegar a la misma URL, cancelar la navegación
+            return currentUrl !== targetUrl.href;
+          }
+        }
+      );
+    }
+    // El linter sugiere quitar router del array de dependencias, ya que es un valor externo,
+    // pero necesitamos mantenerlo para acceder a los métodos más recientes
+     
+  }, [options.endpoint, filters, data.current_page, data.per_page]);
+
+  // Manejador genérico para cambios de ordenamiento
+  const handleSortingChange = React.useCallback((sorting: SortingState) => {
+    const newSort = sorting[0]?.id || "id";
+    const newOrder = sorting[0]?.desc ? "desc" : "asc";
+    
+    // Solo disparar la navegación si hay un cambio real en el ordenamiento
+    if (newSort !== filters.sort || newOrder !== filters.order) {
+      router.get(
+        options.endpoint, 
+        {
+          ...filters,
+          sort: newSort,
+          order: newOrder,
+        }, 
+        {
+          // Preservar el estado para evitar recrear completamente el componente
+          preserveState: true,
+          // Mantener la posición de scroll para mejor experiencia de usuario
+          preserveScroll: true,
+          // No crear una nueva entrada en el historial para ordenamiento
+          replace: true,
+          // Verificar antes de continuar con la visita
+          onBefore: () => {
+            // Evitar bucles de navegación
+            const currentUrl = window.location.href;
+            const targetUrl = new URL(options.endpoint, window.location.origin);
+            const searchParams = new URLSearchParams();
+            
+            // Agregar todos los filtros convirtiéndolos a string
+            Object.entries(filters).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                searchParams.append(key, String(value));
+              }
+            });
+            
+            // Agregar los parámetros de ordenamiento
+            searchParams.set("sort", newSort);
+            searchParams.set("order", newOrder);
+            
+            targetUrl.search = searchParams.toString();
+            
+            // Si estamos intentando navegar a la misma URL, cancelar la navegación
+            return currentUrl !== targetUrl.href;
+          }
+        }
+      );
+    }
+     
+  }, [options.endpoint, filters]);
+
+  // Manejador genérico para cambios de filtro global/búsqueda
+  const handleGlobalFilterChange = React.useCallback((filter: string) => {
+    // Solo disparar la navegación si hay un cambio real en la búsqueda
+    if (filter !== filters.search) {
+      router.get(
+        options.endpoint, 
+        {
+          ...filters,
+          search: filter,
+          page: 1, // Reset to first page when searching
+        }, 
+        {
+          // Preservar el estado para evitar recrear completamente el componente
+          preserveState: true,
+          // Mantener la posición de scroll para mejor experiencia de usuario
+          preserveScroll: true,
+          // Reemplazar en el historial para no llenar el historial con búsquedas
+          replace: true,
+          // Verificar antes de continuar con la visita
+          onBefore: () => {
+            // Evitar bucles de navegación
+            const currentUrl = window.location.href;
+            const targetUrl = new URL(options.endpoint, window.location.origin);
+            const searchParams = new URLSearchParams();
+            
+            // Agregar todos los filtros convirtiéndolos a string
+            Object.entries(filters).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                searchParams.append(key, String(value));
+              }
+            });
+            
+            // Agregar los parámetros de búsqueda
+            searchParams.set("search", filter);
+            searchParams.set("page", "1"); // Reset to first page when searching
+            
+            targetUrl.search = searchParams.toString();
+            
+            // Si estamos intentando navegar a la misma URL, cancelar la navegación
+            return currentUrl !== targetUrl.href;
+          }
+        }
+      );
+    }
+     
+  }, [options.endpoint, filters]);
+  
+  // Renderiza las acciones de fila basadas en la configuración
+  const renderRowActions = (row: T) => {
+    if (!options.rowActions) return null;
+    
+    // Definimos una interfaz más completa para las acciones
+    type ActionType = {
+      enabled: boolean;
+      label: string;
+      handler: (row: T) => void;
+      confirmMessage?: string;
+      icon?: React.ReactNode;
+    };
+    
+    const actions: Record<string, ActionType> = {};
+    
+    // Acción Ver
+    if (options.rowActions.view?.enabled) {
+      actions.view = {
+        enabled: true,
+        label: options.rowActions.view.label,
+        handler: options.rowActions.view.handler || 
+                 ((row) => router.visit(`${options.endpoint}/${row.id}`)),
+      };
+    }
+    
+    // Acción Editar
+    if (options.rowActions.edit?.enabled) {
+      actions.edit = {
+        enabled: true,
+        label: options.rowActions.edit.label,
+        handler: options.rowActions.edit.handler || 
+                 ((row) => router.visit(`${options.endpoint}/${row.id}/edit`)),
+      };
+    }
+    
+    // Acción Eliminar
+    if (options.rowActions.delete?.enabled) {
+      actions.delete = {
+        enabled: true,
+        label: options.rowActions.delete.label,
+        confirmMessage: options.rowActions.delete.confirmMessage?.(row) || 
+                        `¿Está seguro que desea eliminar este registro?`,
+        handler: options.rowActions.delete.handler || 
+                 ((row) => {
+                   router.delete(`${options.endpoint}/${row.id}`, {
+                     onSuccess: () => {
+                       toast({
+                         title: "Registro eliminado",
+                         description: "El registro ha sido eliminado correctamente.",
+                         variant: "success",
+                       });
+                     },
+                   });
+                 }),
+      };
+    }
+    
+    // Acciones personalizadas
+    if (options.rowActions.custom) {
+      options.rowActions.custom.forEach((action, index) => {
+        actions[`custom${index}`] = {
+          enabled: true,
+          label: action.label,
+          icon: action.icon,
+          handler: action.handler,
+        };
+      });
+    }
+    
+    return <DataTableRowActions row={row} actions={actions} />;
+  };
+  
+  // Configuración del botón nuevo (igual que antes pero ahora se usará en el encabezado)
+  // Mantenemos la misma lógica para compatibilidad con implementaciones existentes
+  const newButtonConfig = options.newButton?.show ? {
+    showNewButton: true,
+    newButtonProps: {
+      label: options.newButton.label,
+      onClick: options.newButton.onClick || (() => router.visit(`${options.endpoint}/create`)),
+    }
+  } : undefined;
+
+  // Ya no necesitamos una key para forzar el remontaje porque estamos usando preserveState: true
+  // Esto permite que el componente mantenga su estado interno mientras los datos se actualizan
+  // Sin embargo, todavía podemos usar una key simple basada en el ID de la entidad si es necesario
+  const tableKey = `${options.endpoint}-table`;
+
+  return (
+    <AppLayout breadcrumbs={options.breadcrumbs}>
+      <Head title={options.title} />
+      <div className="flex h-full flex-1 flex-col gap-5 p-5 pb-8">
+        <div className="flex flex-col space-y-3 mb-5">
+          <div className="flex justify-between items-center">
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                {options.title}
+              </h1>
+              {options.subtitle && (
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  {options.subtitle}
+                </p>
+              )}
+            </div>
+            {newButtonConfig && (
+              <button 
+                onClick={newButtonConfig.newButtonProps.onClick}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md text-sm font-medium inline-flex items-center gap-1.5 shadow-sm transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                {newButtonConfig.newButtonProps.label}
+              </button>
+            )}
+          </div>
+          
+
+          
+          {/* Componente separador decorativo */}
+          <div className="w-full mt-1 mb-4 flex items-center">
+            <div className="h-1 w-16 bg-primary rounded-full"></div>
+            <div className="h-px flex-1 bg-border ml-2"></div>
+          </div>
+          
+          {/* Tarjetas de estadísticas - flexibles */}
+          {options.stats && options.stats.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+              {options.stats.map((stat, index) => {
+                // Determinar el icono basado en el módulo o el valor proporcionado
+                let iconJSX = null;
+                if (stat.icon === 'users' || (options.moduleName === 'users' && !stat.icon)) {
+                  iconJSX = (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${stat.color || 'text-primary'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                    </svg>
+                  );
+                } else if (stat.icon === 'roles' || options.moduleName === 'roles') {
+                  iconJSX = (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${stat.color || 'text-primary'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                  );
+                } else if (stat.icon === 'activity') {
+                  iconJSX = (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${stat.color || 'text-emerald-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                  );
+                } else if (stat.icon === 'calendar') {
+                  iconJSX = (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${stat.color || 'text-amber-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                  );
+                } else {
+                  // Icono predeterminado
+                  iconJSX = (
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${stat.color || 'text-blue-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                    </svg>
+                  );
+                }
+
+                return (
+                  <div key={index} className="bg-white dark:bg-neutral-800 p-4 rounded-lg shadow-sm border border-border flex items-center gap-4">
+                    {iconJSX}
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                      <p className="text-2xl font-bold">{typeof stat.value === 'number' ? stat.value.toLocaleString() : stat.value}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        
+        <div className="bg-card dark:bg-card shadow-md rounded-lg overflow-hidden border border-border">
+          {/* Usamos key para forzar el remontaje cuando cambian los datos */}
+          <DataTable
+            key={tableKey}
+            data={data.data}
+            columns={options.columns}
+            moduleName={options.moduleName}
+            searchPlaceholder={options.searchPlaceholder}
+            searchableColumns={options.searchableColumns}
+            filterableColumns={options.filterableColumns}
+            defaultSorting={options.defaultSorting || [{ id: "id", desc: true }]}
+            renderRowActions={renderRowActions}
+            exportOptions={options.exportOptions || { enabled: false }}
+            toolbarProps={{showNewButton: false}}
+            serverSide={{
+              totalRecords: data.total,
+              pageCount: data.last_page,
+              currentPage: data.current_page,
+              perPage: data.per_page,
+              onPaginationChange: handlePaginationChange,
+              onSortingChange: handleSortingChange,
+              onGlobalFilterChange: handleGlobalFilterChange,
+            }}
+          />
+        </div>
+      </div>
+    </AppLayout>
+  );
+}
