@@ -13,7 +13,6 @@ import {
   Row,
 } from "@tanstack/react-table";
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
-import { getColumnLabel } from "@/utils/translations/column-labels";
 
 import {
   Table,
@@ -25,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { DataTablePagination } from "@/components/base-index/data-table-pagination";
 import { DataTableToolbar } from "@/components/base-index/data-table-toolbar";
+import { FilterConfig } from "@/components/base-index/filter-toolbar";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -45,6 +45,10 @@ interface DataTableProps<TData, TValue> {
       href?: string;
       onClick?: () => void;
     };
+    filterConfig?: FilterConfig;
+    filterEmptyMessage?: string;
+    filters?: Record<string, unknown>;
+    endpoint?: string;
   };
   exportOptions?: {
     enabled: boolean;
@@ -203,18 +207,19 @@ export function DataTable<TData, TValue>({
     <div className="space-y-4">
       {/* Contenedor con position relative para evitar superposición con la barra lateral */}
       <div className="relative z-0 px-1.5">
-        <DataTableToolbar 
-          table={table} 
-          filterableColumns={filterableColumns} 
-          translationPrefix={translationPrefix}
-          moduleName={moduleName}
-          searchPlaceholder={searchableColumns?.length 
-            ? `Buscar por ${searchableColumns.map(col => 
-                moduleName ? getColumnLabel(moduleName, col, col) : col)
-                .join(", ")}...` 
-            : searchPlaceholder}
+        <DataTableToolbar
+          table={table}
+          filterableColumns={filterableColumns}
           exportOptions={exportOptions}
-          {...toolbarProps}
+          moduleName={moduleName}
+          translationPrefix={translationPrefix}
+          searchPlaceholder={searchPlaceholder}
+          showNewButton={toolbarProps?.showNewButton}
+          newButtonProps={toolbarProps?.newButtonProps}
+          filterConfig={toolbarProps?.filterConfig}
+          filterEmptyMessage={toolbarProps?.filterEmptyMessage}
+          filters={toolbarProps?.filters}
+          endpoint={toolbarProps?.endpoint}
         />
       <div className="mx-1 rounded-md border overflow-hidden">
         <Table className="w-full">

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableViewOptions } from "@/components/base-index/data-table-view-options";
 import { DataTableExport } from "@/components/base-index/data-table-export";
+import { FilterToolbar, FilterConfig } from "@/components/base-index/filter-toolbar";
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -31,6 +32,22 @@ interface DataTableToolbarProps<TData> {
     href?: string;
     onClick?: () => void;
   };
+  /**
+   * Configuración de filtros personalizados
+   */
+  filterConfig?: FilterConfig;
+  /**
+   * Mensaje a mostrar cuando no hay filtros activos
+   */
+  filterEmptyMessage?: string;
+  /**
+   * Filtros aplicados actualmente
+   */
+  filters?: Record<string, unknown>;
+  /**
+   * Endpoint para redireccionar al aplicar filtros
+   */
+  endpoint?: string;
 }
 
 export function DataTableToolbar<TData>({
@@ -41,6 +58,10 @@ export function DataTableToolbar<TData>({
   exportOptions,
   showNewButton = true,
   newButtonProps = { label: "Nuevo Registro", href: "?/create" },
+  filterConfig,
+  filterEmptyMessage,
+  filters = {},
+  endpoint = "",
 }: DataTableToolbarProps<TData>) {
   const [globalFilter, setGlobalFilter] = React.useState("");
   
@@ -74,6 +95,20 @@ export function DataTableToolbar<TData>({
             </Button>
           )}
         </div>
+        
+        {/* Integración del botón de filtros */}
+        {filterConfig && (
+          <div className="flex items-center ml-2">
+            <FilterToolbar
+              filterConfig={filterConfig}
+              filters={filters}
+              endpoint={endpoint}
+              emptyMessage={filterEmptyMessage}
+              compact={true}
+            />
+          </div>
+        )}
+        
         {showNewButton && (
           <Button 
             variant="default" 

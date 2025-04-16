@@ -33,6 +33,31 @@ export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
     subtitle: "Administra los usuarios y permisos del sistema",
     endpoint: "/users",
     
+    // Configuración de filtros personalizados
+    filterConfig: {
+      boolean: [
+        {
+          id: "active",
+          label: "Estado",
+          trueLabel: "Activos",
+          falseLabel: "Inactivos"
+        }
+      ],
+      select: [
+        {
+          id: "role",
+          label: "Rol",
+          options: [
+            { value: "admin", label: "Administrador" },
+            { value: "editor", label: "Editor" },
+            { value: "viewer", label: "Visualizador" },
+            { value: "user", label: "Usuario" }
+          ]
+        }
+      ]
+    },
+    filterEmptyMessage: "Sin filtros aplicados. Utilice el botón 'Filtrar' para refinar los resultados.",
+    
     // Configuración de permisos Spatie
     permissions: {
       view: "users.show",

@@ -32,6 +32,20 @@ class UserController extends Controller
                 });
             }
             
+            // Filtrar por estado activo/inactivo
+            if ($request->has('active')) {
+                $isActive = filter_var($request->input('active'), FILTER_VALIDATE_BOOLEAN);
+                $query->where('active', $isActive);
+            }
+            
+            // Filtrar por rol
+            if ($request->has('role')) {
+                $role = $request->input('role');
+                $query->whereHas('roles', function($q) use ($role) {
+                    $q->where('name', $role);
+                });
+            }
+            
             // Aplicar ordenamiento
             $sortField = $request->input('sort', 'id');
             $sortOrder = $request->input('order', 'desc');
@@ -71,7 +85,7 @@ class UserController extends Controller
             return $this->respondWithSuccess('users/index', [
                 'users' => $users,
                 'stats' => $stats,
-                'filters' => $request->only(['search', 'sort', 'order', 'per_page'])
+                'filters' => $request->only(['search', 'sort', 'order', 'per_page', 'active', 'role'])
             ]);
         } catch (\Throwable $e) {
             return $this->handleException($e, 'Listar usuarios');

@@ -43,7 +43,8 @@ El patrón Base Index incluye los siguientes componentes:
 
 - `BaseIndexPage`: Componente de alto nivel que facilita la creación de páginas de índice sin duplicación de código.
 - `DataTable`: Componente principal que orquesta todas las funcionalidades.
-- `DataTableToolbar`: Barra de herramientas con búsqueda global y opciones de tabla.
+- `DataTableToolbar`: Barra de herramientas con búsqueda global, filtros y opciones de tabla.
+- `FilterToolbar`: Componente flexible para filtrado avanzado de datos, integrado en la barra de herramientas.
 - `DataTablePagination`: Controles de paginación para navegación.
 - `DataTableViewOptions`: Selector de visibilidad de columnas.
 - `DataTableExport`: Opciones de exportación (Excel, CSV, imprimir, copiar).
@@ -532,6 +533,8 @@ Para habilitar el ordenamiento en el lado del servidor:
 
 ### Filtrado
 
+#### Filtrado Básico Global
+
 Para activar el filtrado global en el lado del servidor:
 
 ```tsx
@@ -546,6 +549,83 @@ Para activar el filtrado global en el lado del servidor:
   }}
 />
 ```
+
+#### Filtrado Avanzado con FilterToolbar
+
+El componente `FilterToolbar` proporciona una interfaz avanzada y flexible para aplicar múltiples filtros a tus datos. Este componente está integrado en la barra de herramientas principal para una mejor experiencia de usuario.
+
+##### Configuración en BaseIndexPage
+
+```tsx
+const indexOptions = {
+  // Otras opciones...
+  filterConfig: {
+    // Filtros de tipo select (desplegables)
+    select: [
+      {
+        id: "role",
+        label: "Rol", 
+        options: [
+          { value: "admin", label: "Administrador" },
+          { value: "editor", label: "Editor" },
+          { value: "user", label: "Usuario" }
+        ]
+      }
+    ],
+    // Filtros booleanos (verdadero/falso)
+    boolean: [
+      {
+        id: "active",
+        label: "Estado", 
+        trueLabel: "Activos",
+        falseLabel: "Inactivos"
+      }
+    ]
+  },
+  filterEmptyMessage: "Sin filtros aplicados. Utilice el botón 'Filtrar' para refinar los resultados.",
+};
+```
+
+##### Implementación en el Controlador Backend
+
+```php
+// En tu controlador Laravel
+public function index(Request $request)
+{
+    $query = User::query();
+    
+    // Aplicar filtros si existen
+    if ($request->has('active')) {
+        $isActive = filter_var($request->input('active'), FILTER_VALIDATE_BOOLEAN);
+        $query->where('active', $isActive);
+    }
+    
+    if ($request->has('role')) {
+        $role = $request->input('role');
+        $query->whereHas('roles', function($q) use ($role) {
+            $q->where('name', $role);
+        });
+    }
+    
+    // Resto de la implementación...
+    
+    // Importante: Incluir los filtros aplicados en la respuesta
+    return inertia('Users/Index', [
+        'users' => $users,
+        'filters' => $request->only(['search', 'sort', 'order', 'per_page', 'active', 'role'])
+    ]);
+}
+```
+
+##### Características del FilterToolbar
+
+- **Integración en la barra de herramientas**: Los filtros aparecen junto a la búsqueda global siguiendo patrones de diseño UI estándar.
+- **Indicador visual**: Muestra un contador de filtros activos.
+- **Filtros select**: Para opciones predefinidas como categorías, roles, estados, etc.
+- **Filtros booleanos**: Para estados binarios (activo/inactivo, publicado/borrador, etc.)
+- **Responsive**: Funciona en dispositivos móviles y de escritorio.
+- **TypeScript**: Completamente tipado para prevenir errores.
+- **Modo compacto**: Optimizado para integrarse en la barra de herramientas principal.
 
 ### Exportación
 

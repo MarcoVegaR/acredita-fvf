@@ -2,6 +2,7 @@ import React from "react";
 import { Head } from "@inertiajs/react";
 import { DataTable } from "@/components/base-index";
 import { DataTableRowActions } from "@/components/base-index/data-table-row-actions";
+import { FilterConfig } from "@/components/base-index/filter-toolbar";
 import { router } from "@inertiajs/react";
 import { SortingState } from "@tanstack/react-table";
 import AppLayout from "@/layouts/app-layout";
@@ -69,6 +70,16 @@ export interface BaseIndexOptions<T extends Entity> {
    * Columnas que se incluirán en la búsqueda global
    */
   searchableColumns?: string[];
+  
+  /**
+   * Configuración de filtros personalizados
+   */
+  filterConfig?: FilterConfig;
+  
+  /**
+   * Mensaje a mostrar cuando no hay filtros activos
+   */
+  filterEmptyMessage?: string;
   
   // Columnas y configuración de la tabla
   columns: ColumnDef<T>[];
@@ -446,8 +457,6 @@ export function BaseIndexPage<T extends Entity>({
             )}
           </div>
           
-
-          
           {/* Componente separador decorativo */}
           <div className="w-full mt-1 mb-4 flex items-center">
             <div className="h-1 w-16 bg-primary rounded-full"></div>
@@ -509,6 +518,8 @@ export function BaseIndexPage<T extends Entity>({
               })}
             </div>
           )}
+          
+          {/* Ya no mostramos FilterToolbar aquí, ahora está integrado en la barra de herramientas */}
         </div>
         
         <div className="bg-card dark:bg-card shadow-md rounded-lg overflow-hidden border border-border">
@@ -524,7 +535,13 @@ export function BaseIndexPage<T extends Entity>({
             defaultSorting={options.defaultSorting || [{ id: "id", desc: true }]}
             renderRowActions={renderRowActions}
             exportOptions={options.exportOptions || { enabled: false }}
-            toolbarProps={{showNewButton: false}}
+            toolbarProps={{
+              showNewButton: false,
+              filterConfig: options.filterConfig,
+              filterEmptyMessage: options.filterEmptyMessage,
+              filters: filters,
+              endpoint: options.endpoint
+            }}
             serverSide={{
               totalRecords: data.total,
               pageCount: data.last_page,
