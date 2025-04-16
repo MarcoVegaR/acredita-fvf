@@ -20,8 +20,8 @@ class UserController extends Controller
     public function index(Request $request)
     {
         try {
-            // Iniciar la consulta
-            $query = User::query();
+            // Iniciar la consulta con relación de roles
+            $query = User::with('roles');
             
             // Aplicar filtros de búsqueda si existen
             if ($request->has('search')) {
@@ -47,15 +47,30 @@ class UserController extends Controller
             $perPage = (int) $request->input('per_page', 10);
             $users = $query->paginate($perPage);
             
+            // Transformar los datos para incluir los nombres de roles como un array
+            $users->through(function ($user) {
+                // Añadir roles como array de nombres para facilitar el manejo en el frontend
+                $user->role_names = $user->roles->pluck('name')->toArray();
+                return $user;
+            });
+            
             // Registrar acción para auditoría
             $this->logAction('listar', 'usuarios', null, [
                 'filters' => $request->all(),
                 'total' => $users->total()
             ]);
             
+            // Obtener estadísticas precisas utilizando los scopes
+            $stats = [
+                'total' => User::count(),
+                'active' => User::active()->count(),
+                'inactive' => User::inactive()->count(),
+            ];
+            
             // Responder con la vista Inertia con el layout correcto
             return $this->respondWithSuccess('users/index', [
                 'users' => $users,
+                'stats' => $stats,
                 'filters' => $request->only(['search', 'sort', 'order', 'per_page'])
             ]);
         } catch (\Throwable $e) {
@@ -92,6 +107,7 @@ class UserController extends Controller
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
                 'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'active' => ['nullable', 'boolean'],
             ]);
             
             // Crear el usuario dentro de una transacción
@@ -101,6 +117,7 @@ class UserController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
+                'active' => $request->has('active') ? $request->input('active') : true,
             ]);
             
             // Asignar roles si se proporcionan
@@ -178,6 +195,7 @@ class UserController extends Controller
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
                 'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+                'active' => ['nullable', 'boolean'],
             ]);
             
             // Actualizar el usuario dentro de una transacción
@@ -187,6 +205,11 @@ class UserController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
             ];
+            
+            // Actualizar el estado activo/inactivo si se proporciona
+            if ($request->has('active')) {
+                $userData['active'] = $request->boolean('active');
+            }
             
             // Solo actualizar la contraseña si se proporciona una nueva
             if (!empty($data['password'])) {

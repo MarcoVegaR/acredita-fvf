@@ -33,9 +33,28 @@ class RolesAndPermissionsSeeder extends Seeder
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Create admin role and assign all permissions
-        $role = Role::create(['name' => 'admin']);
-        $role->givePermissionTo(Permission::all());
+        // Create roles
+        $adminRole = Role::create(['name' => 'admin']);
+        $adminRole->givePermissionTo(Permission::all());
+        
+        // Create editor role with limited permissions
+        $editorRole = Role::create(['name' => 'editor']);
+        $editorRole->givePermissionTo([
+            'users.index', 'users.show',
+            'users.edit', // Can edit but not create or delete users
+        ]);
+        
+        // Create viewer role with read-only permissions
+        $viewerRole = Role::create(['name' => 'viewer']);
+        $viewerRole->givePermissionTo([
+            'users.index', 'users.show',
+            'roles.index', 'roles.show',
+        ]);
+        
+        // Create user role with minimal permissions
+        $userRole = Role::create(['name' => 'user']);
+        $userRole->givePermissionTo([]);
+        
     }
 
     /**

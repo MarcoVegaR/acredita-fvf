@@ -19,9 +19,11 @@ const columnTranslations: TranslationsMap = {
     name: "Nombre",
     email: "Correo Electrónico",
     email_verified_at: "Verificación",
+    active: "Estado",
     created_at: "Fecha de Creación",
     updated_at: "Última Actualización",
     roles: "Roles",
+    role_names: "Roles",
     permissions: "Permisos",
   },
   

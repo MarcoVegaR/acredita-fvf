@@ -11,6 +11,11 @@ interface UsersIndexProps {
     current_page: number;
     last_page: number;
   };
+  stats: {
+    total: number;
+    active: number;
+    inactive: number;
+  };
   filters?: {
     search?: string;
     sort?: string;
@@ -20,7 +25,7 @@ interface UsersIndexProps {
   };
 }
 
-export default function Index({ users, filters = {} }: UsersIndexProps) {
+export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
   // Configuración centralizada para el índice de usuarios
   const indexOptions = {
     // Información principal
@@ -39,22 +44,22 @@ export default function Index({ users, filters = {} }: UsersIndexProps) {
     // Estadísticas para mostrar en las tarjetas (array con múltiples tarjetas)
     stats: [
       { 
-        value: users?.total || 0, 
+        value: stats?.total || 0, 
         label: "Total de usuarios",
         icon: "users",
         color: "text-blue-500"
       },
       { 
-        value: Math.floor((users?.total || 0) * 0.8), 
+        value: stats?.active || 0, 
         label: "Usuarios activos",
         icon: "activity",
         color: "text-green-500"
       },
       { 
-        value: Math.floor((users?.total || 0) * 0.15), 
-        label: "Últimos 7 días",
-        icon: "calendar",
-        color: "text-amber-500"
+        value: stats?.inactive || 0, 
+        label: "Usuarios inactivos",
+        icon: "user-x",
+        color: "text-red-500"
       }
     ],
     

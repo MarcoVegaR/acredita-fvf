@@ -9,6 +9,8 @@ export interface User extends Entity {
   name: string;
   email: string;
   email_verified_at: string | null;
+  active: boolean;
+  role_names?: string[];
   created_at: string;
   updated_at: string;
   // Añadimos la propiedad [key: string]: unknown para cumplir con Entity
@@ -42,6 +44,48 @@ export const columns: ColumnDef<User>[] = [
     accessorKey: "email",
     header: () => <div className="font-semibold">Correo Electrónico</div>,
     cell: ({ row }) => <div>{row.getValue("email")}</div>,
+    enableSorting: false,
+  },
+  {
+    accessorKey: "active",
+    header: () => <div className="font-semibold">Estado</div>,
+    cell: ({ row }) => {
+      const value = row.getValue("active");
+      return value ? (
+        <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium bg-green-50 text-green-700">
+          Activo
+        </div>
+      ) : (
+        <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium bg-red-50 text-red-700">
+          Inactivo
+        </div>
+      );
+    },
+    enableSorting: false,
+  },
+  {
+    accessorKey: "role_names",
+    header: () => <div className="font-semibold">Roles</div>,
+    cell: ({ row }) => {
+      const roles = row.getValue("role_names") as string[] | undefined;
+      
+      if (!roles || roles.length === 0) {
+        return <div className="text-gray-400 italic">Sin roles</div>;
+      }
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {roles.map((role, index) => (
+            <div 
+              key={index}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700"
+            >
+              {role}
+            </div>
+          ))}
+        </div>
+      );
+    },
     enableSorting: false,
   },
   {
