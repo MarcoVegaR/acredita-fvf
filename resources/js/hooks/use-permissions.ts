@@ -1,11 +1,12 @@
 import { usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
+import { SharedData } from '@/types';
 
 /**
  * Hook personalizado para verificar permisos del usuario actual
  */
 export function usePermissions() {
-  const { auth } = usePage().props as any;
+  const { auth } = usePage<SharedData>().props;
   
   /**
    * Verifica si el usuario tiene un permiso específico

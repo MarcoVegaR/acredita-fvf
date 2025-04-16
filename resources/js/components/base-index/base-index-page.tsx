@@ -10,6 +10,7 @@ import { type BreadcrumbItem } from "@/types";
 import { useToast } from "../../hooks/use-toast";
 import { usePage } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
+import { SharedData } from '@/types';
 
 // Tipo genérico para la entidad
 export interface Entity {
@@ -144,7 +145,7 @@ export function BaseIndexPage<T extends Entity>({
   options 
 }: BaseIndexPageProps<T>) {
   const { toast } = useToast();
-  const { auth } = usePage().props as any;
+  const { auth } = usePage<SharedData>().props;
   
   // Función para verificar si el usuario tiene un permiso específico
   const hasPermission = React.useCallback((permission?: string): boolean => {
