@@ -140,4 +140,12 @@ abstract class BaseRepository implements RepositoryInterface
         
         return $this;
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getAll(array $relations = [])
+    {
+        return $this->model->with($relations)->get();
+    }
 }

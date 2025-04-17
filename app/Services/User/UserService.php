@@ -4,10 +4,10 @@ namespace App\Services\User;
 
 use App\Models\User;
 use App\Repositories\User\UserRepositoryInterface;
+use App\Services\Role\RoleServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 
 class UserService implements UserServiceInterface
 {
@@ -15,15 +15,25 @@ class UserService implements UserServiceInterface
      * @var UserRepositoryInterface
      */
     protected $userRepository;
+    
+    /**
+     * @var RoleServiceInterface
+     */
+    protected $roleService;
 
     /**
      * UserService constructor.
      *
      * @param UserRepositoryInterface $userRepository
+     * @param RoleServiceInterface $roleService
      */
-    public function __construct(UserRepositoryInterface $userRepository)
+    public function __construct(
+        UserRepositoryInterface $userRepository,
+        RoleServiceInterface $roleService
+    )
     {
         $this->userRepository = $userRepository;
+        $this->roleService = $roleService;
     }
 
     /**
@@ -83,8 +93,11 @@ class UserService implements UserServiceInterface
         }
         
         // Asignar rol predeterminado si no se proporciona ninguno
-        $roles = $data['roles'] ?? ['user'];
+        $roleNames = $data['roles'] ?? ['user'];
         unset($data['roles']);
+        
+        // Validar roles contra el servicio de roles
+        $validatedRoles = $this->roleService->validateRoleNames($roleNames);
         
         // Hash de contraseña
         if (isset($data['password'])) {
@@ -94,7 +107,7 @@ class UserService implements UserServiceInterface
         DB::beginTransaction();
         try {
             $user = $this->userRepository->create($data);
-            $this->userRepository->assignRoles($user, $roles);
+            $user->syncRoles($validatedRoles);
             DB::commit();
             
             // Cargar roles para el usuario recién creado
@@ -134,8 +147,14 @@ class UserService implements UserServiceInterface
             $data['roles'] = [$data['roles']];
         }
         
-        $roles = $data['roles'] ?? null;
+        $roleNames = $data['roles'] ?? null;
         unset($data['roles']);
+        
+        // Validar roles contra el servicio de roles si se proporcionaron
+        $validatedRoles = null;
+        if ($roleNames !== null) {
+            $validatedRoles = $this->roleService->validateRoleNames($roleNames);
+        }
         
         // Solo hacer hash de la contraseña si se proporciona
         if (isset($data['password']) && !empty($data['password'])) {
@@ -146,11 +165,12 @@ class UserService implements UserServiceInterface
         
         DB::beginTransaction();
         try {
+            // Actualizar usuario
             $user = $this->userRepository->update($user->id, $data);
             
-            // Actualizar roles si se proporcionaron
-            if ($roles !== null) {
-                $this->userRepository->syncRoles($user, $roles);
+            // Actualizar roles si se proporcionaron y validaron
+            if ($validatedRoles !== null) {
+                $user->syncRoles($validatedRoles);
             }
             
             DB::commit();
@@ -193,7 +213,7 @@ class UserService implements UserServiceInterface
      */
     public function getAllRoles()
     {
-        return Role::all();
+        return $this->roleService->getAllRoles();
     }
     
     /**

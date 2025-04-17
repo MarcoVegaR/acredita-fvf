@@ -50,6 +50,21 @@ interface RoleServiceInterface
     public function deleteRole(Role $role): bool;
     
     /**
+     * Get all available roles
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAllRoles();
+    
+    /**
+     * Validate role names against existing roles
+     *
+     * @param array $roleNames
+     * @return array Valid role names
+     */
+    public function validateRoleNames(array $roleNames): array;
+    
+    /**
      * Get all available permissions
      *
      * @return \Illuminate\Database\Eloquent\Collection

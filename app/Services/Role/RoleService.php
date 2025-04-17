@@ -178,27 +178,55 @@ class RoleService implements RoleServiceInterface
      */
     public function deleteRole(Role $role): bool
     {
-        // Start transaction
-        DB::beginTransaction();
+        // No permitir eliminar el rol admin
+        if ($role->name === 'admin') {
+            throw new \Exception("No se puede eliminar el rol administrador");
+        }
         
+        // No permitir eliminar roles con usuarios asignados
+        if ($role->users()->count() > 0) {
+            throw new \Exception("No se puede eliminar un rol que tiene usuarios asignados");
+        }
+        
+        DB::beginTransaction();
         try {
-            // Check if it's a system role
-            if (in_array($role->name, ['admin', 'user', 'editor', 'viewer'])) {
-                throw new \Exception('No se puede eliminar un rol del sistema');
-            }
-            
-            // Remove permissions first
-            $this->roleRepository->syncPermissions($role, []);
-            
-            // Delete the role
-            $role->delete();
-            
+            $result = $this->roleRepository->delete($role->id);
             DB::commit();
-            return true;
-        } catch (\Throwable $e) {
+            
+            return $result;
+        } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
         }
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getAllRoles()
+    {
+        return $this->roleRepository->getAll(['permissions']);
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function validateRoleNames(array $roleNames): array
+    {
+        // Obtener todos los roles existentes
+        $existingRoles = $this->getAllRoles()->pluck('name')->toArray();
+        
+        // Filtrar solo roles válidos que existen en la base de datos
+        $validRoles = array_filter($roleNames, function($roleName) use ($existingRoles) {
+            return in_array($roleName, $existingRoles);
+        });
+        
+        // Si no hay roles válidos, devolver al menos el rol 'user' si existe
+        if (empty($validRoles) && in_array('user', $existingRoles)) {
+            return ['user'];
+        }
+        
+        return $validRoles;
     }
 
     /**

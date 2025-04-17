@@ -64,4 +64,12 @@ interface RepositoryInterface
      * @return $this
      */
     public function withScopes(array $scopes);
+    
+    /**
+     * Get all resources with specified relations
+     *
+     * @param array $relations Relations to eager load
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAll(array $relations = []);
 }
