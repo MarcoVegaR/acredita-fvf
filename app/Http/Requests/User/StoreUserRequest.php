@@ -13,7 +13,7 @@ class StoreUserRequest extends BaseFormRequest
     public function authorize(): bool
     {
         // Check if user has permission to create users
-        return $this->user()->can('create users');
+        return $this->user()->can('users.create');
     }
 
     /**

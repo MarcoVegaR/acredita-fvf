@@ -15,7 +15,7 @@ class UpdateUserRequest extends BaseFormRequest
     public function authorize(): bool
     {
         // Check if user has permission to update users
-        return $this->user()->can('edit users');
+        return $this->user()->can('users.edit');
     }
 
     /**
