@@ -160,7 +160,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                           <TooltipTrigger asChild>
                             <Info className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent sideOffset={5} className="bg-popover border rounded-md shadow-md">
+                          <TooltipContent sideOffset={5}>
                             <p className="w-[200px] text-sm">Nombre completo del usuario como aparecerá en el sistema</p>
                           </TooltipContent>
                         </Tooltip>
@@ -194,7 +194,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                           <TooltipTrigger asChild>
                             <Mail className="h-4 w-4 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent sideOffset={5} className="bg-popover border rounded-md shadow-md">
+                          <TooltipContent sideOffset={5}>
                             <p className="w-[220px] text-sm leading-relaxed">Debe ser único en el sistema y será usado para iniciar sesión</p>
                           </TooltipContent>
                         </Tooltip>
@@ -380,7 +380,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                         <TooltipTrigger asChild>
                           <AlertCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent side="right" className="bg-popover border rounded-md shadow-md">
+                        <TooltipContent side="right">
                           <div className="w-[250px] text-sm space-y-2">
                             <p>La contraseña debe cumplir estos requisitos:</p>
                             <ul className="list-disc pl-4 space-y-1">
@@ -483,7 +483,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                         <TooltipTrigger asChild>
                           <Shield className="h-4 w-4 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent sideOffset={5} className="bg-popover border rounded-md shadow-md">
+                        <TooltipContent sideOffset={5}>
                           <p className="w-[220px] text-sm leading-relaxed">Seleccione uno o más roles para determinar los permisos del usuario</p>
                         </TooltipContent>
                       </Tooltip>
