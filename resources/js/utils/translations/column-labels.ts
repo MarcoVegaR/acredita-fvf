@@ -105,24 +105,78 @@ export function formatExportValue(value: unknown): string {
   if (value === null || value === undefined) {
     return "";
   }
-  
-  // Para booleanos, devolver "Sí" o "No"
+
+  // Si es boolean, convertir a "Sí" o "No"
   if (typeof value === "boolean") {
     return value ? "Sí" : "No";
   }
-  
-  // Para fechas, formatear a local
+
+  // Detectar fechas en formato ISO string y formatearlas
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) {
+    try {
+      const date = new Date(value);
+      // Verificar que es una fecha válida
+      if (!isNaN(date.getTime())) {
+        // Formato: DD/MM/YYYY HH:MM
+        return date.toLocaleDateString('es-ES', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    } catch {
+      // Si hay error al parsear la fecha, devolverla como estaba
+      return value;
+    }
+  }
+
+  // Si es una fecha, formatearla
   if (value instanceof Date) {
-    return value.toLocaleString();
+    return value.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
   
-  // Para arrays y objetos, intentar serializar
+  // Para arrays y objetos, usar lógica especial
   if (typeof value === "object") {
     try {
       // Si es un elemento React, devolver texto indicativo
       if (React.isValidElement(value)) {
         return "[Componente React]";
       }
+      
+      // Si es un array, intentar formatear cada elemento
+      if (Array.isArray(value)) {
+        // Caso especial para arreglos de permisos (tienen nameshow o name)
+        if (value.length > 0 && (
+          typeof value[0] === 'object' && value[0] !== null && 
+          ('nameshow' in value[0] || 'name' in value[0])
+        )) {
+          return value.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return 'nameshow' in item ? String(item.nameshow) : 'name' in item ? String(item.name) : '';
+            }
+            return '';
+          }).filter(Boolean).join(', ') || 'Sin elementos';
+        }
+        
+        // Para otros arrays, intentar formatear cada elemento
+        return value.map(formatExportValue).join(', ') || 'Sin elementos';
+      }
+      
+      // Si el objeto tiene una propiedad nameshow o name, usarla directamente
+      if (typeof value === 'object' && value !== null) {
+        if ('nameshow' in value) return String(value.nameshow);
+        if ('name' in value) return String(value.name);
+      }
+      
+      // Si nada de lo anterior funciona, serializarlo como JSON
       return JSON.stringify(value);
     } catch {
       return "[Objeto complejo]";

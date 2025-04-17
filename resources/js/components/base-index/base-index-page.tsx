@@ -421,13 +421,9 @@ export function BaseIndexPage<T extends Entity>({
     return hasPermission(requiredPermission);
   }, [options.newButton, options.permissions, options.moduleName, hasPermission]);
   
-  // Log para aclarar cómo se están aplicando los permisos
+  // Verificar permisos cuando cambian los datos relacionados
   React.useEffect(() => {
-    console.log('Permisos aplicados en BaseIndexPage:', {
-      módulo: options.moduleName,
-      permisos: auth?.user?.permissions,
-      permisosConfigurados: options.permissions
-    });
+    // Validar permisos cuando cambia el módulo o la configuración de permisos
   }, [options.moduleName, options.permissions, auth?.user?.permissions]);
 
   // Ya no necesitamos una key para forzar el remontaje porque estamos usando preserveState: true

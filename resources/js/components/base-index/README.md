@@ -753,6 +753,94 @@ toast.error("Error", {
 
 ## Solución de problemas comunes
 
+### Problemas con el sistema de filtros
+
+#### 1. Los filtros no persisten después de navegar
+
+Si los filtros se aplican pero desaparecen después de la navegación o no se mantienen activos visualmente:
+
+1. **Usar URLs relativas para el endpoint**
+   ```tsx
+   // ✓ CORRECTO: URL relativa
+   endpoint: "/roles",
+   
+   // ✗ INCORRECTO: URL absoluta
+   endpoint: "http://localhost:8000/roles",
+   endpoint: route('roles.index'), // Genera URL absoluta
+   ```
+
+   El componente FilterToolbar está diseñado para funcionar con URLs relativas para la sincronización correcta entre la URL y el estado de los filtros.
+
+2. **Asegurar que el controlador devuelve todos los parámetros de filtro**
+   ```php
+   // ✓ CORRECTO: Incluir todos los parámetros de filtro personalizados
+   return inertia('Roles/Index', [
+       'roles' => $roles,
+       'filters' => $request->only([
+           'search', 'sort', 'order', 'per_page',
+           'has_permissions', 'permission_module' // Incluir filtros personalizados
+       ])
+   ]);
+   
+   // ✗ INCORRECTO: Omitir parámetros de filtro personalizados
+   return inertia('Roles/Index', [
+       'roles' => $roles,
+       'filters' => $request->only(['search', 'sort', 'order'])
+   ]);
+   ```
+
+   Si el controlador no devuelve los filtros personalizados, el componente no podrá detectarlos como activos.
+
+3. **Verificar los logs de consola**
+   - Revisar si los filtros se están inicializando correctamente en el useEffect del FilterToolbar
+   - Verificar si hay errores de TypeError al acceder a propiedades de filtros
+
+### Problemas con la serialización JSON
+
+#### 1. Objetos complejos en columnas de tabla
+
+Si enfrentas problemas al mostrar objetos complejos (como colecciones de permisos) en columnas o al exportar:
+
+1. **Transformar objetos complejos a strings antes de pasarlos a la vista**
+   ```php
+   // En el servicio o controlador
+   $roles->through(function ($role) {
+       // Convertir colección de permisos a string para visualización
+       if (is_object($role->permissions) && method_exists($role->permissions, 'implode')) {
+           $permissionString = $role->permissions->implode(', ');
+           if (empty($permissionString)) {
+               $permissionString = 'Sin permisos';
+           }
+           $role->permissions = $permissionString;
+       }
+       return $role;
+   });
+   ```
+
+2. **Mejorar la función formatExportValue para manejar objetos complejos**
+   ```typescript
+   export function formatExportValue(value: unknown): string {
+       if (value === null || value === undefined) {
+           return '';
+       }
+       
+       if (typeof value === 'object') {
+           // Intentar convertir a JSON
+           try {
+               // Si es un array o tiene método toString(), usarlo
+               if (Array.isArray(value)) {
+                   return value.join(', ');
+               }
+               return JSON.stringify(value);
+           } catch {
+               return '[Objeto complejo]';
+           }
+       }
+       
+       return String(value);
+   }
+   ```
+
 ### Los permisos no se reflejan en la interfaz
 
 Si los elementos protegidos por permisos no se muestran correctamente:

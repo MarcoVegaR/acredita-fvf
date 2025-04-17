@@ -114,7 +114,7 @@ export function FilterToolbar({
     
     setActiveFilters(initialActiveFilters);
     setTempFilters(initialActiveFilters);
-  }, [filters, filterConfig]);
+  }, [filters, filterConfig, endpoint]);
 
   // Function to clear all filters
   const clearAllFilters = React.useCallback(() => {
@@ -136,22 +136,43 @@ export function FilterToolbar({
 
   // Function to apply filters
   const applyFilters = React.useCallback(() => {
-    if (Object.keys(tempFilters).length === 0) {
-      // No need to apply empty filters
-      return;
-    }
-    
-    // Update active filters for display
+    // Actualizar active filters para display incluso si están vacíos
     setActiveFilters(tempFilters);
     
-    // Navigate to the filtered URL
-    const params: Record<string, unknown> = { ...filters || {}, ...tempFilters };
-    router.get(endpoint, params as Record<string, string>);
+    // Construir parámetros preservando los existentes
+    const baseParams = Object.fromEntries(
+      // Mantener solo los parámetros de paginación y búsqueda del filtro actual
+      Object.entries(filters || {}).filter(([key]) => 
+        ['page', 'per_page', 'search', 'sort', 'order'].includes(key)
+      )
+    );
+    
+    // Filtrar tempFilters válidos
+    const validTempFilters = Object.fromEntries(
+      Object.entries(tempFilters).filter(
+        ([, value]) => value !== undefined && value !== ''
+      )
+    );
+    
+    const params: Record<string, unknown> = { 
+      ...baseParams,
+      ...validTempFilters
+    };
+    
+    // Preservar el scroll y estado para una experiencia fluida
+    router.get(endpoint, params as Record<string, string>, {
+      preserveState: true,
+      preserveScroll: true,
+      replace: true
+    });
+    
     setIsFilterMenuOpen(false);
   }, [tempFilters, endpoint, filters]);
 
   // Function to remove a specific filter
   const removeFilter = React.useCallback((key: string) => {
+    console.log('[DEBUG] removeFilter - Eliminando filtro:', key);
+    
     // Create a copy of filters without the removed one
     const newFilters: Record<string, unknown> = { ...filters || {} };
     delete newFilters[key];
@@ -223,25 +244,18 @@ export function FilterToolbar({
                   {filter.label}
                 </label>
                 <Select
-                  defaultValue={typeof tempFilters[filter.id] === 'string' ? tempFilters[filter.id] as string : (filter.defaultValue?.toString() || 'all')}
+                  // No usar 'all' como valor predeterminado, usar el valor real del filtro
+                  value={typeof tempFilters[filter.id] === 'string' ? tempFilters[filter.id] as string : filter.defaultValue?.toString()}
                   onValueChange={(value) => {
-                    if (value === 'all') {
-                      // Remove this filter
-                      setTempFilters(prev => {
-                        const newFilters = { ...prev };
-                        delete newFilters[filter.id];
-                        return newFilters;
-                      });
-                    } else {
-                      setTempFilters(prev => ({ ...prev, [filter.id]: value }));
-                    }
+                    // Siempre establecer el valor seleccionado, sin logica especial para 'all'
+                    setTempFilters(prev => ({ ...prev, [filter.id]: value }));
                   }}
                 >
                   <SelectTrigger id={filter.id}>
                     <SelectValue placeholder="Seleccionar..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
+                    {/* No incluir opción 'all' automáticamente - usar las opciones definidas */}
                     {filter.options.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -379,25 +393,16 @@ export function FilterToolbar({
                         {filter.label}
                       </label>
                       <Select
-                        defaultValue={typeof tempFilters[filter.id] === 'string' ? tempFilters[filter.id] as string : (filter.defaultValue?.toString() || 'all')}
+                        value={typeof tempFilters[filter.id] === 'string' ? tempFilters[filter.id] as string : filter.defaultValue?.toString()}
                         onValueChange={(value) => {
-                          if (value === 'all') {
-                            // Remove this filter
-                            setTempFilters(prev => {
-                              const newFilters = { ...prev };
-                              delete newFilters[filter.id];
-                              return newFilters;
-                            });
-                          } else {
-                            setTempFilters(prev => ({ ...prev, [filter.id]: value }));
-                          }
+                          // Siempre establecer el valor seleccionado directamente
+                          setTempFilters(prev => ({ ...prev, [filter.id]: value }));
                         }}
                       >
                         <SelectTrigger id={filter.id}>
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
                           {filter.options.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
