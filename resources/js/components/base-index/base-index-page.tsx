@@ -8,7 +8,8 @@ import { SortingState } from "@tanstack/react-table";
 import AppLayout from "@/layouts/app-layout";
 import { ColumnDef } from "@tanstack/react-table";
 import { type BreadcrumbItem } from "@/types";
-import { useToast } from "../../hooks/use-toast";
+// El hook useToast está marcado como obsoleto según el sistema de notificaciones centralizado
+// Se recomienda usar directamente el toast importado de sonner cuando sea necesario
 import { usePage } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { SharedData } from '@/types';
@@ -155,7 +156,7 @@ export function BaseIndexPage<T extends Entity>({
   filters = {}, 
   options 
 }: BaseIndexPageProps<T>) {
-  const { toast } = useToast();
+  // Ya no necesitamos usar el hook useToast aquí porque usamos el sistema centralizado de FlashMessages
   const { auth } = usePage<SharedData>().props;
   
   // Función para verificar si el usuario tiene un permiso específico
@@ -384,12 +385,11 @@ export function BaseIndexPage<T extends Entity>({
                 router.delete(
                   `${options.endpoint}/${row.id}`,
                   {
-                    onSuccess: () => {
-                      toast({
-                        title: "Eliminado correctamente",
-                        description: `El registro ha sido eliminado correctamente`,
-                      });
-                    },
+                    // Eliminar el callback onSuccess redundante
+                    // Confiamos en el sistema centralizado de notificaciones (FlashMessages)
+                    // para mostrar el mensaje de éxito enviado desde el backend
+                    preserveState: false,
+                    preserveScroll: true
                   }
                 );
               }

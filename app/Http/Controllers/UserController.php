@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
+use App\Http\Requests\User\DeleteUserRequest;
 use App\Models\User;
 use App\Services\User\UserServiceInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class UserController extends BaseController
 {
@@ -183,11 +185,13 @@ class UserController extends BaseController
     /**
      * Elimina un usuario.
      *
+     * @param  \App\Http\Requests\User\DeleteUserRequest  $request
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function destroy(User $user)
+    public function destroy(DeleteUserRequest $request, User $user)
     {
+        DB::beginTransaction();
         try {
             // Guardar datos para la auditoría antes de eliminar
             $userData = [
@@ -198,6 +202,9 @@ class UserController extends BaseController
             
             // Eliminar usuario a través del servicio
             $this->userService->deleteUser($user);
+            
+            // Confirmar transacción
+            DB::commit();
             
             // Registrar acción para auditoría
             $this->logAction('eliminar', 'usuario', $userData['id'], $userData);
