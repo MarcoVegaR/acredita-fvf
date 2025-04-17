@@ -9,10 +9,11 @@ interface EditUserProps {
   user: User & {
     id: number;
   };
+  userRoles?: string[];
   errors?: Record<string, string>;
 }
 
-export default function EditUser({ user, errors = {} }: EditUserProps) {
+export default function EditUser({ user, userRoles = [], errors = {} }: EditUserProps) {
   const formOptions = {
     title: "Editar Usuario",
     subtitle: `Modificando información de ${user.name}`,
@@ -70,7 +71,7 @@ export default function EditUser({ user, errors = {} }: EditUserProps) {
     password: "",
     password_confirmation: "",
     active: user.active ?? true,
-    roles: user.roles ?? [],
+    roles: userRoles,
   };
 
   return (

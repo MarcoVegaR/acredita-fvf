@@ -522,13 +522,17 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                                   <Checkbox
                                     checked={isChecked}
                                     onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...(field.value || []), role.name])
-                                        : field.onChange(
-                                            field.value?.filter(
-                                              (value) => value !== role.name
-                                            )
+                                      if (checked) {
+                                        // Add role.name to the array if it's not already included
+                                        field.onChange([...(field.value || []), role.name]);
+                                      } else {
+                                        // Remove role.name from the array
+                                        field.onChange(
+                                          (field.value || []).filter(
+                                            (value) => value !== role.name
                                           )
+                                        );
+                                      }
                                     }}
                                     className={isChecked ? 'data-[state=checked]:bg-primary' : ''}
                                   />
