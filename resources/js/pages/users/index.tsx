@@ -15,6 +15,7 @@ interface UsersIndexProps {
     total: number;
     active: number;
     inactive: number;
+    deleted?: number; // Añadimos contador de usuarios eliminados (soft deleted)
   };
   filters?: {
     search?: string;
@@ -85,6 +86,12 @@ export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
         label: "Usuarios inactivos",
         icon: "user-x",
         color: "text-red-500"
+      },
+      { 
+        value: stats?.deleted || 0, 
+        label: "Usuarios eliminados",
+        icon: "trash-2",
+        color: "text-gray-500"
       }
     ],
     

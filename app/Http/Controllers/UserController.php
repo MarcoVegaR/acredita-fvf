@@ -2,15 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use App\Services\User\UserServiceInterface;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
-use Spatie\Permission\Models\Role;
 
-class UserController extends Controller
+class UserController extends BaseController
 {
+    /**
+     * The user service instance.
+     *
+     * @var UserServiceInterface
+     */
+    protected $userService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param UserServiceInterface $userService
+     */
+    public function __construct(UserServiceInterface $userService)
+    {
+        $this->userService = $userService;
+    }
+
     /**
      * Muestra un listado de usuarios.
      *
@@ -20,53 +36,11 @@ class UserController extends Controller
     public function index(Request $request)
     {
         try {
-            // Iniciar la consulta con relación de roles
-            $query = User::with('roles');
+            // Obtener usuarios paginados a través del servicio
+            $users = $this->userService->getPaginatedUsers($request);
             
-            // Aplicar filtros de búsqueda si existen
-            if ($request->has('search')) {
-                $search = $request->input('search');
-                $query->where(function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
-                });
-            }
-            
-            // Filtrar por estado activo/inactivo
-            if ($request->has('active')) {
-                $isActive = filter_var($request->input('active'), FILTER_VALIDATE_BOOLEAN);
-                $query->where('active', $isActive);
-            }
-            
-            // Filtrar por rol
-            if ($request->has('role')) {
-                $role = $request->input('role');
-                $query->whereHas('roles', function($q) use ($role) {
-                    $q->where('name', $role);
-                });
-            }
-            
-            // Aplicar ordenamiento
-            $sortField = $request->input('sort', 'id');
-            $sortOrder = $request->input('order', 'desc');
-            
-            // Verificar que el campo de ordenamiento es válido
-            if (in_array($sortField, ['id', 'name', 'email', 'created_at', 'email_verified_at'])) {
-                $query->orderBy($sortField, $sortOrder);
-            } else {
-                $query->orderBy('id', 'desc');
-            }
-            
-            // Paginación
-            $perPage = (int) $request->input('per_page', 10);
-            $users = $query->paginate($perPage);
-            
-            // Transformar los datos para incluir los nombres de roles como un array
-            $users->through(function ($user) {
-                // Añadir roles como array de nombres para facilitar el manejo en el frontend
-                $user->role_names = $user->roles->pluck('name')->toArray();
-                return $user;
-            });
+            // Obtener estadísticas de usuarios
+            $stats = $this->userService->getUserStats();
             
             // Registrar acción para auditoría
             $this->logAction('listar', 'usuarios', null, [
@@ -74,14 +48,7 @@ class UserController extends Controller
                 'total' => $users->total()
             ]);
             
-            // Obtener estadísticas precisas utilizando los scopes
-            $stats = [
-                'total' => User::count(),
-                'active' => User::active()->count(),
-                'inactive' => User::inactive()->count(),
-            ];
-            
-            // Responder con la vista Inertia con el layout correcto
+            // Responder con la vista Inertia
             return $this->respondWithSuccess('users/index', [
                 'users' => $users,
                 'stats' => $stats,
@@ -99,8 +66,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        // Cargar los roles disponibles para asignar al usuario
-        $roles = Role::all();
+        // Obtener roles disponibles a través del servicio
+        $roles = $this->userService->getAllRoles();
         
         return $this->respondWithSuccess('users/create', [
             'roles' => $roles
@@ -110,44 +77,23 @@ class UserController extends Controller
     /**
      * Almacena un nuevo usuario en la base de datos.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\User\StoreUserRequest  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
         try {
-            // Validar los datos del formulario
-            $data = $this->validateRequest($request, [
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
-                'active' => ['nullable', 'boolean'],
-            ]);
+            // El Form Request ya se encargó de la validación
+            $data = $request->validated();
             
-            // Crear el usuario dentro de una transacción
-            DB::beginTransaction();
-            
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-                'active' => $request->has('active') ? $request->input('active') : true,
-            ]);
-            
-            // Asignar roles si se proporcionan
-            if ($request->has('roles')) {
-                $user->assignRole($request->input('roles'));                
-            } else {
-                // Asignar el rol de usuario por defecto
-                $user->assignRole('user');
-            }
-            
-            DB::commit();
+            // Crear usuario a través del servicio (la lógica de roles está en el servicio)
+            $user = $this->userService->createUser($data);
             
             // Registrar acción para auditoría
             $this->logAction('crear', 'usuario', $user->id, [
                 'name' => $user->name,
-                'email' => $user->email
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name')->toArray()
             ]);
             
             return $this->redirectWithSuccess('users.index', [], 'Usuario creado correctamente');
@@ -165,12 +111,17 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        // Registrar acción para auditoría
-        $this->logAction('ver', 'usuario', $user->id);
-        
-        return $this->respondWithSuccess('users/show', [
-            'user' => $user
-        ]);
+        try {
+            // Obtener usuario con todos sus datos relevantes a través del servicio
+            $viewData = $this->userService->getUserWithRolesAndStats($user);
+            
+            // Registrar acción para auditoría
+            $this->logAction('ver', 'usuario', $user->id);
+            
+            return $this->respondWithSuccess('users/show', $viewData);
+        } catch (\Throwable $e) {
+            return $this->handleException($e, 'Ver usuario');
+        }
     }
 
     /**
@@ -181,69 +132,46 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        // Cargar los roles disponibles
-        $roles = Role::all();
-        
-        // Obtener los roles asignados al usuario
-        $userRoles = $user->roles->pluck('name');
-        
-        return $this->respondWithSuccess('users/edit', [
-            'user' => $user,
-            'roles' => $roles,
-            'userRoles' => $userRoles
-        ]);
+        try {
+            // Obtener usuario con todos sus datos relevantes a través del servicio
+            $data = $this->userService->getUserWithRolesAndStats($user);
+            
+            // Registrar acción para auditoría
+            $this->logAction('editar', 'usuario', $user->id);
+            
+            // Incluir userRoles separadamente para facilitar la selección en el formulario
+            $data['userRoles'] = $data['user']->role_names;
+            
+            return $this->respondWithSuccess('users/edit', $data);
+        } catch (\Throwable $e) {
+            return $this->handleException($e, 'Editar usuario');
+        }
     }
 
     /**
      * Actualiza la información de un usuario.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\User\UpdateUserRequest  $request
      * @param  \App\Models\User  $user
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
         try {
-            // Validar los datos del formulario
-            $data = $this->validateRequest($request, [
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-                'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-                'active' => ['nullable', 'boolean'],
-            ]);
+            // El Form Request ya se encargó de la validación
+            $data = $request->validated();
             
-            // Actualizar el usuario dentro de una transacción
-            DB::beginTransaction();
+            // Actualizar usuario a través del servicio
+            $user = $this->userService->updateUser($user, $data);
             
-            $userData = [
-                'name' => $data['name'],
-                'email' => $data['email'],
+            // Registrar acción para auditoría incluyendo los roles actualizados
+            $auditData = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'roles' => $user->role_names
             ];
             
-            // Actualizar el estado activo/inactivo si se proporciona
-            if ($request->has('active')) {
-                $userData['active'] = $request->boolean('active');
-            }
-            
-            // Solo actualizar la contraseña si se proporciona una nueva
-            if (!empty($data['password'])) {
-                $userData['password'] = Hash::make($data['password']);
-            }
-            
-            $user->update($userData);
-            
-            // Actualizar roles si se proporcionan
-            if ($request->has('roles')) {
-                $user->syncRoles($request->input('roles'));
-            }
-            
-            DB::commit();
-            
-            // Registrar acción para auditoría
-            $this->logAction('actualizar', 'usuario', $user->id, [
-                'name' => $user->name,
-                'email' => $user->email
-            ]);
+            $this->logAction('actualizar', 'usuario', $user->id, $auditData);
             
             return $this->redirectWithSuccess('users.index', [], 'Usuario actualizado correctamente');
         } catch (\Throwable $e) {
@@ -261,14 +189,6 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         try {
-            // Proteger contra la eliminación del usuario actual
-            if (auth()->id() === $user->id) {
-                return $this->respondWithError('No puedes eliminar tu propio usuario.');
-            }
-            
-            // Eliminar usuario dentro de una transacción
-            DB::beginTransaction();
-            
             // Guardar datos para la auditoría antes de eliminar
             $userData = [
                 'id' => $user->id,
@@ -276,9 +196,8 @@ class UserController extends Controller
                 'email' => $user->email
             ];
             
-            $user->delete();
-            
-            DB::commit();
+            // Eliminar usuario a través del servicio
+            $this->userService->deleteUser($user);
             
             // Registrar acción para auditoría
             $this->logAction('eliminar', 'usuario', $userData['id'], $userData);
