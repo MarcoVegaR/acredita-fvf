@@ -1,6 +1,14 @@
 import React, { useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FormTab } from "./form-tab";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FormTab } from "@/components/base-form/form-tab";
+
+// Definir el tipo para las props de FormTab para acceder de forma segura
+type FormTabProps = {
+  value: string;
+  label: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+};
 
 interface FormTabContainerProps {
   children: React.ReactNode;
@@ -19,7 +27,7 @@ export function FormTabContainer({
   );
   
   const firstTabValue = React.isValidElement(childrenArray[0])
-    ? (childrenArray[0].props as any).value
+    ? (childrenArray[0].props as FormTabProps).value
     : "";
     
   const [value, setValue] = useState(defaultValue || firstTabValue);
@@ -33,7 +41,7 @@ export function FormTabContainer({
       <TabsList className="mb-4 w-full grid grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap lg:justify-start">
         {React.Children.map(children, (child) => {
           if (React.isValidElement(child) && child.type === FormTab) {
-            const { value, label, icon } = child.props;
+            const { value, label, icon } = child.props as FormTabProps;
             return (
               <TabsTrigger value={value} className="flex items-center gap-1">
                 {icon}

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from "react";
-import { Form as FormRoot, FormProps as FormRootProps } from "@/components/ui/form";
+import { Form as FormRoot } from "@/components/ui/form";
 import { toast } from "sonner";
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm, UseFormReturn, SubmitHandler, DefaultValues } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 // Importaciones correctas con rutas relativas
@@ -80,7 +80,8 @@ export interface BaseFormOptions<T> {
   };
 }
 
-interface BaseFormProps<T extends Record<string, any>> extends Omit<FormRootProps, "onSubmit"> {
+// Eliminamos la extensión de ComponentPropsWithoutRef para evitar errores de tipado
+interface BaseFormProps<T extends Record<string, any>> {
   options: BaseFormOptions<T>;
   schema: z.ZodType<T>;
   defaultValues: Partial<T>;
@@ -94,6 +95,7 @@ export function BaseForm<T extends Record<string, any>>({
   defaultValues,
   serverErrors = {},
   children,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ...formProps
 }: BaseFormProps<T>) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,7 +104,7 @@ export function BaseForm<T extends Record<string, any>>({
   // Configurar react-hook-form con zod para validación
   const form = useForm<T>({
     resolver: zodResolver(schema),
-    defaultValues,
+    defaultValues: defaultValues as DefaultValues<T>,
     mode: "onChange",
   });
 
@@ -130,7 +132,7 @@ export function BaseForm<T extends Record<string, any>>({
   }, [serverErrors, form]);
 
   // Manejar el envío del formulario
-  const handleSubmit = async (data: T) => {
+  const handleSubmit: SubmitHandler<T> = async (data) => {
     try {
       setIsSubmitting(true);
       

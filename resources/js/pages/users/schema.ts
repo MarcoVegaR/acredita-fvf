@@ -15,8 +15,8 @@ export const createUserSchema = z.object({
     }
   ),
   password_confirmation: z.string().min(1, "Debe confirmar la contraseña"),
-  active: z.boolean().optional().default(true),
-  roles: z.array(z.string()).optional().default([]),
+  active: z.boolean().default(true),
+  roles: z.array(z.string()).default([]),
 }).refine((data) => {
   // Validar que las contraseñas coincidan
   return data.password === data.password_confirmation;
@@ -43,8 +43,8 @@ export const updateUserSchema = z.object({
     }
   ),
   password_confirmation: z.string().optional(),
-  active: z.boolean().optional().default(true),
-  roles: z.array(z.string()).optional().default([]),
+  active: z.boolean().default(true),
+  roles: z.array(z.string()).default([]),
 }).refine((data) => {
   // Validar que las contraseñas coincidan si se está estableciendo una
   if (data.password && data.password.length > 0) {

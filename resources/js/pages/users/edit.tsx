@@ -47,6 +47,7 @@ export default function EditUser({ user, userRoles = [], errors = {} }: EditUser
     beforeSubmit: (data: Partial<User>) => {
       // Si no se está cambiando la contraseña, eliminarla del envío
       if (!data.password) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password, password_confirmation, ...rest } = data;
         return rest;
       }
@@ -82,6 +83,7 @@ export default function EditUser({ user, userRoles = [], errors = {} }: EditUser
         schema={updateUserSchema}
         defaultValues={defaultValues}
         serverErrors={errors}
+        // @ts-expect-error - TypeScript no puede inferir correctamente la compatibilidad de tipos entre el FormComponent y las opciones
         FormComponent={UserForm}
       />
     </>

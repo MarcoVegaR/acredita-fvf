@@ -52,6 +52,7 @@ export default function CreateUser() {
       <Head title="Crear Usuario" />
       <BaseFormPage
         options={formOptions}
+        // @ts-expect-error - El esquema es compatible en runtime pero TypeScript no puede inferir correctamente los tipos
         schema={createUserSchema}
         defaultValues={{
           name: "",

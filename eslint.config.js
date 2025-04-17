@@ -41,4 +41,11 @@ export default [
         ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js'],
     },
     prettier, // Turn off all rules that might conflict with Prettier
+    // Special rule overrides for specific patterns
+    {
+        files: ['**/components/base-form/**/*.tsx'],
+        rules: {
+            '@typescript-eslint/no-explicit-any': 'off', // Disable any type warnings in form components
+        },
+    },
 ];

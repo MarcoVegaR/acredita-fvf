@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 
+// Extendemos para incluir la firma de índice requerida por Inertia
 interface PageProps {
   auth: {
     user: {
@@ -7,6 +8,7 @@ interface PageProps {
       roles: string[];
     };
   };
+  [key: string]: unknown; // Esta es la firma de índice necesaria para satisfacer la restricción de Inertia
 }
 
 /**

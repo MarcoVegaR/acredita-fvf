@@ -1,6 +1,5 @@
 import React from "react";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { ChevronRightIcon, HomeIcon } from "lucide-react";
+// Removed unused imports
 
 interface FormHeaderProps {
   title: string;
@@ -8,7 +7,7 @@ interface FormHeaderProps {
   breadcrumbs?: { title: string; href: string }[];
 }
 
-export function FormHeader({ title, subtitle, breadcrumbs = [] }: FormHeaderProps) {
+export function FormHeader({ title, subtitle }: FormHeaderProps) {
   // Ya no renderizamos las migas de pan aquí porque ahora se manejan en el AppLayout
   return (
     <div className="space-y-2">
