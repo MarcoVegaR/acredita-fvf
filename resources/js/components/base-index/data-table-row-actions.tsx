@@ -53,7 +53,10 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
   row,
   actions = {},
 }: DataTableRowActionsProps<TData>) {
-  // Remove el estado y la función de limpieza ya que usaremos el patrón oficial
+  // Estado para controlar la visibilidad del diálogo de confirmación de eliminación
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  
+  // Remover los console.log de depuración que ya no necesitamos
   
   return (
     <>
@@ -86,37 +89,20 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
           )}
           
           {actions.delete?.enabled && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <DropdownMenuItem
-                  onSelect={(e) => e.preventDefault()}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>{actions.delete.label || "Eliminar"}</span>
-                </DropdownMenuItem>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    {actions.delete.confirmMessage || 
-                    `Esta acción no se puede deshacer. Se eliminará permanentemente este registro${
-                      row.id ? ` (ID: ${row.id})` : ''
-                    } y no podrá ser recuperado.`}
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    className="bg-destructive text-white hover:bg-destructive/90"
-                    onClick={() => actions.delete?.handler(row)}
-                  >
-                    Eliminar
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <DropdownMenuItem
+              onClick={() => {
+                // Cerrar el menú desplegable antes de mostrar el diálogo para evitar problemas de foco
+                document.body.click(); // Esto cierra el DropdownMenu
+                // Pequeño retraso para asegurar que el menú se cierre primero
+                setTimeout(() => {
+                  setShowDeleteConfirm(true);
+                }, 100);
+              }}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>{actions.delete.label || "Eliminar"}</span>
+            </DropdownMenuItem>
           )}
           
           {actions.custom && actions.custom.length > 0 && (
@@ -137,7 +123,71 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* Eliminamos el diálogo externo ya que ahora está dentro del dropdown */}
+
+      {/* Diálogo de confirmación de eliminación SEPARADO del DropdownMenu */}
+      {actions.delete?.enabled && (
+        <AlertDialog 
+          open={showDeleteConfirm} 
+          onOpenChange={(open) => {
+            setShowDeleteConfirm(open);
+            // Si el diálogo se cierra, desenfocar elementos activos
+            if (!open && document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+              // Forzar el foco al cuerpo para evitar problemas
+              setTimeout(() => document.body.focus(), 50);
+            }
+          }}
+        >
+          {/* AlertDialogTrigger eliminado - lo manejamos manualmente */}
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {actions.delete.confirmMessage || 
+                `Esta acción no se puede deshacer. Se eliminará permanentemente este registro${
+                  row.id ? ` (ID: ${row.id})` : ''
+                } y no podrá ser recuperado.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel 
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                }}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-white hover:bg-destructive/90"
+                onClick={() => {
+                  try {
+                    // Ejecutar manejador de eliminación
+                    actions.delete?.handler(row);
+                    
+                    // Cerrar explícitamente el diálogo
+                    setShowDeleteConfirm(false);
+                    
+                    // Medidas de seguridad para gestionar el foco
+                    if (document.activeElement instanceof HTMLElement) {
+                      document.activeElement.blur();
+                    }
+                    
+                    // Dar tiempo al DOM para actualizarse
+                    setTimeout(() => {
+                      // Forzar el foco al cuerpo del documento
+                      document.body.focus();
+                    }, 50);
+                  } catch (error) {
+                    console.error('Error al eliminar:', error);
+                  }
+                }}
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </>
   );
 }
