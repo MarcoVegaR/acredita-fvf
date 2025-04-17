@@ -210,9 +210,31 @@ class UserService implements UserServiceInterface
         // Obtener todos los roles disponibles
         $allRoles = $this->getAllRoles();
         
+        // Obtener permisos del usuario (directos y a través de roles)
+        // Añadimos también el nameshow para mostrar nombres legibles
+        $permissions = $user->getAllPermissions()->map(function ($permission) {
+            return [
+                'name' => $permission->name,
+                'nameshow' => $permission->nameshow ?? $permission->name
+            ];
+        });
+        
+        // Obtener permisos por rol
+        $rolePermissions = [];
+        foreach ($user->roles as $role) {
+            $rolePermissions[$role->name] = $role->permissions->map(function ($permission) {
+                return [
+                    'name' => $permission->name,
+                    'nameshow' => $permission->nameshow ?? $permission->name
+                ];
+            })->toArray();
+        }
+        
         return [
             'user' => $user,
-            'allRoles' => $allRoles
+            'allRoles' => $allRoles,
+            'permissions' => $permissions,
+            'rolePermissions' => $rolePermissions
         ];
     }
 }

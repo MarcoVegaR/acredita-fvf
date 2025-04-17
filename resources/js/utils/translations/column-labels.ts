@@ -11,6 +11,21 @@ import * as React from "react";
 export type ModuleTranslations = Record<string, string>;
 export type TranslationsMap = Record<string, ModuleTranslations>;
 
+// Traducciones para textos comunes en páginas de detalle (ShowPage)
+export const showPageLabels = {
+  backToList: "Volver al listado",
+  noData: "No disponible",
+  booleanTrue: "Sí",
+  booleanFalse: "No",
+  sectionTitles: {
+    basicInfo: "Datos básicos",
+    metadata: "Metadatos",
+    relationships: "Relaciones",
+    permissions: "Permisos",
+    history: "Historial",
+  }
+};
+
 // Almacén centralizado de traducciones por módulo
 const columnTranslations: TranslationsMap = {
   // Módulo de usuarios
@@ -25,6 +40,7 @@ const columnTranslations: TranslationsMap = {
     roles: "Roles",
     role_names: "Roles",
     permissions: "Permisos",
+    backToList: "Volver al listado de usuarios",
   },
   
   // Módulo de roles
@@ -36,6 +52,7 @@ const columnTranslations: TranslationsMap = {
     created_at: "Fecha de Creación",
     updated_at: "Última Actualización",
     permissions: "Permisos",
+    backToList: "Volver al listado de roles",
   },
   
   // Puedes añadir más módulos según sea necesario
