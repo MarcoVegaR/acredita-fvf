@@ -41,18 +41,21 @@ export function getRoleDescription(field: string): string | undefined {
 }
 
 // Module names translation for permissions
-export const moduleLabels: Record<string, string> = {
-  users: 'Usuarios',
-  roles: 'Roles',
-  permissions: 'Permisos',
-  dashboard: 'Dashboard',
-  settings: 'Configuración',
-  reports: 'Reportes',
-  audit: 'Auditoría',
-  system: 'Sistema',
-  profile: 'Perfil',
-  notifications: 'Notificaciones',
-  files: 'Archivos',
+export const moduleTranslations: Record<string, string> = {
+  users: "Usuarios",
+  roles: "Roles",
+  permissions: "Permisos",
+  dashboard: "Dashboard",
+  reports: "Informes",
+  settings: "Configuración",
+  profile: "Perfil",
+  audit: "Auditoría",
+  notifications: "Notificaciones",
+  files: "Archivos",
+  backup: "Respaldo",
+  teams: "Equipos",
+  projects: "Proyectos",
+  tasks: "Tareas",
   documents: 'Documentos',
   activities: 'Actividades',
   customers: 'Clientes',
@@ -66,10 +69,39 @@ export const moduleLabels: Record<string, string> = {
   undefined: 'General'
 };
 
+// Traducción de acciones para permisos
+export const actionTranslations: Record<string, string> = {
+  index: "Listar",
+  show: "Ver detalles",
+  create: "Crear",
+  edit: "Editar",
+  update: "Actualizar",
+  delete: "Eliminar",
+  manage: "Administrar",
+  export: "Exportar",
+  import: "Importar",
+};
+
 // Get module name with fallback
 export function getModuleLabel(module: string): string {
   if (!module || module === 'undefined') {
     return 'General';
   }
-  return moduleLabels[module] || module;
+  return moduleTranslations[module] || module;
+}
+
+/**
+ * Obtiene la descripción formateada para un permiso
+ * @param permission Nombre del permiso (formato: "modulo.accion")
+ * @returns Descripción formateada del permiso
+ */
+export function formatPermissionName(permission: string): string {
+  const parts = permission.split('.');
+  if (parts.length !== 2) return permission;
+  
+  const [module, action] = parts;
+  const moduleTrans = moduleTranslations[module] || module;
+  const actionTrans = actionTranslations[action] || action;
+  
+  return `${actionTrans} ${moduleTrans}`;
 }

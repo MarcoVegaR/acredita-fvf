@@ -248,12 +248,17 @@ class RoleService implements RoleServiceInterface
      */
     public function getRoleWithPermissions(Role $role): array
     {
+        // Obtener permisos asociados al rol
         $permissionNames = $role->permissions->pluck('name');
+        
+        // Obtener usuarios asociados a este rol con datos básicos
+        $usersWithRole = $role->users()->select('id', 'name', 'email')->get();
         
         return [
             'role' => $role,
             'permissions' => $this->getAllPermissions(),
-            'rolePermissions' => $permissionNames
+            'rolePermissions' => $permissionNames,
+            'usersWithRole' => $usersWithRole
         ];
     }
 }

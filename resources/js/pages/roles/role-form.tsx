@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { FormSection } from "@/components/base-form/form-section";
@@ -6,13 +6,11 @@ import { FormTabContainer, FormTab } from "@/components/base-form";
 import { BaseFormOptions, useFormContext } from "@/components/base-form/base-form";
 import { ShieldIcon, KeyIcon, TagIcon, Info, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Role, RoleFormData } from "./schema";
+import { RoleFormData } from "./schema";
 import { isProtectedRole } from "./utils";
 import { getRoleLabel } from "@/utils/translations/role-labels";
-import { usePermissions } from "@/hooks/usePermissions";
 import { PermissionsSelector } from "./permissions-selector";
 
 interface RoleFormProps {
@@ -27,7 +25,6 @@ interface RoleFormProps {
 export function RoleForm({ options, permissions = [] }: RoleFormProps) {
   // Obtener el formulario del contexto
   const { form, isSubmitting } = useFormContext<RoleFormData>();
-  const permissionsManager = usePermissions();
   
   // Determinar si es edición o creación
   const isEditing = options.isEdit;

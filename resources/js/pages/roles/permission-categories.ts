@@ -48,7 +48,16 @@ export const permissionCategories = [
  * @param module The module name to find category for
  * @returns The category object or undefined
  */
-export function getCategoryForModule(module: string): any {
+// Definición de tipo para la categoría de permisos
+export type PermissionCategory = {
+  id: string;
+  label: string;
+  icon: string | React.ReactNode;
+  modules: string[];
+  description?: string;
+};
+
+export function getCategoryForModule(module: string): PermissionCategory | undefined {
   if (!module) {
     return permissionCategories.find(c => c.id === 'other');
   }
@@ -73,19 +82,37 @@ export function getCategoryForModule(module: string): any {
  * @param permissions Array of permissions to organize
  * @returns Object with permissions organized by category and module
  */
-export function groupPermissionsByCategory(permissions: any[]) {
-  const permissionsByCategory: Record<string, any> = {};
+// Tipo para permisos
+export interface Permission {
+  name: string;
+  module?: string;
+  description?: string;
+  nameshow?: string;
+}
+
+// Tipo para grupo de módulos
+export interface ModuleGroup {
+  [module: string]: Permission[];
+}
+
+// Tipo para categoría con grupos de módulos
+export interface CategoryWithModuleGroups extends PermissionCategory {
+  moduleGroups: ModuleGroup;
+}
+
+export function groupPermissionsByCategory(permissions: Permission[]): CategoryWithModuleGroups[] {
+  const permissionsByCategory: Record<string, CategoryWithModuleGroups> = {};
   
   // Initialize categories
   permissionCategories.forEach(category => {
     permissionsByCategory[category.id] = {
       ...category,
-      moduleGroups: {} as Record<string, any[]>
+      moduleGroups: {} as ModuleGroup
     };
   });
   
   // Group permissions by module first
-  const permissionsByModule: Record<string, any[]> = {};
+  const permissionsByModule: Record<string, Permission[]> = {};
   permissions.forEach(permission => {
     // Extraer el módulo desde el nombre del permiso (primera parte antes del punto)
     // Por ejemplo: 'users.view' -> módulo = 'users'
@@ -101,7 +128,15 @@ export function groupPermissionsByCategory(permissions: any[]) {
   // Assign modules to categories
   Object.entries(permissionsByModule).forEach(([module, modulePermissions]) => {
     const category = getCategoryForModule(module);
-    permissionsByCategory[category.id].moduleGroups[module] = modulePermissions;
+    // Verificar que la categoría existe antes de acceder a sus propiedades
+    if (category && category.id) {
+      permissionsByCategory[category.id].moduleGroups[module] = modulePermissions;
+    } else {
+      // Si no se encuentra una categoría, asignar a 'other'
+      if (permissionsByCategory['other']) {
+        permissionsByCategory['other'].moduleGroups[module] = modulePermissions;
+      }
+    }
   });
   
   // Filter out empty categories

@@ -72,7 +72,6 @@ export default function EditRole({ role, rolePermissions = [], permissions = [],
         schema={updateRoleSchema}
         defaultValues={defaultValues}
         serverErrors={errors}
-        // @ts-expect-error - TypeScript no puede inferir correctamente la compatibilidad de tipos entre el FormComponent y las opciones
         FormComponent={(props) => <RoleForm {...props} permissions={permissions} />}
       />
     </>

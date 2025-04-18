@@ -59,7 +59,6 @@ export default function CreateRole({ permissions = [] }: CreateRoleProps) {
       <Head title="Crear Rol" />
       <BaseFormPage
         options={formOptions}
-        // @ts-expect-error - El esquema es compatible en runtime pero TypeScript no puede inferir correctamente los tipos
         schema={createRoleSchema}
         defaultValues={{
           name: "",

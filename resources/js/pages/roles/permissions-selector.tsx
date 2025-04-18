@@ -240,17 +240,28 @@ export const PermissionsSelector: React.FC<PermissionSelectorProps> = ({
   };
   
   // Get icon component for category
-  const getCategoryIcon = (iconName: string) => {
-    const iconMap: Record<string, React.ReactNode> = {
-      Shield: <Shield className="h-4 w-4" />,
-      Users: <Users className="h-4 w-4" />,
-      FileText: <FileText className="h-4 w-4" />,
-      Briefcase: <Briefcase className="h-4 w-4" />,
-      MessageCircle: <MessageCircle className="h-4 w-4" />,
-      MoreHorizontal: <MoreHorizontal className="h-4 w-4" />
-    };
+  const getCategoryIcon = (icon: string | React.ReactNode): React.ReactNode => {
+    // Si ya es un ReactNode, simplemente devolverlo
+    if (React.isValidElement(icon)) {
+      return icon;
+    }
     
-    return iconMap[iconName] || <Shield className="h-4 w-4" />;
+    // Si es un string, buscar en el mapa de íconos
+    if (typeof icon === 'string') {
+      const iconMap: Record<string, React.ReactNode> = {
+        Shield: <Shield className="h-4 w-4" />,
+        Users: <Users className="h-4 w-4" />,
+        FileText: <FileText className="h-4 w-4" />,
+        Briefcase: <Briefcase className="h-4 w-4" />,
+        MessageCircle: <MessageCircle className="h-4 w-4" />,
+        MoreHorizontal: <MoreHorizontal className="h-4 w-4" />
+      };
+      
+      return iconMap[icon] || <Shield className="h-4 w-4" />;
+    }
+    
+    // Por defecto
+    return <Shield className="h-4 w-4" />;
   };
   
   // Highlight matching text in search results
