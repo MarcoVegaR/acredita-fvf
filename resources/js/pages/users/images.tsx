@@ -1,9 +1,8 @@
 import React from "react";
 import { Head } from "@inertiajs/react";
-import { getColumnLabel } from "@/utils/translations/column-labels";
 import { BaseShowPage } from "@/components/base-show/base-show-page";
 import ImagesSection from "@/components/images/ImagesSection";
-import { ImageType } from "@/types";
+import { ImageType, Image } from "@/types";
 
 // Define User interface explicitly here since it's not exported from @/types
 interface User {
@@ -17,7 +16,7 @@ interface User {
 
 interface UserImagesProps {
   user: User;
-  images: any[];
+  images: Image[];
   imageTypes: ImageType[];
   permissions: {
     canUpload: boolean;

@@ -2,7 +2,7 @@ import React from "react";
 import { BaseIndexPage } from "@/components/base-index/base-index-page";
 import { columns, type User } from "./columns";
 import { FileTextIcon, ImageIcon } from "lucide-react";
-import { createImageAction } from "@/components/images";
+// La acción createImageAction se utilizará en futuros desarrollos
 
 // Define the props interface - adaptada para usar con BaseIndexPage
 interface UsersIndexProps {

@@ -23,6 +23,8 @@ export default function ImageUploadModal({
   uploading, 
   module 
 }: ImageUploadModalProps) {
+  // Usamos el módulo para generar un ID único para los campos del formulario
+  const formId = `image-upload-${module}-${Date.now()}`;
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -79,10 +81,10 @@ export default function ImageUploadModal({
             {getColumnLabel('images', 'upload_instructions')}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id={formId} onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="image-type" className="text-right">
+              <Label htmlFor={`${formId}-image-type`} className="text-right">
                 {getColumnLabel('images', 'image_type')}
               </Label>
               <div className="col-span-3">
@@ -92,10 +94,9 @@ export default function ImageUploadModal({
                   disabled={uploading}
                 >
                   <SelectTrigger 
-                    id="image-type-trigger"
-                    // Detener la propagación del evento para evitar la recursión infinita
+                    id={`${formId}-image-type`} 
                     onFocus={(e: React.FocusEvent<HTMLButtonElement>) => {
-                      // Esta es la clave para evitar la recursión infinita
+                      // Detener la propagación del evento para evitar la recursión infinita
                       e.stopPropagation();
                     }}
                   >

@@ -9,7 +9,16 @@ interface AuthLayoutProps {
 }
 
 export default function AuthSplitLayout({ children, title, description }: PropsWithChildren<AuthLayoutProps>) {
-    const { name, quote } = usePage<SharedData>().props;
+    const pageProps = usePage<SharedData>().props;
+    // Asegurar que name sea string
+    const name = typeof pageProps.name === 'string' ? pageProps.name : '';
+    // Asegurar que quote sea un objeto con las propiedades adecuadas
+    const quote = typeof pageProps.quote === 'object' && pageProps.quote 
+        ? { 
+            message: 'message' in pageProps.quote ? String(pageProps.quote.message) : '', 
+            author: 'author' in pageProps.quote ? String(pageProps.quote.author) : ''
+          } 
+        : null;
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">

@@ -172,7 +172,7 @@ export default function ImagesSection({
               <div className="relative aspect-square overflow-hidden">
                 {/* Los logs están en useEffect para evitar problemas de TypeScript */}
                 <img 
-                  src={thumbnailUrl(image.uuid)} 
+                  src={thumbnailUrl(image.uuid) || '/placeholder.png'} 
                   alt={image.name}
                   className="h-full w-full object-cover transition-all group-hover:scale-105"
                   onError={(e) => {
@@ -235,7 +235,7 @@ export default function ImagesSection({
           setSelectedImage(undefined);
         }}
         image={selectedImageObject || null}
-        previewUrl={selectedImage ? previewUrl(selectedImage) : ''}
+        previewUrl={selectedImage ? (previewUrl(selectedImage) || '') : ''}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

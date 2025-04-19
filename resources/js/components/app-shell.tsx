@@ -8,7 +8,9 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, variant = 'header' }: AppShellProps) {
-    const isOpen = usePage<SharedData>().props.sidebarOpen;
+    // Obtener el estado de la barra lateral y asegurar que sea boolean
+    const pageProps = usePage<SharedData>().props;
+    const isOpen = typeof pageProps.sidebarOpen === 'boolean' ? pageProps.sidebarOpen : false;
 
     if (variant === 'header') {
         return <div className="flex min-h-screen w-full flex-col">{children}</div>;

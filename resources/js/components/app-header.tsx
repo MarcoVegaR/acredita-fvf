@@ -88,7 +88,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                     <div className="flex h-full flex-col justify-between text-sm">
                                         <div className="flex flex-col space-y-4">
                                             {filteredNavItems.map((item) => (
-                                                <Link key={item.title} href={item.href} className="flex items-center space-x-2 font-medium">
+                                                <Link key={item.title} href={item.href || '#'} className="flex items-center space-x-2 font-medium">
                                                     {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
                                                     <span>{item.title}</span>
                                                 </Link>
@@ -99,7 +99,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                             {rightNavItems.map((item) => (
                                                 <a
                                                     key={item.title}
-                                                    href={item.href}
+                                                    href={item.href || '#'}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center space-x-2 font-medium"
@@ -125,7 +125,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             {filteredNavItems.map((item, index) => (
                                 <Link
                                     key={index}
-                                    href={item.href}
+                                    href={item.href || '#'}
                                     className={cn(
                                         'flex h-full items-center space-x-2 font-medium',
                                         page.url === item.href && activeItemStyles
@@ -145,14 +145,14 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                             </Button>
                             <div className="hidden lg:flex">
                                 {filteredNavItems.map((item) => {
-                                    const isActive = page.url.startsWith(item.href);
+                                    const isActive = item.href ? page.url.startsWith(item.href) : false;
 
                                     return (
                                         <TooltipProvider key={item.href}>
                                             <Tooltip>
                                                 <TooltipTrigger>
                                                     <Link
-                                                        href={item.href}
+                                                        href={item.href || '#'}
                                                         className={cn(
                                                             'flex h-10 w-10 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-800 hover:text-neutral-300 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100',
                                                             isActive && activeItemStyles,

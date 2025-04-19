@@ -165,7 +165,14 @@ export function BaseIndexPage<T extends Entity>({
     if (!permission) return true; // Si no se requiere permiso, permitir
     if (!auth?.user?.permissions) return false; // Si no hay permisos disponibles, denegar
     
-    return auth.user.permissions.includes(permission);
+    // Verificar si el usuario tiene el permiso específico (siguiendo el patrón del hook usePermissions)
+    const permissions = auth.user.permissions;
+    if (Array.isArray(permissions)) {
+      return permissions.includes(permission);
+    }
+    
+    // Si permissions no es un array, verificar si es exactamente igual al permiso solicitado
+    return permissions === permission;
   }, [auth?.user?.permissions]);
   
   // Manejador genérico para cambios de paginación

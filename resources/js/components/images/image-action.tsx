@@ -27,9 +27,9 @@ export const createImageAction = (
     label: customLabel || 'Imágenes',
     icon: <ImageIcon className="h-4 w-4" />,
     enabled: enabled,
-    handler: (row: any) => {
+    handler: (row: Record<string, unknown>) => {
       // Asegurarnos de que la fila tiene un ID antes de navegar
-      if (row && row.id) {
+      if (row && typeof row.id === 'number') {
         router.visit(`/${module}/${row.id}/images`);
       }
     }

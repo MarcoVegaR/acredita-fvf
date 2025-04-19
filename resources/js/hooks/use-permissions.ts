@@ -21,7 +21,14 @@ export function usePermissions() {
     if (!auth?.user?.permissions) return false;
     
     // Verificar si el usuario tiene el permiso específico
-    return auth.user.permissions.includes(permission);
+    // Asegurarnos de que permissions sea un array antes de usar includes
+    const permissions = auth.user.permissions;
+    if (Array.isArray(permissions)) {
+      return permissions.includes(permission);
+    }
+    
+    // Si permissions no es un array, verificar si es exactamente igual al permiso solicitado
+    return permissions === permission;
   }, [auth?.user?.permissions]);
 
   /**
