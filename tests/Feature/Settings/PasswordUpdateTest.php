@@ -6,13 +6,15 @@ use Illuminate\Support\Facades\Hash;
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 test('password can be updated', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)
         ->from('/settings/password')
         ->put('/settings/password', [
-            'current_password' => 'password',
+            'current_password' => '12345678',
             'password' => 'new-password',
             'password_confirmation' => 'new-password',
         ]);
@@ -25,7 +27,9 @@ test('password can be updated', function () {
 });
 
 test('correct password must be provided to update password', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)

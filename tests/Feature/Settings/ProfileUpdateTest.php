@@ -5,7 +5,9 @@ use App\Models\User;
 uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
 
 test('profile page is displayed', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)
@@ -15,7 +17,9 @@ test('profile page is displayed', function () {
 });
 
 test('profile information can be updated', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)
@@ -36,7 +40,11 @@ test('profile information can be updated', function () {
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {
-    $user = User::factory()->create();
+    // Crear usuario con email_verified_at explícitamente establecido
+    $user = User::factory()->create([
+        'active' => true,
+        'email_verified_at' => now()
+    ]);
 
     $response = $this
         ->actingAs($user)
@@ -53,12 +61,14 @@ test('email verification status is unchanged when the email address is unchanged
 });
 
 test('user can delete their account', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)
         ->delete('/settings/profile', [
-            'password' => 'password',
+            'password' => '12345678',
         ]);
 
     $response
@@ -66,11 +76,16 @@ test('user can delete their account', function () {
         ->assertRedirect('/');
 
     $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    
+    // Como se está usando SoftDeletes, verificamos que deleted_at no sea null
+    $deletedUser = $user->fresh();
+    expect($deletedUser->deleted_at)->not->toBeNull();
 });
 
 test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'active' => true
+    ]);
 
     $response = $this
         ->actingAs($user)
