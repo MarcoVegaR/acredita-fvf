@@ -43,8 +43,8 @@ export default function ImagesSection({
 
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined);
+  const [imageToDelete, setImageToDelete] = useState<string | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   // Control para evitar cargas repetitivas
@@ -104,14 +104,14 @@ export default function ImagesSection({
   };
 
   const handleDeleteCancel = () => {
-    setImageToDelete(null);
+    setImageToDelete(undefined);
     setDeleteDialogOpen(false);
   };
 
   const handleDeleteConfirmed = () => {
     if (imageToDelete) {
       remove(imageToDelete);
-      setImageToDelete(null);
+      setImageToDelete(undefined);
       setDeleteDialogOpen(false);
     }
   };
@@ -119,7 +119,7 @@ export default function ImagesSection({
   const canUpload = permissions.includes(`images.upload.${module}`) && !readOnly;
   const canDelete = permissions.includes(`images.delete.${module}`) && !readOnly;
 
-  const selectedImageObject = images.find(img => img.uuid === selectedImage) || null;
+  const selectedImageObject = selectedImage ? images.find(img => img.uuid === selectedImage) : undefined;
 
   return (
     <div className="space-y-6">
@@ -232,9 +232,9 @@ export default function ImagesSection({
         open={previewModalOpen}
         onClose={() => {
           setPreviewModalOpen(false);
-          setSelectedImage(null);
+          setSelectedImage(undefined);
         }}
-        image={selectedImageObject}
+        image={selectedImageObject || null}
         previewUrl={selectedImage ? previewUrl(selectedImage) : ''}
       />
 
