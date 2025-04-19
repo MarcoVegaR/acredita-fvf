@@ -1,7 +1,8 @@
 import React from "react";
 import { BaseIndexPage } from "@/components/base-index/base-index-page";
 import { columns, type User } from "./columns";
-import { FileTextIcon } from "lucide-react";
+import { FileTextIcon, ImageIcon } from "lucide-react";
+import { createImageAction } from "@/components/images";
 
 // Define the props interface - adaptada para usar con BaseIndexPage
 interface UsersIndexProps {
@@ -153,6 +154,19 @@ export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
           },
           // Permitir tanto el permiso específico por módulo como el genérico
           permission: ["documents.view.users", "documents.view"],
+        },
+        // Acción para gestionar imágenes del usuario
+        {
+          label: "Imágenes",
+          icon: <ImageIcon className="h-4 w-4" />,
+          handler: (user: User) => {
+            // Usar router de Inertia para navegación SPA en lugar de recargar la página
+            import("@inertiajs/react").then(({ router }) => {
+              router.visit(`/users/${user.id}/images`);
+            });
+          },
+          // Permitir tanto el permiso específico por módulo como el genérico
+          permission: ["images.view.users", "images.view"],
         },
       ],
     },

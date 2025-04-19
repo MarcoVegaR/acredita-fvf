@@ -28,6 +28,34 @@ export const showPageLabels = {
 
 // Almacén centralizado de traducciones por módulo
 const columnTranslations: TranslationsMap = {
+  // Módulo de imágenes
+  images: {
+    id: "ID",
+    uuid: "UUID",
+    name: "Nombre de archivo",
+    path: "Ruta",
+    mime_type: "Tipo MIME",
+    size: "Tamaño",
+    width: "Ancho",
+    height: "Alto",
+    created_at: "Fecha de subida",
+    updated_at: "Última actualización",
+    created_by: "Subido por",
+    section_title: "Imágenes",
+    no_images: "No hay imágenes",
+    upload_image: "Subir imagen",
+    delete_image: "Eliminar imagen",
+    view_image: "Ver imagen",
+    image_type: "Tipo de imagen",
+    select_type: "Seleccione un tipo",
+    upload_instructions: "Seleccione una imagen para subir (máx 5MB)",
+    filename: "Nombre del archivo",
+    preview: "Vista previa",
+    dimensions: "Dimensiones",
+    url: "URL",
+    thumbnail_url: "URL de miniatura"
+  },
+
   // Módulo de documentos
   documents: {
     id: "ID",

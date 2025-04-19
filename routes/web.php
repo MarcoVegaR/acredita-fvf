@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\ImageController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -47,7 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('{module}/{entity_id}/documents', 'store')
             ->middleware('permission:documents.upload')
             ->name('documents.store');
-        
+            
         // Global document routes
         Route::delete('documents/{document_uuid}', 'destroy')
             ->middleware('permission:documents.delete')
@@ -56,6 +57,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('documents/{document_uuid}/download', 'download')
             ->middleware('permission:documents.download')
             ->name('documents.download');
+    });
+    
+    // Image management routes grouped by controller and permissions
+    Route::controller(ImageController::class)->group(function () {
+        // Module-specific image routes - usando auth middleware y verificación de permisos en el controlador
+        Route::get('{module}/{entity_id}/images', 'index')
+            ->middleware('auth')
+            ->name('images.index');
+            
+        Route::post('{module}/{entity_id}/images', 'store')
+            ->middleware('auth')
+            ->name('images.store');
+        
+        Route::delete('{module}/{entity_id}/images/{uuid}', 'destroy')
+            ->middleware('auth')
+            ->name('images.destroy');
     });
 });
 

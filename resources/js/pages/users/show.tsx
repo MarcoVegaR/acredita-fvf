@@ -1,7 +1,7 @@
 import React from "react";
 import { BaseShowPage, TabConfig } from "@/components/base-show/base-show-page";
 import { User } from "@/types";
-import { UserIcon, ShieldIcon, ClockIcon, FileTextIcon } from "lucide-react";
+import { UserIcon, ShieldIcon, ClockIcon, FileTextIcon, ImageIcon } from "lucide-react";
 // Column labels accessed directly in components when needed
 
 // Importar los componentes de renderizado reutilizables
@@ -10,10 +10,19 @@ import { StatusRenderer } from "@/components/base-show/renderers/status-renderer
 import { ChipListRenderer } from "@/components/base-show/renderers/chip-list-renderer";
 import { RolePermissionsRenderer } from "@/components/base-show/renderers/role-permissions-renderer";
 import { DocumentsTab } from "@/components/documents/DocumentsTab";
+import ImagesSection from "@/components/images/ImagesSection";
 
 interface Permission {
   name: string;
   nameshow: string;
+}
+
+// Definición local de ImageType para evitar problemas de importación
+interface ImageType {
+  id: number;
+  code: string;
+  label: string;
+  module: string;
 }
 
 interface UserProps {
@@ -32,11 +41,12 @@ interface UserProps {
     label: string;
     module: string | null;
   }>;
+  imageTypes?: Array<ImageType>;
   userDocuments?: Array<{id: number; filename: string; [key: string]: string | number | boolean | null}>;
   userPermissions?: string[];
 }
 
-export default function ShowUser({ user, rolePermissions, documentTypes = [], userPermissions = [] }: UserProps) {
+export default function ShowUser({ user, rolePermissions, documentTypes = [], imageTypes = [], userPermissions = [] }: UserProps) {
   // Eliminamos variables no utilizadas
 
   // Función para obtener iniciales del usuario (para el avatar)
@@ -49,8 +59,9 @@ export default function ShowUser({ user, rolePermissions, documentTypes = [], us
       .substring(0, 2);
   };
 
-  // Verificar si el usuario tiene permisos para ver documentos
+  // Verificar si el usuario tiene permisos para ver documentos e imágenes
   const canViewDocuments = userPermissions.includes('documents.view.users') || userPermissions.includes('documents.view');
+  const canViewImages = userPermissions.includes('images.view.users') || userPermissions.includes('images.view');
 
   // Configuración de tabs con iconos más descriptivos
   const tabs: TabConfig[] = [
@@ -70,6 +81,14 @@ export default function ShowUser({ user, rolePermissions, documentTypes = [], us
         value: "documents", 
         label: "Documentos", 
         icon: <FileTextIcon className="h-4 w-4" /> 
+      }
+    ] : []),
+    // Solo mostrar la pestaña de imágenes si el usuario tiene permisos
+    ...(canViewImages ? [
+      { 
+        value: "images", 
+        label: "Imágenes", 
+        icon: <ImageIcon className="h-4 w-4" /> 
       }
     ] : []),
     { 
@@ -228,6 +247,33 @@ export default function ShowUser({ user, rolePermissions, documentTypes = [], us
                     entityId={user.id}
                     types={documentTypes}
                     permissions={userPermissions}
+                  />
+                </div>
+              )
+            }
+          ]
+        }
+      ] : []),
+      
+      // Tab para imágenes
+      ...(canViewImages ? [
+        {
+          tab: "images",
+          title: "Imágenes del usuario",
+          fields: [
+            {
+              key: "",
+              label: "", // Sin etiqueta para ocupar todo el espacio
+              render: () => (
+                <div className="w-full">
+                  <ImagesSection
+                    module="users"
+                    entityId={user.id}
+                    types={imageTypes.length > 0 ? imageTypes : [
+                      { id: 1, code: 'profile', label: 'Perfil', module: 'users' }
+                    ]}
+                    permissions={userPermissions}
+                    readOnly={true}
                   />
                 </div>
               )

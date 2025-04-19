@@ -61,7 +61,9 @@ class PermissionHelper
             
             $resourceNames = [
                 'users' => 'usuarios',
-                'roles' => 'roles'
+                'roles' => 'roles',
+                'documents' => 'documentos',
+                'images' => 'imágenes'
                 // Añadir más recursos según sea necesario
             ];
             

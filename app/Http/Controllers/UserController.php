@@ -132,6 +132,9 @@ class UserController extends BaseController
             // Obtener usuario con todos sus datos relevantes a través del servicio
             $viewData = $this->userService->getUserWithRolesAndStats($user);
             
+            // Agregar permisos del usuario para verificación en el frontend (lo necesitan tanto documentos como imágenes)
+            $viewData['userPermissions'] = Auth::user()->getAllPermissions()->pluck('name')->toArray();
+            
             // Añadir información de documentos si el usuario tiene permisos
             if (PermissionHelper::hasAnyPermission(['documents.view.users', 'documents.view'])) {
                 // Obtener tipos de documentos para el módulo de usuarios
@@ -139,9 +142,29 @@ class UserController extends BaseController
                 
                 // Obtener documentos del usuario
                 $viewData['userDocuments'] = $this->documentService->list('users', $user->id);
-                
-                // Agregar permisos del usuario para verificación en el frontend
-                $viewData['userPermissions'] = Auth::user()->getAllPermissions()->pluck('name')->toArray();
+            }
+            
+            // Añadir información de imágenes si el usuario tiene permisos
+            if (PermissionHelper::hasAnyPermission(['images.view.users', 'images.view'])) {
+                // Obtener tipos de imágenes para el módulo de usuarios desde la configuración
+                $viewData['imageTypes'] = collect(config('images.types'))
+                    ->where('module', 'users')
+                    ->map(function($type, $key) {
+                        return [
+                            'id' => $type['id'] ?? $key,
+                            'code' => $key,
+                            'label' => $type['label'] ?? ucfirst($key),
+                            'module' => 'users'
+                        ];
+                    })
+                    ->values()
+                    ->toArray();
+                    
+                // Log para depuración
+                \Log::info('Tipos de imágenes cargados para el usuario', [
+                    'user_id' => $user->id,
+                    'image_types_count' => count($viewData['imageTypes'])
+                ]);
             }
             
             // Registrar acción para auditoría
