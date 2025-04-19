@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('roles/{role}/edit', 'edit')->middleware('permission:roles.edit')->name('roles.edit');
         Route::put('roles/{role}', 'update')->middleware('permission:roles.edit')->name('roles.update');
         Route::delete('roles/{role}', 'destroy')->middleware('permission:roles.delete')->name('roles.destroy');
+    });
+    
+    // Document management routes grouped by controller and permissions
+    Route::controller(DocumentController::class)->group(function () {
+        // Module-specific document routes
+        Route::get('{module}/{entity_id}/documents', 'index')
+            ->middleware('permission:documents.view')
+            ->name('documents.index');
+            
+        Route::post('{module}/{entity_id}/documents', 'store')
+            ->middleware('permission:documents.upload')
+            ->name('documents.store');
+        
+        // Global document routes
+        Route::delete('documents/{document_uuid}', 'destroy')
+            ->middleware('permission:documents.delete')
+            ->name('documents.destroy');
+            
+        Route::get('documents/{document_uuid}/download', 'download')
+            ->middleware('permission:documents.download')
+            ->name('documents.download');
     });
 });
 

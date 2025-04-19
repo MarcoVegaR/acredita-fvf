@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
-import { Head, usePage } from "@inertiajs/react";
+import React, { useState } from "react";
+import { Head } from "@inertiajs/react";
 import { ShowSection } from "@/components/base-show/show-section";
 import AppLayout from "@/layouts/app-layout";
 import { BreadcrumbItem } from "@/types";
-import { toast } from "sonner";
-import { SharedData } from "@/types";
+
 import { usePermissions } from "@/hooks/usePermissions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -70,23 +69,14 @@ interface BaseShowPageProps<T extends Entity> {
 
 // Componente principal BaseShowPage
 export function BaseShowPage<T extends Entity>({ options }: BaseShowPageProps<T>) {
-  const { flash } = usePage<SharedData>().props;
+  // We're not using any props from usePage anymore
   const { can } = usePermissions();
   
   // Estado para la tab activa
   const [activeTab, setActiveTab] = useState<string>(options.defaultTab || (options.tabs && options.tabs.length > 0 ? options.tabs[0].value : 'default'));
   
-  // Manejo de mensajes flash a través del sistema unificado de notificaciones
-  useEffect(() => {
-    if (flash?.success) {
-      toast.success(flash.success);
-    } else if (flash?.message) {
-      // Compatibilidad con formato antiguo
-      toast.success(flash.message);
-    } else if (flash?.error) {
-      toast.error(flash.error);
-    }
-  }, [flash]);
+  // NOTA: Eliminado el manejo duplicado de mensajes flash.
+  // Los mensajes flash ahora son manejados exclusivamente por el componente FlashMessages
 
   // Filtrar secciones según permisos y condiciones
   const visibleSections = options.sections.filter(section => {

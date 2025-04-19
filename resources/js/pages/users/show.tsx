@@ -1,14 +1,15 @@
 import React from "react";
 import { BaseShowPage, TabConfig } from "@/components/base-show/base-show-page";
 import { User } from "@/types";
-import { UserIcon, ShieldIcon, ClockIcon } from "lucide-react";
-import { showPageLabels } from "@/utils/translations/column-labels";
+import { UserIcon, ShieldIcon, ClockIcon, FileTextIcon } from "lucide-react";
+// Column labels accessed directly in components when needed
 
 // Importar los componentes de renderizado reutilizables
 import { DateRenderer } from "@/components/base-show/renderers/date-renderer";
 import { StatusRenderer } from "@/components/base-show/renderers/status-renderer";
 import { ChipListRenderer } from "@/components/base-show/renderers/chip-list-renderer";
 import { RolePermissionsRenderer } from "@/components/base-show/renderers/role-permissions-renderer";
+import { DocumentsTab } from "@/components/documents/DocumentsTab";
 
 interface Permission {
   name: string;
@@ -25,9 +26,17 @@ interface UserProps {
   }>;
   permissions: Permission[];
   rolePermissions: Record<string, Permission[]>;
+  documentTypes?: Array<{
+    id: number;
+    code: string;
+    label: string;
+    module: string | null;
+  }>;
+  userDocuments?: Array<{id: number; filename: string; [key: string]: string | number | boolean | null}>;
+  userPermissions?: string[];
 }
 
-export default function ShowUser({ user, rolePermissions }: UserProps) {
+export default function ShowUser({ user, rolePermissions, documentTypes = [], userPermissions = [] }: UserProps) {
   // Eliminamos variables no utilizadas
 
   // Función para obtener iniciales del usuario (para el avatar)
@@ -39,6 +48,9 @@ export default function ShowUser({ user, rolePermissions }: UserProps) {
       .toUpperCase()
       .substring(0, 2);
   };
+
+  // Verificar si el usuario tiene permisos para ver documentos
+  const canViewDocuments = userPermissions.includes('documents.view.users') || userPermissions.includes('documents.view');
 
   // Configuración de tabs con iconos más descriptivos
   const tabs: TabConfig[] = [
@@ -52,6 +64,14 @@ export default function ShowUser({ user, rolePermissions }: UserProps) {
       label: "Roles y Permisos", 
       icon: <ShieldIcon className="h-4 w-4" /> 
     },
+    // Solo mostrar la pestaña de documentos si el usuario tiene permisos
+    ...(canViewDocuments ? [
+      { 
+        value: "documents", 
+        label: "Documentos", 
+        icon: <FileTextIcon className="h-4 w-4" /> 
+      }
+    ] : []),
     { 
       value: "metadata", 
       label: "Metadatos", 
@@ -190,23 +210,43 @@ export default function ShowUser({ user, rolePermissions }: UserProps) {
         // Eliminado el permiso para asegurar que esta sección sea visible
       },
       
-      // Tab: Metadatos
+      // Tab para documentos
+      ...(canViewDocuments ? [
+        {
+          tab: "documents",
+          title: "Documentos del usuario",
+          // Usamos un enfoque diferente: en lugar de render o condition, usamos el array fields
+          // con un custom renderer que muestra directamente el componente DocumentsTab
+          fields: [
+            {
+              key: "",
+              label: "", // Sin etiqueta para ocupar todo el espacio
+              render: () => (
+                <div className="w-full">
+                  <DocumentsTab
+                    module="users"
+                    entityId={user.id}
+                    types={documentTypes}
+                    permissions={userPermissions}
+                  />
+                </div>
+              )
+            }
+          ]
+        }
+      ] : []),
+      // Tab para Metadatos
       {
-        title: showPageLabels.sectionTitles.metadata,
         tab: "metadata",
-        className: "bg-card rounded-lg border shadow-sm p-6",
+        title: "Metadatos",
         fields: [
-          {
-            key: "created_at",
-            label: "Fecha de creación",
-            render: (value: unknown) => <DateRenderer value={value as string} />
-          },
-          {
-            key: "updated_at",
-            label: "Última actualización",
-            render: (value: unknown) => <DateRenderer value={value as string} />
-          },
-        ],
+          { key: "created_at", render: (value: unknown) => <DateRenderer value={value as string} /> },
+          { key: "updated_at", render: (value: unknown) => <DateRenderer value={value as string} /> },
+          { key: "email_verified_at", render: (value: unknown) => (
+            value ? <DateRenderer value={value as string} /> : <span className="text-muted-foreground">No verificado</span>
+          ) },
+          // Agregar otros campos de metadatos relevantes
+        ]
       },
     ],
   };

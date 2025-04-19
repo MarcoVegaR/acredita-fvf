@@ -30,6 +30,18 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('roles.edit', 'Editar roles');
         $this->createPermission('roles.delete', 'Eliminar roles');
 
+        // Document management global permissions
+        $this->createPermission('documents.view', 'Ver documentos');
+        $this->createPermission('documents.upload', 'Subir documentos');
+        $this->createPermission('documents.delete', 'Eliminar documentos');
+        $this->createPermission('documents.download', 'Descargar documentos');
+        
+        // Document management for users module
+        $this->createPermission('documents.view.users', 'Ver documentos de usuarios');
+        $this->createPermission('documents.upload.users', 'Subir documentos de usuarios');
+        $this->createPermission('documents.delete.users', 'Eliminar documentos de usuarios');
+        $this->createPermission('documents.download.users', 'Descargar documentos de usuarios');
+
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 

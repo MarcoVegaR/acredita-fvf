@@ -49,3 +49,32 @@ export interface User {
     permissions?: string[];
     [key: string]: unknown; // This allows for additional properties...
 }
+
+export interface Document {
+    id: number;
+    uuid: string;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    path: string;
+    is_validated: boolean;
+    created_at: string;
+    updated_at: string;
+    user: {
+        id: number;
+        name: string;
+    };
+    type: {
+        id: number;
+        code: string;
+        label: string;
+    };
+}
+
+export interface DocumentType {
+    id: number;
+    code: string;
+    label: string;
+    module: string | null;
+}

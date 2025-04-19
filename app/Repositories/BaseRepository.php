@@ -91,6 +91,18 @@ abstract class BaseRepository implements RepositoryInterface
     {
         return $this->model->with($relations)->find($id);
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function findByUuid(string $uuid, array $relations = [])
+    {
+        if (!isset($this->model->uniqueIds) && !method_exists($this->model, 'uniqueIds')) {
+            throw new \RuntimeException('Model does not support UUID lookups');
+        }
+        
+        return $this->model->with($relations)->where('uuid', $uuid)->firstOrFail();
+    }
 
     /**
      * {@inheritdoc}
@@ -112,6 +124,19 @@ abstract class BaseRepository implements RepositoryInterface
         }
         return null;
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function updateByUuid(string $uuid, array $data)
+    {
+        $record = $this->findByUuid($uuid);
+        if ($record) {
+            $record->update($data);
+            return $record;
+        }
+        return null;
+    }
 
     /**
      * {@inheritdoc}
@@ -119,6 +144,18 @@ abstract class BaseRepository implements RepositoryInterface
     public function delete(int $id)
     {
         $record = $this->find($id);
+        if ($record) {
+            return $record->delete();
+        }
+        return false;
+    }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function deleteByUuid(string $uuid)
+    {
+        $record = $this->findByUuid($uuid);
         if ($record) {
             return $record->delete();
         }

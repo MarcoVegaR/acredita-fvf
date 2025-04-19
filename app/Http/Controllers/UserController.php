@@ -7,8 +7,11 @@ use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\DeleteUserRequest;
 use App\Models\User;
 use App\Services\User\UserServiceInterface;
+use App\Services\Document\DocumentServiceInterface;
+use App\Helpers\PermissionHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class UserController extends BaseController
 {
@@ -18,15 +21,27 @@ class UserController extends BaseController
      * @var UserServiceInterface
      */
     protected $userService;
+    
+    /**
+     * The document service instance.
+     *
+     * @var DocumentServiceInterface
+     */
+    protected $documentService;
 
     /**
      * Create a new controller instance.
      *
      * @param UserServiceInterface $userService
+     * @param DocumentServiceInterface $documentService
      */
-    public function __construct(UserServiceInterface $userService)
+    public function __construct(
+        UserServiceInterface $userService,
+        DocumentServiceInterface $documentService
+    )
     {
         $this->userService = $userService;
+        $this->documentService = $documentService;
     }
 
     /**
@@ -116,6 +131,18 @@ class UserController extends BaseController
         try {
             // Obtener usuario con todos sus datos relevantes a través del servicio
             $viewData = $this->userService->getUserWithRolesAndStats($user);
+            
+            // Añadir información de documentos si el usuario tiene permisos
+            if (PermissionHelper::hasAnyPermission(['documents.view.users', 'documents.view'])) {
+                // Obtener tipos de documentos para el módulo de usuarios
+                $viewData['documentTypes'] = $this->documentService->getDocumentTypes('users');
+                
+                // Obtener documentos del usuario
+                $viewData['userDocuments'] = $this->documentService->list('users', $user->id);
+                
+                // Agregar permisos del usuario para verificación en el frontend
+                $viewData['userPermissions'] = Auth::user()->getAllPermissions()->pluck('name')->toArray();
+            }
             
             // Registrar acción para auditoría
             $this->logAction('ver', 'usuario', $user->id);

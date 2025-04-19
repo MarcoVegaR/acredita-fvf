@@ -127,6 +127,7 @@ export interface BaseIndexOptions<T extends Entity> {
       label: string;
       handler: (row: T) => void;
       icon?: React.ReactNode;
+      permission?: string | string[];
     }>;
   };
 }
@@ -343,6 +344,26 @@ export function BaseIndexPage<T extends Entity>({
       `${options.moduleName}.delete`
     );
     
+    // Procesar las acciones personalizadas y verificar sus permisos
+    const customActions = options.rowActions.custom ? options.rowActions.custom
+      .filter(action => {
+        // Si no tiene permiso definido, se permite
+        if (!action.permission) return true;
+        
+        // Si es un array de permisos, verificar si tiene al menos uno
+        if (Array.isArray(action.permission)) {
+          return action.permission.some((perm: string) => hasPermission(perm));
+        }
+        
+        // Si es un string, verificar el permiso directamente
+        return hasPermission(action.permission);
+      })
+      .map(action => ({
+        ...action,
+        // Asegurarnos que el handler esté definido
+        handler: action.handler || (() => {})
+      })) : undefined;
+    
     return (
       <DataTableRowActions
         row={row}
@@ -395,6 +416,9 @@ export function BaseIndexPage<T extends Entity>({
               }
             },
           } : undefined,
+          
+          // Incluir acciones personalizadas
+          custom: customActions
         }}
       />
     );

@@ -1,6 +1,7 @@
 import React from "react";
 import { BaseIndexPage } from "@/components/base-index/base-index-page";
 import { columns, type User } from "./columns";
+import { FileTextIcon } from "lucide-react";
 
 // Define the props interface - adaptada para usar con BaseIndexPage
 interface UsersIndexProps {
@@ -139,6 +140,21 @@ export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
         permission: "users.delete",  // Permiso específico para esta acción
         confirmMessage: (user: User) => `¿Está seguro que desea eliminar al usuario ${user.name}?`,
       },
+      // Acción para gestionar documentos del usuario
+      custom: [
+        {
+          label: "Documentos",
+          icon: <FileTextIcon className="h-4 w-4" />,
+          handler: (user: User) => {
+            // Usar router de Inertia para navegación SPA en lugar de recargar la página
+            import("@inertiajs/react").then(({ router }) => {
+              router.visit(`/users/${user.id}/documents`);
+            });
+          },
+          // Permitir tanto el permiso específico por módulo como el genérico
+          permission: ["documents.view.users", "documents.view"],
+        },
+      ],
     },
   };
 

@@ -28,6 +28,29 @@ export const showPageLabels = {
 
 // Almacén centralizado de traducciones por módulo
 const columnTranslations: TranslationsMap = {
+  // Módulo de documentos
+  documents: {
+    id: "ID",
+    name: "Nombre del documento",
+    type: "Tipo",
+    original_filename: "Nombre original",
+    file_size: "Tamaño",
+    created_at: "Fecha de subida",
+    updated_at: "Última actualización",
+    uploaded_by: "Subido por",
+    is_validated: "Validado",
+    section_title: "Documentos",
+    no_documents: "No hay documentos",
+    upload_document: "Subir documento",
+    delete_document: "Eliminar documento",
+    download_document: "Descargar documento",
+    view_document: "Ver documento",
+    document_type: "Tipo de documento",
+    select_type: "Seleccione un tipo",
+    upload_instructions: "Seleccione un archivo para subir",
+    filename: "Nombre del archivo",
+  },
+  
   // Módulo de usuarios
   users: {
     id: "ID",
@@ -54,6 +77,8 @@ const columnTranslations: TranslationsMap = {
     permissions: "Permisos",
     backToList: "Volver al listado de roles",
   },
+
+  // Módulos adicionales que puedes añadir según sea necesario
   
   // Puedes añadir más módulos según sea necesario
 };

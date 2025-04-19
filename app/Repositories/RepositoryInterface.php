@@ -33,6 +33,15 @@ interface RepositoryInterface
     public function find(int $id, array $relations = []);
     
     /**
+     * Find resource by UUID
+     *
+     * @param string $uuid
+     * @param array $relations
+     * @return \Illuminate\Database\Eloquent\Model|null
+     */
+    public function findByUuid(string $uuid, array $relations = []);
+    
+    /**
      * Create new resource
      *
      * @param array $data
@@ -50,12 +59,29 @@ interface RepositoryInterface
     public function update(int $id, array $data);
     
     /**
+     * Update resource by UUID
+     *
+     * @param string $uuid
+     * @param array $data
+     * @return \Illuminate\Database\Eloquent\Model
+     */
+    public function updateByUuid(string $uuid, array $data);
+    
+    /**
      * Delete resource
      *
      * @param int $id
      * @return bool
      */
     public function delete(int $id);
+    
+    /**
+     * Delete resource by UUID
+     *
+     * @param string $uuid
+     * @return bool
+     */
+    public function deleteByUuid(string $uuid);
     
     /**
      * Apply query scopes and extensions

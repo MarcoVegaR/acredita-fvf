@@ -16,6 +16,7 @@ interface PageProps {
 
 export function FlashMessages() {
   const props = usePage<PageProps>().props;
+  console.log('[FlashMessages] Component RENDERED. Props:', props);
   
   // Handle flash messages from Laravel session via Inertia
   useEffect(() => {
@@ -23,15 +24,17 @@ export function FlashMessages() {
     const flash = props.flash || {};
     const errors = props.errors || {};
 
+    console.log('[FlashMessages] useEffect triggered. Flash:', flash, 'Errors:', errors);
+
     // Process success message
     if (flash.success) {
-      toast.success(flash.success, {
-        description: "Operación completada correctamente",
-      });
+      console.log('[FlashMessages] Detected flash.success:', flash.success);
+      toast.success(flash.success);
     }
 
     // Process error message
     if (flash.error) {
+      console.log('[FlashMessages] Detected flash.error:', flash.error);
       toast.error(flash.error, {
         description: "Ocurrió un error durante la operación",
       });
@@ -39,6 +42,7 @@ export function FlashMessages() {
 
     // Process warning message
     if (flash.warning) {
+      console.log('[FlashMessages] Detected flash.warning:', flash.warning);
       toast.warning(flash.warning, {
         description: "Advertencia del sistema",
       });
@@ -46,6 +50,7 @@ export function FlashMessages() {
 
     // Process info message
     if (flash.info) {
+      console.log('[FlashMessages] Detected flash.info:', flash.info);
       toast.info(flash.info, {
         description: "Información del sistema",
       });
@@ -55,6 +60,7 @@ export function FlashMessages() {
     if (Object.keys(errors).length > 0) {
       const errorMessages = Object.values(errors).flat();
       if (errorMessages.length > 0) {
+        console.log('[FlashMessages] Detected validation errors:', errorMessages);
         toast.error("Error de validación", {
           description: errorMessages.join(". "),
         });

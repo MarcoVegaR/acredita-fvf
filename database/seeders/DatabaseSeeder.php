@@ -18,5 +18,8 @@ class DatabaseSeeder extends Seeder
         
         // Call the user seeder
         $this->call(UserSeeder::class);
+        
+        // Call the document types seeder
+        $this->call(DocumentTypesSeeder::class);
     }
 }
