@@ -16,13 +16,15 @@ type RegisterForm = {
     password_confirmation: string;
 };
 
+// Registration functionality disabled
+/*
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm<Required<RegisterForm>>({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
-    });
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -117,3 +119,4 @@ export default function Register() {
         </AuthLayout>
     );
 }
+*/

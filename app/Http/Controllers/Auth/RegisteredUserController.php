@@ -17,35 +17,37 @@ class RegisteredUserController extends Controller
 {
     /**
      * Show the registration page.
+     * @deprecated Registration functionality disabled
      */
-    public function create(): Response
-    {
-        return Inertia::render('auth/register');
-    }
+    // public function create(): Response
+    // {
+    //     return Inertia::render('auth/register');
+    // }
 
     /**
      * Handle an incoming registration request.
+     * @deprecated Registration functionality disabled
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+    // public function store(Request $request): RedirectResponse
+    // {
+    //     $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+    //         'password' => ['required', 'confirmed', Rules\Password::defaults()],
+    //     ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+    //     $user = User::create([
+    //         'name' => $request->name,
+    //         'email' => $request->email,
+    //         'password' => Hash::make($request->password),
+    //     ]);
 
-        event(new Registered($user));
+    //     event(new Registered($user));
 
-        Auth::login($user);
+    //     Auth::login($user);
 
-        return to_route('dashboard');
-    }
+    //     return to_route('dashboard');
+    // }
 }
