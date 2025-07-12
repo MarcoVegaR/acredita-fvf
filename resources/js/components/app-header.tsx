@@ -1,18 +1,17 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { Icon } from '@/components/icon';
+import { MenuItem } from '@/components/menu-item';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 // NavigationMenu components no se usan en este componente
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import { usePermissions } from '@/hooks/use-permissions';
-import { cn } from '@/lib/utils';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Menu, Search, Settings, Users } from 'lucide-react';
+import { LayoutGrid, Menu, Settings, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -39,7 +38,8 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
 ];
 
 const rightNavItems: NavItem[] = [
-    {
+    // Items comentados por no ser necesarios
+    /*{
         title: 'Repository',
         href: 'https://github.com/laravel/react-starter-kit',
         icon: Folder,
@@ -48,10 +48,10 @@ const rightNavItems: NavItem[] = [
         title: 'Documentation',
         href: 'https://laravel.com/docs/starter-kits',
         icon: BookOpen,
-    },
+    },*/
 ];
 
-const activeItemStyles = 'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100';
+// Estilos removidos por no ser utilizados
 
 interface AppHeaderProps {
     breadcrumbs?: BreadcrumbItem[];
@@ -86,12 +86,14 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                                 </SheetHeader>
                                 <div className="flex h-full flex-1 flex-col space-y-4 p-4">
                                     <div className="flex h-full flex-col justify-between text-sm">
-                                        <div className="flex flex-col space-y-4">
+                                         <div className="flex flex-col space-y-1">
                                             {filteredNavItems.map((item) => (
-                                                <Link key={item.title} href={item.href || '#'} className="flex items-center space-x-2 font-medium">
-                                                    {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
-                                                    <span>{item.title}</span>
-                                                </Link>
+                                                <MenuItem 
+                                                    key={item.title} 
+                                                    item={item} 
+                                                    variant="mobile"
+                                                    isActive={page.url === item.href} 
+                                                />
                                             ))}
                                         </div>
 
@@ -121,54 +123,28 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
 
                     {/* Desktop Navigation */}
                     <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
-                        <div className="flex h-full items-stretch space-x-2">
+                        <div className="flex h-full items-stretch space-x-6">
                             {filteredNavItems.map((item, index) => (
-                                <Link
+                                <MenuItem 
                                     key={index}
-                                    href={item.href || '#'}
-                                    className={cn(
-                                        'flex h-full items-center space-x-2 font-medium',
-                                        page.url === item.href && activeItemStyles
-                                    )}
-                                >
-                                    {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
-                                    <span>{item.title}</span>
-                                </Link>
+                                    item={item}
+                                    variant="header"
+                                    isActive={page.url === item.href}
+                                />
                             ))}
                         </div>
                     </div>
 
                     <div className="ml-auto flex items-center space-x-2">
                         <div className="relative flex items-center space-x-1">
+                            {/* Botón de búsqueda comentado por no ser necesario */}
+                            {/* 
                             <Button variant="ghost" size="icon" className="group h-9 w-9 cursor-pointer">
                                 <Search className="!size-5 opacity-80 group-hover:opacity-100" />
                             </Button>
-                            <div className="hidden lg:flex">
-                                {filteredNavItems.map((item) => {
-                                    const isActive = item.href ? page.url.startsWith(item.href) : false;
-
-                                    return (
-                                        <TooltipProvider key={item.href}>
-                                            <Tooltip>
-                                                <TooltipTrigger>
-                                                    <Link
-                                                        href={item.href || '#'}
-                                                        className={cn(
-                                                            'flex h-10 w-10 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-800 hover:text-neutral-300 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100',
-                                                            isActive && activeItemStyles,
-                                                        )}
-                                                    >
-                                                        {item.icon && <Icon iconNode={item.icon} className="h-5 w-5" />}
-                                                    </Link>
-                                                </TooltipTrigger>
-                                                <TooltipContent>
-                                                    <p>{item.title}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    );
-                                })}
-                            </div>
+                            */}
+                            
+                            {/* Íconos de navegación en formato tooltip comentados ya que no son necesarios */}
                         </div>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

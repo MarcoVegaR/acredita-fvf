@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Users } from 'lucide-react';
+import { LayoutGrid, Settings, Users } from 'lucide-react';
 import AppLogo from './app-logo';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -31,7 +31,8 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
 ];
 
 const footerNavItems: NavItem[] = [
-    {
+    // Items comentados por no ser necesarios
+    /*{
         title: 'Repository',
         href: 'https://github.com/laravel/react-starter-kit',
         icon: Folder,
@@ -40,7 +41,7 @@ const footerNavItems: NavItem[] = [
         title: 'Documentation',
         href: 'https://laravel.com/docs/starter-kits',
         icon: BookOpen,
-    },
+    },*/
 ];
 
 export function AppSidebar() {

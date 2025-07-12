@@ -20,11 +20,11 @@ class CheckUserActive
             Auth::logout();
             
             if ($request->expectsJson()) {
-                return response()->json(['message' => 'Your account is inactive.'], 403);
+                return response()->json(['message' => __('auth.inactive')], 403);
             }
             
             return redirect()->route('login')
-                ->withErrors(['email' => 'Your account is inactive. Please contact the administrator.']);
+                ->withErrors(['email' => __('auth.inactive')]);
         }
 
         return $next($request);

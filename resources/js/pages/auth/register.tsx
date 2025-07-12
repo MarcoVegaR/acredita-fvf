@@ -1,3 +1,5 @@
+// Imports comentados ya que la funcionalidad de registro está deshabilitada
+/*
 import { Head, useForm } from '@inertiajs/react';
 import { LoaderCircle } from 'lucide-react';
 import { FormEventHandler } from 'react';
@@ -15,6 +17,7 @@ type RegisterForm = {
     password: string;
     password_confirmation: string;
 };
+*/
 
 // Registration functionality disabled
 /*
