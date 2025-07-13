@@ -24,5 +24,10 @@ class DatabaseSeeder extends Seeder
         
         // Call image types seeder
         $this->call(ImageTypesSeeder::class);
+        
+        // Call events and zones seeders
+        $this->call(EventsTableSeeder::class);
+        $this->call(ZonesTableSeeder::class);
+        $this->call(EventZoneSeeder::class);
     }
 }
