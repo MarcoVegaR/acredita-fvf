@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\RoleController;
@@ -114,6 +115,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:templates.set_default')
             ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
             ->name('templates.set_default');
+    });
+    
+    // Area management routes grouped by controller and permissions
+    Route::controller(AreaController::class)->group(function () {
+        Route::get('areas', 'index')
+            ->middleware('permission:areas.index')
+            ->name('areas.index');
+            
+        Route::get('areas/create', 'create')
+            ->middleware('permission:areas.create')
+            ->name('areas.create');
+            
+        Route::post('areas', 'store')
+            ->middleware('permission:areas.create')
+            ->name('areas.store');
+            
+        Route::get('areas/{area}', 'show')
+            ->middleware('permission:areas.show')
+            ->name('areas.show');
+            
+        Route::get('areas/{area}/edit', 'edit')
+            ->middleware('permission:areas.edit')
+            ->name('areas.edit');
+            
+        Route::put('areas/{area}', 'update')
+            ->middleware('permission:areas.edit')
+            ->name('areas.update');
+            
+        Route::delete('areas/{area}', 'destroy')
+            ->middleware('permission:areas.delete')
+            ->name('areas.destroy');
     });
 });
 

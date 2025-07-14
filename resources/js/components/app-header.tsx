@@ -11,7 +11,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { usePermissions } from '@/hooks/use-permissions';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Settings, Users, FileImage } from 'lucide-react';
+import { LayoutGrid, Menu, Settings, Users, FileImage, Building } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -28,6 +28,12 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         href: '/users',
         icon: Users,
         permission: 'users.index', // Requiere permiso para ver listado de usuarios
+    },
+    {
+        title: 'Áreas',
+        href: '/areas',
+        icon: Building,
+        permission: 'areas.index', // Requiere permiso para ver listado de áreas
     },
     {
         title: 'Roles',

@@ -30,6 +30,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('roles.edit', 'Editar roles');
         $this->createPermission('roles.delete', 'Eliminar roles');
 
+        // Create area management permissions
+        $this->createPermission('areas.index', 'Listar áreas');
+        $this->createPermission('areas.show', 'Ver detalles de área');
+        $this->createPermission('areas.create', 'Crear áreas');
+        $this->createPermission('areas.edit', 'Editar áreas');
+        $this->createPermission('areas.delete', 'Eliminar áreas');
+
         // Document management global permissions
         $this->createPermission('documents.view', 'Ver documentos');
         $this->createPermission('documents.upload', 'Subir documentos');
@@ -79,6 +86,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $viewerRole->givePermissionTo([
             'users.index', 'users.show',
             'roles.index', 'roles.show',
+        ]);
+        
+        // Create area_manager role with specific permissions
+        $areaManagerRole = Role::create(['name' => 'area_manager']);
+        $areaManagerRole->givePermissionTo([
+            'areas.index', 'areas.show',
+            // Otros permisos específicos para gerentes de área se pueden añadir aquí
         ]);
         
         // Create user role with minimal permissions

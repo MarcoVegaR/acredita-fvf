@@ -16,6 +16,8 @@ use App\Repositories\Zone\ZoneRepository;
 use App\Repositories\Zone\ZoneRepositoryInterface;
 use App\Repositories\Template\TemplateRepository;
 use App\Repositories\Template\TemplateRepositoryInterface;
+use App\Repositories\Area\AreaRepository;
+use App\Repositories\Area\AreaRepositoryInterface;
 
 use App\Services\User\UserService;
 use App\Services\User\UserServiceInterface;
@@ -31,6 +33,8 @@ use App\Services\Zone\ZoneService;
 use App\Services\Zone\ZoneServiceInterface;
 use App\Services\Template\TemplateService;
 use App\Services\Template\TemplateServiceInterface;
+use App\Services\Area\AreaService;
+use App\Services\Area\AreaServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -48,6 +52,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(EventRepositoryInterface::class, EventRepository::class);
         $this->app->bind(ZoneRepositoryInterface::class, ZoneRepository::class);
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
+        $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
         
         // Register services
         $this->app->bind(UserServiceInterface::class, UserService::class);
@@ -57,6 +62,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(EventServiceInterface::class, EventService::class);
         $this->app->bind(ZoneServiceInterface::class, ZoneService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
+        $this->app->bind(AreaServiceInterface::class, AreaService::class);
     }
 
     /**

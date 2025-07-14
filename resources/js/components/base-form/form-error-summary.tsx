@@ -18,19 +18,19 @@ export function FormErrorSummary({ errors, labels }: FormErrorSummaryProps) {
     <Alert 
       id="form-error-summary" 
       variant="destructive"
-      className="border-destructive/50 bg-destructive/5"
+      className="border-destructive/80 bg-red-50 dark:bg-destructive/10 shadow-sm [&>svg]:text-red-600 dark:[&>svg]:text-red-400"
     >
       <AlertCircleIcon className="h-5 w-5" />
-      <AlertTitle className="flex items-center gap-2">
+      <AlertTitle className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
         Se encontraron {errorCount} {errorCount === 1 ? 'error' : 'errores'}
       </AlertTitle>
       <AlertDescription>
-        <ul className="ml-6 mt-2 list-disc text-sm">
+        <ul className="ml-6 mt-2 list-disc text-sm marker:text-red-600 dark:marker:text-red-400">
           {errorFields.map((field) => (
             <li key={field} className="mt-1">
               <button
                 type="button"
-                className="underline hover:text-destructive focus:outline-none font-medium"
+                className="underline text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 focus:outline-none font-semibold"
                 onClick={() => {
                   // Scroll al campo con error
                   const element = document.querySelector(`[name="${field}"]`);
