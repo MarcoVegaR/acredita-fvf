@@ -63,7 +63,10 @@ class PermissionHelper
                 'users' => 'usuarios',
                 'roles' => 'roles',
                 'documents' => 'documentos',
-                'images' => 'imágenes'
+                'images' => 'imágenes',
+                'templates' => 'plantillas',
+                'events' => 'eventos',
+                'zones' => 'zonas'
                 // Añadir más recursos según sea necesario
             ];
             

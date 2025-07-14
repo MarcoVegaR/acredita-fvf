@@ -32,6 +32,13 @@ interface EventServiceInterface
     public function createEvent(array $data): Event;
     
     /**
+     * Get all active events
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAllActive();
+    
+    /**
      * Get event by ID
      *
      * @param int $id

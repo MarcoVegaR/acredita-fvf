@@ -29,5 +29,8 @@ class DatabaseSeeder extends Seeder
         $this->call(EventsTableSeeder::class);
         $this->call(ZonesTableSeeder::class);
         $this->call(EventZoneSeeder::class);
+        
+        // Call templates seeder (después de eventos y zonas)
+        $this->call(TemplatesTableSeeder::class);
     }
 }

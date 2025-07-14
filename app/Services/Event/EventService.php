@@ -89,6 +89,15 @@ class EventService implements EventServiceInterface
     {
         return $this->eventRepository->getCountsByStatus();
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getAllActive()
+    {
+        // Obtener todos los eventos activos usando el método específico del repositorio
+        return $this->eventRepository->getActive();
+    }
 
     /**
      * {@inheritdoc}

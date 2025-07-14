@@ -3,6 +3,7 @@
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -73,6 +74,46 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('{module}/{entity_id}/images/{uuid}', 'destroy')
             ->middleware('auth')
             ->name('images.destroy');
+    });
+    
+    // Template management routes grouped by controller and permissions
+    Route::controller(TemplateController::class)->group(function () {
+        Route::get('templates', 'index')
+            ->middleware('permission:templates.index')
+            ->name('templates.index');
+            
+        Route::get('templates/create', 'create')
+            ->middleware('permission:templates.create')
+            ->name('templates.create');
+            
+        Route::post('templates', 'store')
+            ->middleware('permission:templates.create')
+            ->name('templates.store');
+            
+        Route::get('templates/{template}', 'show')
+            ->middleware('permission:templates.show')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.show');
+            
+        Route::get('templates/{template}/edit', 'edit')
+            ->middleware('permission:templates.edit')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.edit');
+            
+        Route::put('templates/{template}', 'update')
+            ->middleware('permission:templates.edit')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.update');
+            
+        Route::delete('templates/{template}', 'destroy')
+            ->middleware('permission:templates.delete')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.destroy');
+            
+        Route::post('templates/{template}/set-default', 'setAsDefault')
+            ->middleware('permission:templates.set_default')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.set_default');
     });
 });
 

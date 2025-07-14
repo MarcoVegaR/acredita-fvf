@@ -51,6 +51,14 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('images.view.users', 'Ver imágenes de usuarios');
         $this->createPermission('images.upload.users', 'Subir imágenes de usuarios');
         $this->createPermission('images.delete.users', 'Eliminar imágenes de usuarios');
+        
+        // Template management permissions
+        $this->createPermission('templates.index', 'Listar plantillas');
+        $this->createPermission('templates.show', 'Ver detalles de plantilla');
+        $this->createPermission('templates.create', 'Crear plantillas');
+        $this->createPermission('templates.edit', 'Editar plantillas');
+        $this->createPermission('templates.delete', 'Eliminar plantillas');
+        $this->createPermission('templates.set_default', 'Establecer plantilla predeterminada');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Users } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Settings, Users, FileImage } from 'lucide-react';
 import React from 'react';
 
 interface MenuItemProps {
@@ -30,8 +30,16 @@ export function MenuItem({ item, isActive = false, variant = 'header', className
     className
   );
 
-  // Renderizar el icono apropiado basado en el título
+  // Renderizar el icono apropiado
   const getIcon = () => {
+    // Si el item tiene un icono definido como componente React, usarlo
+    if (item.icon && typeof item.icon === 'function') {
+      // TypeScript: Tratar el item.icon como un componente React (Function Component o Class Component)
+      const IconComponent = item.icon;
+      return <IconComponent className={iconClass} />;
+    }
+    
+    // Fallback por si no hay icono definido
     if (!item.title) return null;
     
     switch(item.title) {
@@ -41,6 +49,8 @@ export function MenuItem({ item, isActive = false, variant = 'header', className
         return <Users className={iconClass} />;
       case 'Roles':
         return <Settings className={iconClass} />;
+      case 'Plantillas':
+        return <FileImage className={iconClass} />;
       case 'Repository':
         return <Folder className={iconClass} />;
       case 'Documentation':

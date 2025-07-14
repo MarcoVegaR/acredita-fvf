@@ -136,6 +136,59 @@ export function BaseForm<T extends Record<string, any>>({
     try {
       setIsSubmitting(true);
       
+      // Log detallado para depuración
+      console.log('Datos del formulario antes de procesar:', data);
+      
+      // Verificar si hay un campo layout_meta y examinarlo
+      if ('layout_meta' in data) {
+        console.log('Contenido de layout_meta:', data.layout_meta);
+        console.log('Tipos de datos en layout_meta:');
+        
+        // Examinar cada propiedad en layout_meta
+        const layoutMeta = data.layout_meta as Record<string, any>;
+        Object.entries(layoutMeta).forEach(([key, value]) => {
+          const valueType = typeof value;
+          console.log(`  ${key}: ${valueType}`, value);
+          
+          // Si es un objeto, examinar sus propiedades
+          if (valueType === 'object' && value !== null) {
+            if (key === 'rect_photo' || key === 'rect_qr') {
+              const rect = value as Record<string, any>;
+              console.log(`    Propiedades de ${key}:`, {
+                x: rect.x, 
+                y: rect.y, 
+                width: rect.width, 
+                height: rect.height,
+                tipos: {
+                  x: typeof rect.x,
+                  y: typeof rect.y,
+                  width: typeof rect.width,
+                  height: typeof rect.height
+                }
+              });
+            }
+            if (key === 'text_blocks' && Array.isArray(value)) {
+              console.log(`    text_blocks es un array con ${value.length} elementos`);
+              value.forEach((block, index) => {
+                console.log(`      Bloque ${index}:`, {
+                  id: block.id,
+                  x: block.x,
+                  y: block.y,
+                  width: block.width,
+                  height: block.height,
+                  tipos: {
+                    x: typeof block.x,
+                    y: typeof block.y,
+                    width: typeof block.width,
+                    height: typeof block.height
+                  }
+                });
+              });
+            }
+          }
+        });
+      }
+      
       // Procesar los datos antes de enviar si se especifica beforeSubmit
       let processedData = { ...data };
       if (options.beforeSubmit) {

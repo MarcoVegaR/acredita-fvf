@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { LayoutGrid, Settings, Users } from 'lucide-react';
+import { LayoutGrid, Settings, Users, FileImage } from 'lucide-react';
 import AppLogo from './app-logo';
 import { usePermissions } from '@/hooks/use-permissions';
 
@@ -27,6 +27,12 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         href: '/roles',
         icon: Settings,
         permission: 'roles.index', // Requiere permiso para ver listado de roles
+    },
+    {
+        title: 'Plantillas',
+        href: '/templates',
+        icon: FileImage,
+        permission: 'templates.index', // Requiere permiso para ver listado de plantillas
     },
 ];
 

@@ -10,6 +10,13 @@ use App\Repositories\Document\DocumentRepository;
 use App\Repositories\Document\DocumentRepositoryInterface;
 use App\Repositories\Image\ImageRepository;
 use App\Repositories\Image\ImageRepositoryInterface;
+use App\Repositories\Event\EventRepository;
+use App\Repositories\Event\EventRepositoryInterface;
+use App\Repositories\Zone\ZoneRepository;
+use App\Repositories\Zone\ZoneRepositoryInterface;
+use App\Repositories\Template\TemplateRepository;
+use App\Repositories\Template\TemplateRepositoryInterface;
+
 use App\Services\User\UserService;
 use App\Services\User\UserServiceInterface;
 use App\Services\Role\RoleService;
@@ -18,6 +25,12 @@ use App\Services\Document\DocumentService;
 use App\Services\Document\DocumentServiceInterface;
 use App\Services\Image\ImageService;
 use App\Services\Image\ImageServiceInterface;
+use App\Services\Event\EventService;
+use App\Services\Event\EventServiceInterface;
+use App\Services\Zone\ZoneService;
+use App\Services\Zone\ZoneServiceInterface;
+use App\Services\Template\TemplateService;
+use App\Services\Template\TemplateServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -32,12 +45,18 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(RoleRepositoryInterface::class, RoleRepository::class);
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
         $this->app->bind(ImageRepositoryInterface::class, ImageRepository::class);
+        $this->app->bind(EventRepositoryInterface::class, EventRepository::class);
+        $this->app->bind(ZoneRepositoryInterface::class, ZoneRepository::class);
+        $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         
         // Register services
         $this->app->bind(UserServiceInterface::class, UserService::class);
         $this->app->bind(RoleServiceInterface::class, RoleService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(ImageServiceInterface::class, ImageService::class);
+        $this->app->bind(EventServiceInterface::class, EventService::class);
+        $this->app->bind(ZoneServiceInterface::class, ZoneService::class);
+        $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
     }
 
     /**
