@@ -66,6 +66,11 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('templates.edit', 'Editar plantillas');
         $this->createPermission('templates.delete', 'Eliminar plantillas');
         $this->createPermission('templates.set_default', 'Establecer plantilla predeterminada');
+        
+        // Provider management permissions
+        $this->createPermission('provider.view', 'Ver proveedores');
+        $this->createPermission('provider.manage', 'Gestionar proveedores');
+        $this->createPermission('provider.manage_own_area', 'Gestionar proveedores del área');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

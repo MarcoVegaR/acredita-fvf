@@ -22,6 +22,7 @@ class Area extends Model
         'name',
         'description',
         'active',
+        'manager_user_id',
     ];
 
     /**
@@ -81,5 +82,15 @@ class Area extends Model
     {
         // Esta relación se implementará cuando se cree el módulo de proveedores
         // return $this->hasMany(Provider::class);
+    }
+    
+    /**
+     * Get the manager (user) assigned to this area.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_user_id');
     }
 }

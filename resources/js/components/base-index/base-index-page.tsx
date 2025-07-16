@@ -128,6 +128,7 @@ export interface BaseIndexOptions<T extends Entity> {
       handler: (row: T) => void;
       icon?: React.ReactNode;
       permission?: string | string[];
+      showCondition?: (row: T) => boolean;
     }>;
   };
 }

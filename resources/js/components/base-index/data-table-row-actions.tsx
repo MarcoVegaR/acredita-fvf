@@ -44,6 +44,9 @@ interface DataTableRowActionsProps<TData> {
       label: string;
       icon?: React.ReactNode;
       handler: (row: TData) => void;
+      permission?: string | string[];
+      // Nueva propiedad para condicionalmente mostrar/ocultar acciones basadas en datos de la fila
+      showCondition?: (row: TData) => boolean;
     }>;
   };
 }
@@ -105,20 +108,36 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
           )}
           
           {actions.custom && actions.custom.length > 0 && (
-            <>
-              <DropdownMenuSeparator />
-              {actions.custom.map((customAction, index) => (
-                <DropdownMenuItem
-                  key={index}
-                  onClick={() => customAction.handler(row)}
-                >
-                  {customAction.icon && (
-                    <span className="mr-2">{customAction.icon}</span>
-                  )}
-                  <span>{customAction.label}</span>
-                </DropdownMenuItem>
-              ))}
-            </>
+            // Filtramos las acciones personalizadas basadas en showCondition si existe
+            actions.custom.filter(action => 
+              // Si hay un showCondition, evalúarlo con la fila actual; si no, mostrar siempre
+              !action.showCondition || action.showCondition(row)
+            ).length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                {actions.custom
+                  .filter(action => !action.showCondition || action.showCondition(row))
+                  .map((customAction, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={() => {
+                        // Cerrar el menú desplegable antes de ejecutar la acción personalizada
+                        document.body.click();
+                        // Pequeño retraso para asegurar que el menú se cierre primero
+                        setTimeout(() => {
+                          customAction.handler(row);
+                        }, 100);
+                      }}
+                    >
+                      {customAction.icon && (
+                        <span className="mr-2">{customAction.icon}</span>
+                      )}
+                      <span>{customAction.label}</span>
+                    </DropdownMenuItem>
+                  ))
+                }
+              </>
+            )
           )}
         </DropdownMenuContent>
       </DropdownMenu>

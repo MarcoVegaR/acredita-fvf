@@ -6,6 +6,7 @@ use App\Http\Requests\User\StoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\DeleteUserRequest;
 use App\Models\User;
+use App\Models\Area;
 use App\Services\User\UserServiceInterface;
 use App\Services\Document\DocumentServiceInterface;
 use App\Helpers\PermissionHelper;
@@ -263,6 +264,47 @@ class UserController extends BaseController
         } catch (\Throwable $e) {
             DB::rollBack();
             return $this->handleException($e, 'Eliminar usuario');
+        }
+    }
+    
+    /**
+     * Obtener usuarios disponibles para ser gerentes de área.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getAvailableManagers(Request $request)
+    {
+        try {
+            $exceptAreaId = $request->input('except_area_id');
+            
+            $query = User::role('area_manager')
+                ->where('active', true);
+                
+            // Si se proporciona un ID de área, incluir su gerente actual (si tiene)
+            if ($exceptAreaId) {
+                $area = Area::find($exceptAreaId);
+                if ($area && $area->manager_user_id) {
+                    $query->where(function($q) use ($area) {
+                        $q->where('id', $area->manager_user_id)
+                          ->orWhereDoesntHave('managedArea');
+                    });
+                } else {
+                    $query->whereDoesntHave('managedArea');
+                }
+            } else {
+                // Solo usuarios que no son gerentes de ningún área
+                $query->whereDoesntHave('managedArea');
+            }
+            
+            $managers = $query->get(['id', 'name', 'email']);
+            
+            return response()->json($managers);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error' => 'Error al obtener gerentes disponibles',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 }

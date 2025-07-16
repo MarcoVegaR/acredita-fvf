@@ -57,7 +57,7 @@ class AreaService implements AreaServiceInterface
         
         return $this->areaRepository->paginate(
             $perPage,
-            [], // No hay relaciones a cargar por ahora
+            ['manager'], // Cargar la relación con el manager
             $filters,
             $sortOptions
         );

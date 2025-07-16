@@ -3,6 +3,7 @@
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\UserController;
@@ -27,6 +28,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('users/{user}/edit', 'edit')->middleware('permission:users.edit')->name('users.edit');
         Route::put('users/{user}', 'update')->middleware('permission:users.edit')->name('users.update');
         Route::delete('users/{user}', 'destroy')->middleware('permission:users.delete')->name('users.destroy');
+        
+    });
+    
+    // Rutas para gerentes de área (separada del controlador de usuarios para evitar conflictos de vinculación)
+    Route::controller(\App\Http\Controllers\AreaManagerController::class)->group(function () {
+        Route::get('area-managers/available', 'getAvailableManagers')
+            ->middleware('permission:areas.edit')
+            ->name('area-managers.available');
     });
     
     // Roles routes grouped by controller and permissions
@@ -146,6 +155,46 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('areas/{area}', 'destroy')
             ->middleware('permission:areas.delete')
             ->name('areas.destroy');
+            
+        // Ruta para asignar gerente a un área
+        Route::post('areas/{area}/assign-manager', 'assignManager')
+            ->middleware('permission:areas.edit')
+            ->name('areas.assign-manager');
+    });
+    
+    // Provider management routes grouped by controller and permissions
+    Route::controller(ProviderController::class)->group(function () {
+        Route::get('providers', 'index')
+            ->middleware('permission:provider.view')
+            ->name('providers.index');
+            
+        Route::get('providers/create', 'create')
+            ->middleware('permission:provider.manage')
+            ->name('providers.create');
+            
+        Route::post('providers', 'store')
+            ->middleware('permission:provider.manage')
+            ->name('providers.store');
+            
+        Route::get('providers/{provider:uuid}', 'show')
+            ->middleware('can:view,provider')
+            ->name('providers.show');
+            
+        Route::get('providers/{provider:uuid}/edit', 'edit')
+            ->middleware('can:update,provider')
+            ->name('providers.edit');
+            
+        Route::put('providers/{provider:uuid}', 'update')
+            ->middleware('can:update,provider')
+            ->name('providers.update');
+            
+        Route::patch('providers/{provider:uuid}/toggle-active', 'toggleActive')
+            ->middleware('can:toggleActive,provider')
+            ->name('providers.toggle_active');
+            
+        Route::post('providers/{provider:uuid}/reset-password', 'resetPassword')
+            ->middleware('can:resetPassword,provider')
+            ->name('providers.reset_password');
     });
 });
 

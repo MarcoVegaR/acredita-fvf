@@ -72,5 +72,23 @@ class User extends Authenticatable
         return $query->where('active', false);
     }
     
-
+    /**
+     * Get the provider associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function provider()
+    {
+        return $this->hasOne(Provider::class);
+    }
+    
+    /**
+     * Get the area that this user manages (if the user is an area manager).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function managedArea()
+    {
+        return $this->hasOne(Area::class, 'manager_user_id');
+    }
 }

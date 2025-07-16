@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Users, FileImage, Building } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Settings, Users, FileImage, Building, Truck } from 'lucide-react';
 import React from 'react';
 
 interface MenuItemProps {
@@ -49,6 +49,8 @@ export function MenuItem({ item, isActive = false, variant = 'header', className
         return <Users className={iconClass} />;
       case 'Áreas':
         return <Building className={iconClass} />;
+      case 'Proveedores':
+        return <Truck className={iconClass} />;
       case 'Roles':
         return <Settings className={iconClass} />;
       case 'Plantillas':

@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('code', 12);
             $table->string('name', 100);
             $table->text('description')->nullable();
+            $table->foreignId('manager_user_id')->nullable()->unique()->constrained('users')->nullOnDelete();
             $table->boolean('active')->default(true);
             $table->timestamps();
             $table->softDeletes();

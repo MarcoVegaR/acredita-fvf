@@ -69,6 +69,9 @@ export interface BaseFormOptions<T> {
   beforeSubmit?: (data: T) => T | Promise<T>;
   onCancel?: () => void;
   
+  // Datos adicionales para pasar al formulario
+  additionalProps?: Record<string, any>;
+  
   // Acciones
   actions?: {
     save: ButtonConfig & { 
