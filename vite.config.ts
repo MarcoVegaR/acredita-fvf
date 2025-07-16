@@ -19,7 +19,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy/dist/react.es.js'),
+            // Usar el paquete npm ziggy-js directamente
             '@': resolve(__dirname, 'resources/js'),
         },
     },

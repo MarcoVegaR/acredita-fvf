@@ -38,7 +38,15 @@ export default [
         },
     },
     {
-        ignores: ['vendor', 'node_modules', 'public', 'bootstrap/ssr', 'tailwind.config.js'],
+        ignores: [
+            'vendor', 
+            'node_modules', 
+            'public', 
+            'bootstrap/ssr', 
+            'tailwind.config.js',
+            'resources/js/ziggy.js',     // Archivo generado por Ziggy
+            'resources/js/ziggy*.js'     // Cualquier archivo generado por Ziggy en el futuro
+        ],
     },
     prettier, // Turn off all rules that might conflict with Prettier
     // Special rule overrides for specific patterns

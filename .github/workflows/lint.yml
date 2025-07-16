@@ -29,6 +29,9 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           npm install
 
+      - name: Generate Ziggy Routes
+        run: php artisan ziggy:generate
+
       - name: Run Pint
         run: vendor/bin/pint
 
@@ -37,6 +40,9 @@ jobs:
 
       - name: Lint Frontend
         run: npm run lint
+
+      - name: Test Build
+        run: npm run build
 
       # - name: Commit Changes
       #   uses: stefanzweifel/git-auto-commit-action@v5
