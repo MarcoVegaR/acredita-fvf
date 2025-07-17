@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\ProviderController;
 use App\Http\Controllers\RoleController;
@@ -195,6 +196,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('providers/{provider:uuid}/reset-password', 'resetPassword')
             ->middleware('can:resetPassword,provider')
             ->name('providers.reset_password');
+    });
+    
+    // Employee management routes grouped by controller and permissions
+    Route::controller(EmployeeController::class)->group(function () {
+        Route::get('employees', 'index')
+            ->middleware('permission:employee.view')
+            ->name('employees.index');
+            
+        Route::get('employees/create', 'create')
+            ->middleware('permission:employee.manage|employee.manage_own_provider')
+            ->name('employees.create');
+            
+        Route::post('employees', 'store')
+            ->middleware('permission:employee.manage|employee.manage_own_provider')
+            ->name('employees.store');
+            
+        Route::get('employees/{employee}', 'show')
+            ->middleware('can:view,employee')
+            ->name('employees.show');
+            
+        Route::get('employees/{employee}/edit', 'edit')
+            ->middleware('can:update,employee')
+            ->name('employees.edit');
+            
+        Route::put('employees/{employee}', 'update')
+            ->middleware('can:update,employee')
+            ->name('employees.update');
+            
+        Route::patch('employees/{employee}/toggle-active', 'toggleActive')
+            ->middleware('can:toggleActive,employee')
+            ->name('employees.toggle_active');
     });
 });
 

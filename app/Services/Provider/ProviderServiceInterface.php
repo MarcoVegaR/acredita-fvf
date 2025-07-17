@@ -75,4 +75,11 @@ interface ProviderServiceInterface
      * @return array
      */
     public function getProviderForDisplay(string $uuid): array;
+    
+    /**
+     * Get accessible providers for the current user
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAccessibleProviders(): \Illuminate\Database\Eloquent\Collection;
 }

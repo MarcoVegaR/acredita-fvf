@@ -71,6 +71,11 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('provider.view', 'Ver proveedores');
         $this->createPermission('provider.manage', 'Gestionar proveedores');
         $this->createPermission('provider.manage_own_area', 'Gestionar proveedores del área');
+        
+        // Employee management permissions
+        $this->createPermission('employee.view', 'Ver empleados de proveedores');
+        $this->createPermission('employee.manage', 'Gestionar empleados de proveedores');
+        $this->createPermission('employee.manage_own_provider', 'Gestionar empleados del propio proveedor');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();

@@ -36,6 +36,17 @@ abstract class BaseRepository implements RepositoryInterface
     {
         $this->query = $this->model->newQuery();
     }
+    
+    /**
+     * Get a new query builder instance
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function query()
+    {
+        $this->resetQuery();
+        return $this->query;
+    }
 
     /**
      * {@inheritdoc}

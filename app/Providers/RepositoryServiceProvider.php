@@ -20,6 +20,8 @@ use App\Repositories\Area\AreaRepository;
 use App\Repositories\Area\AreaRepositoryInterface;
 use App\Repositories\Provider\EloquentProviderRepository;
 use App\Repositories\Provider\ProviderRepositoryInterface;
+use App\Repositories\Employee\EmployeeRepository;
+use App\Repositories\Employee\EmployeeRepositoryInterface;
 
 use App\Services\User\UserService;
 use App\Services\User\UserServiceInterface;
@@ -39,6 +41,8 @@ use App\Services\Area\AreaService;
 use App\Services\Area\AreaServiceInterface;
 use App\Services\Provider\ProviderService;
 use App\Services\Provider\ProviderServiceInterface;
+use App\Services\Employee\EmployeeService;
+use App\Services\Employee\EmployeeServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -58,6 +62,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
         $this->app->bind(ProviderRepositoryInterface::class, EloquentProviderRepository::class);
+        $this->app->bind(EmployeeRepositoryInterface::class, EmployeeRepository::class);
         
         // Register services
         $this->app->bind(UserServiceInterface::class, UserService::class);
@@ -69,6 +74,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(AreaServiceInterface::class, AreaService::class);
         $this->app->bind(ProviderServiceInterface::class, ProviderService::class);
+        $this->app->bind(EmployeeServiceInterface::class, EmployeeService::class);
     }
 
     /**

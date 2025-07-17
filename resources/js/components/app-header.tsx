@@ -11,11 +11,11 @@ import { useInitials } from '@/hooks/use-initials';
 import { usePermissions } from '@/hooks/use-permissions';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck } from 'lucide-react';
+import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck, UserRound } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
-// Define los elementos de navegación con sus permisos requeridos
+// Define los elementos de navegación con sus permisos requeridos siguiendo una estructura lógica
 const mainNavItems: (NavItem & { permission?: string })[] = [
     {
         title: 'Dashboard',
@@ -24,34 +24,67 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         // No requiere permiso especial
     },
     {
-        title: 'Usuarios',
-        href: '/users',
-        icon: Users,
-        permission: 'users.index', // Requiere permiso para ver listado de usuarios
-    },
-    {
-        title: 'Áreas',
-        href: '/areas',
-        icon: Building,
-        permission: 'areas.index', // Requiere permiso para ver listado de áreas
-    },
-    {
-        title: 'Proveedores',
-        href: '/providers',
-        icon: Truck,
-        permission: 'provider.view', // Requiere permiso para ver listado de proveedores
-    },
-    {
-        title: 'Roles',
-        href: '/roles',
+        title: 'Administración',
         icon: Settings,
-        permission: 'roles.index', // Requiere permiso para ver listado de roles
+        // Se mostrará si el usuario tiene alguno de los permisos de los subitems
+        items: [
+            {
+                title: 'Usuarios',
+                href: '/users',
+                icon: Users,
+                permission: 'users.index',
+            },
+            {
+                title: 'Roles',
+                href: '/roles',
+                icon: Settings,
+                permission: 'roles.index',
+            },
+        ],
     },
     {
-        title: 'Plantillas',
-        href: '/templates',
+        title: 'Entidades',
+        icon: Building,
+        // Agrupación de elementos relacionados con entidades organizativas
+        items: [
+            {
+                title: 'Áreas',
+                href: '/areas',
+                icon: Building,
+                permission: 'areas.index',
+            },
+            {
+                title: 'Proveedores',
+                href: '/providers',
+                icon: Truck,
+                permission: 'provider.view',
+            },
+        ],
+    },
+    {
+        title: 'Personal',
+        icon: UserRound,
+        // Elementos relacionados con personas
+        items: [
+            {
+                title: 'Empleados',
+                href: '/employees',
+                icon: UserRound,
+                permission: 'employee.view',
+            },
+        ],
+    },
+    {
+        title: 'Documentación',
         icon: FileImage,
-        permission: 'templates.index', // Requiere permiso para ver listado de plantillas
+        items: [
+            {
+                title: 'Plantillas',
+                href: '/templates',
+                icon: FileImage,
+                permission: 'templates.index',
+            },
+        ],
     },
 ];
 
@@ -140,14 +173,15 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                     </Link>
 
                     {/* Desktop Navigation */}
-                    <div className="ml-6 hidden h-full items-center space-x-6 lg:flex">
-                        <div className="flex h-full items-stretch space-x-6">
+                    <div className="ml-6 hidden h-full items-center space-x-4 lg:flex">
+                        <div className="flex h-full items-stretch space-x-2">
                             {filteredNavItems.map((item, index) => (
                                 <MenuItem 
                                     key={index}
                                     item={item}
                                     variant="header"
                                     isActive={page.url === item.href}
+                                    className="text-base"
                                 />
                             ))}
                         </div>

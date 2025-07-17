@@ -66,7 +66,8 @@ class PermissionHelper
                 'images' => 'imágenes',
                 'templates' => 'plantillas',
                 'events' => 'eventos',
-                'zones' => 'zonas'
+                'zones' => 'zonas',
+                'employees' => 'empleados'
                 // Añadir más recursos según sea necesario
             ];
             

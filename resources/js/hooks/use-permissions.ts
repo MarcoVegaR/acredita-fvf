@@ -33,12 +33,22 @@ export function usePermissions() {
 
   /**
    * Filtra un array de elementos basado en los permisos requeridos
-   * @param items Array de elementos con propiedad permission opcional
+   * @param items Array de elementos con propiedad permission opcional y posibles subitems
    * @returns Array filtrado con solo los elementos a los que el usuario tiene acceso
    */
-  const filterByPermission = useCallback(<T extends { permission?: string }>(items: T[]): T[] => {
-    return items.filter(item => hasPermission(item.permission));
+  const filterByPermission = useCallback(<T extends { permission?: string; items?: T[] }>(items: T[]): T[] => {
+    return items.filter(item => {
+      // Si el elemento tiene subítems, verificar si al menos uno tiene permiso
+      if (item.items && item.items.length > 0) {
+        const filteredSubItems = item.items.filter(subItem => hasPermission(subItem.permission));
+        return filteredSubItems.length > 0;
+      }
+      
+      // Si no tiene subitems, verificar el permiso directo del elemento
+      return hasPermission(item.permission);
+    });
   }, [hasPermission]);
+  
 
   return {
     hasPermission,

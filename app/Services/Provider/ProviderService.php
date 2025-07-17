@@ -211,4 +211,40 @@ class ProviderService implements ProviderServiceInterface
             'canResetPassword' => $provider->type === 'external'
         ];
     }
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function getAccessibleProviders(): \Illuminate\Database\Eloquent\Collection
+    {
+        $user = auth()->user();
+        
+        if (!$user) {
+            return collect();
+        }
+        
+        // Admin can access all providers
+        if ($user->hasRole('admin')) {
+            return $this->providerRepository->all();
+        }
+        
+        // Area manager can access providers in their areas
+        if ($user->hasRole('area_manager')) {
+            // Get the areas managed by this user
+            $managedAreas = $user->managedAreas()->pluck('id')->toArray();
+            
+            // Get providers from these areas
+            return $this->providerRepository->findByAreaIds($managedAreas);
+        }
+        
+        // Provider users can only access their own provider
+        if ($user->hasRole('provider')) {
+            $provider = $user->provider;
+            if ($provider) {
+                return collect([$provider]);
+            }
+        }
+        
+        return collect();
+    }
 }
