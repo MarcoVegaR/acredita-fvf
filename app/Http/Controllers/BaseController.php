@@ -87,7 +87,7 @@ class BaseController extends Controller
             ? $exception->getMessage() 
             : 'Ha ocurrido un error al procesar tu solicitud.';
             
-        return back()->withErrors(['message' => $message]);
+        return back()->with('error', $message);
     }
     
     /**

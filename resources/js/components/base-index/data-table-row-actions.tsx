@@ -47,6 +47,9 @@ interface DataTableRowActionsProps<TData> {
       permission?: string | string[];
       // Nueva propiedad para condicionalmente mostrar/ocultar acciones basadas en datos de la fila
       showCondition?: (row: TData) => boolean;
+      // Soporte para confirmación en acciones personalizadas
+      confirmMessage?: string | ((row: TData) => string);
+      confirmTitle?: string;
     }>;
   };
 }
@@ -57,6 +60,21 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
 }: DataTableRowActionsProps<TData>) {
   // Estado para controlar la visibilidad del diálogo de confirmación de eliminación
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  
+  // Estados para controlar las confirmaciones de acciones personalizadas
+  const [customConfirmStates, setCustomConfirmStates] = React.useState<{[key: number]: boolean}>({});
+  const [pendingCustomAction, setPendingCustomAction] = React.useState<{
+    index: number;
+    action: {
+      label: string;
+      icon?: React.ReactNode;
+      handler: (row: TData) => void;
+      permission?: string | string[];
+      showCondition?: (row: TData) => boolean;
+      confirmMessage?: string | ((row: TData) => string);
+      confirmTitle?: string;
+    };
+  } | null>(null);
   
   // Remover los console.log de depuración que ya no necesitamos
   
@@ -125,7 +143,14 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
                         document.body.click();
                         // Pequeño retraso para asegurar que el menú se cierre primero
                         setTimeout(() => {
-                          customAction.handler(row);
+                          // Si la acción tiene confirmMessage, mostrar diálogo de confirmación
+                          if (customAction.confirmMessage) {
+                            setPendingCustomAction({index, action: customAction});
+                            setCustomConfirmStates(prev => ({...prev, [index]: true}));
+                          } else {
+                            // Ejecutar directamente si no hay confirmación
+                            customAction.handler(row);
+                          }
                         }, 100);
                       }}
                     >
@@ -201,6 +226,73 @@ export function DataTableRowActions<TData extends { id?: number | string }>({
                 }}
               >
                 Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      
+      {/* Diálogos de confirmación para acciones personalizadas */}
+      {pendingCustomAction && (
+        <AlertDialog 
+          open={customConfirmStates[pendingCustomAction.index] || false}
+          onOpenChange={(open) => {
+            if (!open) {
+              setCustomConfirmStates(prev => ({...prev, [pendingCustomAction.index]: false}));
+              setPendingCustomAction(null);
+            }
+            // Si el diálogo se cierra, desenfocar elementos activos
+            if (!open && document.activeElement instanceof HTMLElement) {
+              document.activeElement.blur();
+              setTimeout(() => document.body.focus(), 50);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {pendingCustomAction.action.confirmTitle || '¿Estás seguro?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {typeof pendingCustomAction.action.confirmMessage === 'function' 
+                  ? pendingCustomAction.action.confirmMessage(row)
+                  : pendingCustomAction.action.confirmMessage
+                }
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel 
+                onClick={() => {
+                  setCustomConfirmStates(prev => ({...prev, [pendingCustomAction.index]: false}));
+                  setPendingCustomAction(null);
+                }}
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  try {
+                    // Ejecutar la acción personalizada
+                    pendingCustomAction.action.handler(row);
+                    
+                    // Cerrar el diálogo
+                    setCustomConfirmStates(prev => ({...prev, [pendingCustomAction.index]: false}));
+                    setPendingCustomAction(null);
+                    
+                    // Medidas de seguridad para gestionar el foco
+                    if (document.activeElement instanceof HTMLElement) {
+                      document.activeElement.blur();
+                    }
+                    
+                    setTimeout(() => {
+                      document.body.focus();
+                    }, 50);
+                  } catch (error) {
+                    console.error('Error en acción personalizada:', error);
+                  }
+                }}
+              >
+                Confirmar
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

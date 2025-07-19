@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Employee extends Model
@@ -43,7 +44,7 @@ class Employee extends Model
      *
      * @var array
      */
-    protected $appends = ['provider_name'];
+    protected $appends = ['provider_name', 'name', 'document_id'];
 
     /**
      * Get the provider that the employee belongs to.
@@ -51,6 +52,14 @@ class Employee extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(Provider::class);
+    }
+    
+    /**
+     * Get the accreditation requests for the employee.
+     */
+    public function accreditationRequests(): HasMany
+    {
+        return $this->hasMany(AccreditationRequest::class);
     }
 
     /**
@@ -81,6 +90,26 @@ class Employee extends Model
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+    
+    /**
+     * Get the employee's name (alias for full_name).
+     *
+     * @return string
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->getFullNameAttribute();
+    }
+    
+    /**
+     * Get the employee's document ID (alias for document_number).
+     *
+     * @return string
+     */
+    public function getDocumentIdAttribute(): string
+    {
+        return $this->document_number;
     }
 
     /**

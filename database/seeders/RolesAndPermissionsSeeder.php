@@ -76,6 +76,18 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('employee.view', 'Ver empleados de proveedores');
         $this->createPermission('employee.manage', 'Gestionar empleados de proveedores');
         $this->createPermission('employee.manage_own_provider', 'Gestionar empleados del propio proveedor');
+        
+        // Accreditation Request permissions
+        $this->createPermission('accreditation_request.index', 'Listar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.view', 'Ver solicitud de acreditación');
+        $this->createPermission('accreditation_request.create', 'Crear solicitudes de acreditación');
+        $this->createPermission('accreditation_request.update', 'Editar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.delete', 'Eliminar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.submit', 'Enviar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.approve', 'Aprobar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.reject', 'Rechazar solicitudes de acreditación');
+        $this->createPermission('accreditation_request.return', 'Devolver solicitudes a borrador');
+        $this->createPermission('accreditation_request.review', 'Dar visto bueno a solicitudes');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
@@ -99,10 +111,26 @@ class RolesAndPermissionsSeeder extends Seeder
         ]);
         
         // Create area_manager role with specific permissions
+        // Puede dar visto bueno, cancelar solicitudes, ver todas las de su área
         $areaManagerRole = Role::create(['name' => 'area_manager']);
         $areaManagerRole->givePermissionTo([
             'areas.index', 'areas.show',
-            // Otros permisos específicos para gerentes de área se pueden añadir aquí
+            'accreditation_request.index', 'accreditation_request.view',
+            'accreditation_request.create', 'accreditation_request.update', 
+            'accreditation_request.delete', 'accreditation_request.submit',
+            'accreditation_request.review', 'accreditation_request.return'
+            // Los permisos se filtran por área a través de la policy
+        ]);
+        
+        // Create provider role with permissions to manage their own employees and requests
+        // Solo puede crear borradores, editarlos, eliminarlos y enviarlos
+        $providerRole = Role::create(['name' => 'provider']);
+        $providerRole->givePermissionTo([
+            'employee.view', 'employee.manage_own_provider',
+            'accreditation_request.index', 'accreditation_request.view',
+            'accreditation_request.create', 'accreditation_request.update',
+            'accreditation_request.delete', 'accreditation_request.submit'
+            // Los permisos se filtran por proveedor a través de la policy
         ]);
         
         // Create user role with minimal permissions

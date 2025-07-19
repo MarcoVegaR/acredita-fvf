@@ -43,6 +43,10 @@ use App\Services\Provider\ProviderService;
 use App\Services\Provider\ProviderServiceInterface;
 use App\Services\Employee\EmployeeService;
 use App\Services\Employee\EmployeeServiceInterface;
+use App\Repositories\AccreditationRequest\AccreditationRequestRepository;
+use App\Repositories\AccreditationRequest\AccreditationRequestRepositoryInterface;
+use App\Services\AccreditationRequest\AccreditationRequestService;
+use App\Services\AccreditationRequest\AccreditationRequestServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -63,6 +67,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
         $this->app->bind(ProviderRepositoryInterface::class, EloquentProviderRepository::class);
         $this->app->bind(EmployeeRepositoryInterface::class, EmployeeRepository::class);
+        $this->app->bind(AccreditationRequestRepositoryInterface::class, AccreditationRequestRepository::class);
         
         // Register services
         $this->app->bind(UserServiceInterface::class, UserService::class);
@@ -75,6 +80,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(AreaServiceInterface::class, AreaService::class);
         $this->app->bind(ProviderServiceInterface::class, ProviderService::class);
         $this->app->bind(EmployeeServiceInterface::class, EmployeeService::class);
+        $this->app->bind(AccreditationRequestServiceInterface::class, AccreditationRequestService::class);
     }
 
     /**

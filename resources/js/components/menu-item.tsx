@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Settings, Users, FileImage, Building, Truck, UserRound, ChevronDown } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, Settings, Users, FileImage, Building, Truck, UserRound, ChevronDown, TicketCheck } from 'lucide-react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -52,6 +52,8 @@ export function MenuItem({ item, isActive = false, variant = 'header', className
         return <Users className={iconClass} />;
       case 'Áreas':
         return <Building className={iconClass} />;
+      case 'Acreditaciones':
+        return <TicketCheck className={iconClass} />;
       case 'Proveedores':
         return <Truck className={iconClass} />;
       case 'Empleados':

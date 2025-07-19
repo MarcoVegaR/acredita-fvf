@@ -1,6 +1,10 @@
 <?php
 
+use App\Http\Controllers\AccreditationRequestController;
+use App\Http\Controllers\AccreditationRequestBulkController;
+use App\Http\Controllers\AccreditationRequestDraftController;
 use App\Http\Controllers\AreaController;
+use Illuminate\Http\Request;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ImageController;
@@ -227,6 +231,151 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('employees/{employee}/toggle-active', 'toggleActive')
             ->middleware('can:toggleActive,employee')
             ->name('employees.toggle_active');
+    });
+    
+    // Accreditation Request routes grouped by controller and permissions
+    // Accreditation Request Draft routes for wizard workflow
+    Route::controller(AccreditationRequestDraftController::class)->group(function () {
+        // Paso 1: Selección de evento
+        Route::get('accreditation-requests/create/step-1', 'wizardStep1')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.wizard.step1');
+            
+        Route::post('accreditation-requests/create/step-1', function(Request $request) {
+            return app(AccreditationRequestDraftController::class)->storeStep($request, 1, 2);
+        })->middleware('permission:accreditation_request.create')
+          ->name('accreditation-requests.wizard.store1');
+            
+        // Paso 2: Selección de empleado
+        Route::get('accreditation-requests/create/step-2', 'wizardStep2')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.wizard.step2');
+            
+        Route::post('accreditation-requests/create/step-2', function(Request $request) {
+            return app(AccreditationRequestDraftController::class)->storeStep($request, 2, 3);
+        })->middleware('permission:accreditation_request.create')
+          ->name('accreditation-requests.wizard.store2');
+            
+        // Paso 3: Selección de zonas
+        Route::get('accreditation-requests/create/step-3', 'wizardStep3')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.wizard.step3');
+            
+        Route::post('accreditation-requests/create/step-3', function(Request $request) {
+            return app(AccreditationRequestDraftController::class)->storeStep($request, 3, 4);
+        })->middleware('permission:accreditation_request.create')
+          ->name('accreditation-requests.wizard.store3');
+            
+        // Paso 4: Confirmación y comentarios adicionales
+        Route::get('accreditation-requests/create/step-4', 'wizardStep4')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.wizard.step4');
+            
+        Route::post('accreditation-requests/create/step-4', function(Request $request) {
+            return app(AccreditationRequestDraftController::class)->storeStep($request, 4, 5);
+        })->middleware('permission:accreditation_request.create')
+          ->name('accreditation-requests.wizard.store4');
+            
+        // Guardar la solicitud completa
+        Route::post('accreditation-requests', 'store')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.store');
+    });
+
+    Route::controller(AccreditationRequestController::class)->group(function () {
+        // Listar todas las solicitudes (con filtros)
+        Route::get('accreditation-requests', 'index')
+            ->middleware('permission:accreditation_request.index')
+            ->name('accreditation-requests.index');
+            
+        // Crear nueva solicitud (redirección al wizard)
+        Route::get('accreditation-requests/create', function() {
+            return redirect()->route('accreditation-requests.wizard.step1');
+        })->middleware('permission:accreditation_request.create')
+          ->name('accreditation-requests.create');
+
+        // Editar una solicitud existente (solo en estado borrador)
+        Route::get('accreditation-requests/{accreditation_request:uuid}/edit', 'edit')
+            ->middleware('permission:accreditation_request.update')
+            ->name('accreditation-requests.edit');
+            
+        Route::put('accreditation-requests/{accreditation_request:uuid}', 'update')
+            ->middleware('permission:accreditation_request.update')
+            ->name('accreditation-requests.update');
+            
+        // Enviar la solicitud para aprobación
+        Route::post('accreditation-requests/{accreditation_request:uuid}/submit', 'submit')
+            ->middleware('permission:accreditation_request.submit')
+            ->name('accreditation-requests.submit');
+            
+        // Aprobar la solicitud
+        Route::post('accreditation-requests/{accreditation_request:uuid}/approve', 'approve')
+            ->middleware('permission:accreditation_request.approve')
+            ->name('accreditation-requests.approve');
+            
+        // Rechazar la solicitud
+        Route::post('accreditation-requests/{accreditation_request:uuid}/reject', 'reject')
+            ->middleware('permission:accreditation_request.reject')
+            ->name('accreditation-requests.reject');
+            
+        // Devolver a borrador para corrección
+        Route::post('accreditation-requests/{accreditation_request:uuid}/return-to-draft', 'returnToDraft')
+            ->middleware('permission:accreditation_request.return')
+            ->name('accreditation-requests.return-to-draft');
+            
+        // Dar visto bueno (area manager)
+        Route::post('accreditation-requests/{accreditation_request:uuid}/review', 'review')
+            ->middleware('permission:accreditation_request.review')
+            ->name('accreditation-requests.review');
+            
+        // Eliminar una solicitud (solo en estado borrador)
+        Route::delete('accreditation-requests/{accreditation_request:uuid}', 'destroy')
+            ->middleware('permission:accreditation_request.delete')
+            ->name('accreditation-requests.destroy');
+
+        // Ver detalles de una solicitud específica (SIEMPRE AL FINAL)
+        Route::get('accreditation-requests/{accreditation_request:uuid}', 'show')
+            ->middleware('permission:accreditation_request.view')
+            ->name('accreditation-requests.show');
+    });
+    
+    // Rutas para solicitudes masivas de acreditación
+    Route::controller(AccreditationRequestBulkController::class)->group(function () {
+        // Paso 1: Selección de evento
+        Route::get('accreditation-requests/bulk/step-1', 'step1')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-1');
+            
+        Route::post('accreditation-requests/bulk/step-1', 'step2')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-2');
+            
+        // Paso 2: Selección de empleados
+        Route::get('accreditation-requests/bulk/step-2', 'showStep2')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-2.show');
+            
+        Route::post('accreditation-requests/bulk/step-2', 'step3')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-3');
+            
+        // Paso 3: Configuración de zonas
+        Route::get('accreditation-requests/bulk/step-3', 'showStep3')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-3.show');
+            
+        Route::post('accreditation-requests/bulk/step-3', 'step4')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-4');
+            
+        // Paso 4: Confirmación y creación
+        Route::get('accreditation-requests/bulk/step-4', 'showStep4')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.step-4.show');
+            
+        Route::post('accreditation-requests/bulk/step-4', 'store')
+            ->middleware('permission:accreditation_request.create')
+            ->name('accreditation-requests.bulk.store');
     });
 });
 

@@ -1,0 +1,511 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Enums\AccreditationStatus;
+use App\Models\AccreditationRequest;
+use App\Services\AccreditationRequest\AccreditationRequestServiceInterface;
+use App\Services\Event\EventServiceInterface;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+
+class AccreditationRequestController extends BaseController
+{
+    protected $accreditationRequestService;
+    protected $eventService;
+
+    /**
+     * Create a new controller instance.
+     *
+     * @param AccreditationRequestServiceInterface $accreditationRequestService
+     * @param EventServiceInterface $eventService
+     */
+    public function __construct(
+        AccreditationRequestServiceInterface $accreditationRequestService,
+        EventServiceInterface $eventService
+    ) {
+        $this->accreditationRequestService = $accreditationRequestService;
+        $this->eventService = $eventService;
+    }
+
+    /**
+     * Display a listing of accreditation requests.
+     *
+     * @param Request $request
+     * @return \Inertia\Response
+     */
+    public function index(Request $request)
+    {
+        try {
+            Gate::authorize('index', AccreditationRequest::class);
+
+            $requests = $this->accreditationRequestService->getPaginatedRequests($request);
+            $events = $this->eventService->getAllActive();
+            
+            // Obtener estadísticas de solicitudes
+            $totalRequests = AccreditationRequest::count();
+            $draftRequests = AccreditationRequest::where('status', 'draft')->count();
+            $submittedRequests = AccreditationRequest::where('status', 'submitted')->count();
+            
+            $stats = [
+                'total' => $totalRequests,
+                'draft' => $draftRequests,
+                'submitted' => $submittedRequests
+            ];
+            
+            $this->logAction('listar', 'solicitudes de acreditación', null, [
+                'filters' => $request->all()
+            ]);
+            
+            return $this->respondWithSuccess('accreditation-requests/index', [
+                'accreditation_requests' => $requests,
+                'events' => $events,
+                'filters' => $request->only(['event_id', 'status', 'sort', 'direction', 'per_page']),
+                'stats' => $stats
+            ]);
+        } catch (\Throwable $e) {
+            return $this->handleException($e, 'Listar solicitudes de acreditación');
+        }
+    }
+
+    /**
+     * Display the specified accreditation request.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Inertia\Response
+     */
+    public function show(AccreditationRequest $accreditationRequest)
+    {
+        try {
+            Log::info('[SHOW] Iniciando visualización de solicitud', [
+                'uuid' => $accreditationRequest->uuid,
+                'status' => $accreditationRequest->status,
+                'user_id' => auth()->id()
+            ]);
+
+            Gate::authorize('view', $accreditationRequest);
+            
+            Log::info('[SHOW] Autorización exitosa');
+
+            $this->logAction('ver', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            return $this->respondWithSuccess('accreditation-requests/show', [
+                'request' => $accreditationRequest->load(['employee.provider', 'event', 'zones']),
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[SHOW] Error en visualización de solicitud', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->handleException($e, 'Ver solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Show the form for editing the specified accreditation request.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Inertia\Response
+     */
+    public function edit(AccreditationRequest $accreditationRequest)
+    {
+        Log::info('[EDIT] Iniciando edición de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'status' => $accreditationRequest->status,
+            'user_id' => auth()->id()
+        ]);
+
+        try {
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[EDIT] Autorización exitosa');
+            
+            // Verificar que la solicitud esté en estado borrador
+            if ($accreditationRequest->status->value !== 'draft') {
+                Log::warning('[EDIT] Intento de editar solicitud no borrador', [
+                    'status' => $accreditationRequest->status->value
+                ]);
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('warning', 'No se puede editar esta solicitud porque ya fue enviada para revisión. Solo se pueden editar solicitudes en estado borrador.');
+            }
+            
+            // Obtener los eventos activos para el selector
+            $events = $this->eventService->getAllActive();
+            
+            // Obtener empleados del mismo proveedor (si es proveedor) o todos (si es admin)
+            $user = auth()->user();
+            if ($user->hasRole('provider')) {
+                $employees = $user->provider->employees()->active()->get();
+            } else {
+                $employees = \App\Models\Employee::with('provider')->active()->get();
+            }
+            
+            // Obtener todas las zonas disponibles
+            $zones = \App\Models\Zone::orderBy('name')->get();
+            
+            // Cargar las relaciones necesarias
+            $accreditationRequest->load(['employee.provider', 'event', 'zones']);
+            
+            $this->logAction('editar', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            Log::info('[EDIT] Datos preparados exitosamente');
+            
+            return $this->respondWithSuccess('accreditation-requests/edit', [
+                'request' => $accreditationRequest,
+                'events' => $events,
+                'employees' => $employees,
+                'zones' => $zones,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('[EDIT] Error en edición', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->handleException($e, 'Editar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Update the specified accreditation request.
+     *
+     * @param Request $request
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function update(Request $request, AccreditationRequest $accreditationRequest)
+    {
+        Log::info('[UPDATE] Iniciando actualización de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'status' => $accreditationRequest->status,
+            'user_id' => auth()->id()
+        ]);
+
+        try {
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[UPDATE] Autorización exitosa');
+
+            // Validar que solo se puedan actualizar borradores
+            if ($accreditationRequest->status !== AccreditationStatus::Draft) {
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Solo se pueden actualizar solicitudes en estado borrador.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+
+            // Validar los datos de entrada
+            $validated = $request->validate([
+                'employee_id' => 'required|exists:employees,id',
+                'event_id' => 'required|exists:events,id',
+                'comments' => 'nullable|string|max:1000',
+                'zones' => 'nullable|array',
+                'zones.*' => 'exists:zones,id'
+            ]);
+
+            // Actualizar la solicitud usando el servicio
+            $updatedRequest = $this->accreditationRequestService->updateRequest($accreditationRequest, $validated);
+            
+            $this->logAction('actualizar', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            Log::info('[UPDATE] Solicitud actualizada exitosamente');
+            
+            return redirect()
+                ->route('accreditation-requests.index')
+                ->with('flash.banner', 'Solicitud actualizada correctamente')
+                ->with('flash.bannerStyle', 'success');
+                
+        } catch (\Throwable $e) {
+            Log::error('[UPDATE] Error en actualización', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->handleException($e, 'Actualizar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Remove the specified accreditation request.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function destroy(AccreditationRequest $accreditationRequest)
+    {
+        Log::info('[DELETE] Iniciando eliminación de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'status' => $accreditationRequest->status,
+            'user_id' => auth()->id()
+        ]);
+
+        try {
+            Gate::authorize('delete', $accreditationRequest);
+            Log::info('[DELETE] Autorización exitosa');
+
+            $this->accreditationRequestService->deleteRequest($accreditationRequest);
+            Log::info('[DELETE] Solicitud eliminada exitosamente');
+
+            $this->logAction('eliminar', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            return $this->redirectWithSuccess(
+                'accreditation-requests.index', 
+                [], 
+                'Solicitud eliminada correctamente'
+            );
+        } catch (\Throwable $e) {
+            Log::error('[DELETE] Error en eliminación', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->handleException($e, 'Eliminar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Submit the accreditation request for approval.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function submit(AccreditationRequest $accreditationRequest)
+    {
+        Log::info('[SUBMIT] Iniciando envío de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'status' => $accreditationRequest->status,
+            'user_id' => auth()->id(),
+            'employee_id' => $accreditationRequest->employee_id
+        ]);
+
+        try {
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[SUBMIT] Autorización exitosa');
+
+            // Verificar que la solicitud esté en estado borrador
+            if ($accreditationRequest->status !== AccreditationStatus::Draft) {
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Solo se pueden enviar solicitudes que están en estado borrador. Esta solicitud ya fue enviada anteriormente.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+            
+            $this->accreditationRequestService->submitRequest($accreditationRequest);
+            Log::info('[SUBMIT] Servicio ejecutado exitosamente');
+
+            $this->logAction('enviar', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            return redirect()
+                ->route('accreditation-requests.index')
+                ->with('flash.banner', 'Solicitud enviada correctamente para su revisión')
+                ->with('flash.bannerStyle', 'success');
+                
+        } catch (\Throwable $e) {
+            Log::error('[SUBMIT] Error en envío', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return $this->handleException($e, 'Enviar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Approve the accreditation request.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function approve(AccreditationRequest $accreditationRequest)
+    {
+        Log::info('[APPROVE CONTROLLER] ==> Iniciando aprobación de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'id' => $accreditationRequest->id,
+            'status' => $accreditationRequest->status->value,
+            'employee' => $accreditationRequest->employee->first_name . ' ' . $accreditationRequest->employee->last_name,
+            'user_id' => auth()->id(),
+            'user_email' => auth()->user()->email ?? 'N/A',
+            'timestamp' => now()->toISOString()
+        ]);
+
+        try {
+            Log::info('[APPROVE CONTROLLER] Verificando autorización...');
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[APPROVE CONTROLLER] Autorización exitosa');
+
+            Log::info('[APPROVE CONTROLLER] Verificando estado de la solicitud', [
+                'current_status' => $accreditationRequest->status->value,
+                'allowed_statuses' => ['submitted', 'under_review']
+            ]);
+            
+            if (!in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+                Log::warning('[APPROVE CONTROLLER] Estado no válido para aprobación', [
+                    'current_status' => $accreditationRequest->status->value
+                ]);
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('warning', 'Solo se pueden aprobar solicitudes enviadas o en revisión.');
+            }
+            
+            Log::info('[APPROVE CONTROLLER] Llamando al servicio approveRequest...');
+            $this->accreditationRequestService->approveRequest($accreditationRequest);
+            Log::info('[APPROVE CONTROLLER] Servicio approveRequest ejecutado exitosamente');
+
+            Log::info('[APPROVE CONTROLLER] Registrando acción en log...');
+            $this->logAction('aprobar', 'solicitud de acreditación', $accreditationRequest->id);
+            Log::info('[APPROVE CONTROLLER] Acción registrada exitosamente');
+            
+            Log::info('[APPROVE CONTROLLER] Redirigiendo con mensaje de éxito');
+            return $this->redirectWithSuccess(
+                'accreditation-requests.index', 
+                [], 
+                'Solicitud aprobada correctamente'
+            );
+                
+        } catch (\Throwable $e) {
+            Log::error('[APPROVE CONTROLLER] Error durante la aprobación', [
+                'uuid' => $accreditationRequest->uuid,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            return $this->handleException($e, 'Aprobar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Reject the accreditation request.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function reject(AccreditationRequest $accreditationRequest, Request $request)
+    {
+        try {
+            Gate::authorize('update', $accreditationRequest);
+            
+            if (!in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Solo se pueden rechazar solicitudes enviadas o en revisión.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+            
+            $this->accreditationRequestService->rejectRequest($accreditationRequest, $request->get('reason'));
+            
+            $this->logAction('rechazar', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            return redirect()
+                ->route('accreditation-requests.index')
+                ->with('flash.banner', 'Solicitud rechazada correctamente')
+                ->with('flash.bannerStyle', 'success');
+                
+        } catch (\Throwable $e) {
+            return $this->handleException($e, 'Rechazar solicitud de acreditación');
+        }
+    }
+
+    /**
+     * Return the accreditation request to draft status.
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function returnToDraft(AccreditationRequest $accreditationRequest, Request $request)
+    {
+        try {
+            Gate::authorize('update', $accreditationRequest);
+            
+            if (!in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Solo se pueden devolver a borrador solicitudes enviadas o en revisión.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+            
+            $this->accreditationRequestService->returnToDraft($accreditationRequest, $request->get('reason'));
+            
+            $this->logAction('devolver a borrador', 'solicitud de acreditación', $accreditationRequest->id);
+            
+            return redirect()
+                ->route('accreditation-requests.index')
+                ->with('flash.banner', 'Solicitud devuelta a borrador para corrección')
+                ->with('flash.bannerStyle', 'success');
+                
+        } catch (\Throwable $e) {
+            return $this->handleException($e, 'Devolver solicitud a borrador');
+        }
+    }
+
+    /**
+     * Give approval to the accreditation request (area manager).
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function review(AccreditationRequest $accreditationRequest, Request $request)
+    {
+        Log::info('[REVIEW CONTROLLER] ==> Iniciando visto bueno de solicitud', [
+            'uuid' => $accreditationRequest->uuid,
+            'id' => $accreditationRequest->id,
+            'status' => $accreditationRequest->status->value,
+            'employee' => $accreditationRequest->employee->first_name . ' ' . $accreditationRequest->employee->last_name,
+            'user_id' => auth()->id(),
+            'user_email' => auth()->user()->email ?? 'N/A',
+            'comments' => $request->get('comments'),
+            'timestamp' => now()->toISOString()
+        ]);
+        
+        try {
+            Log::info('[REVIEW CONTROLLER] Verificando autorización...');
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[REVIEW CONTROLLER] Autorización exitosa');
+            
+            Log::info('[REVIEW CONTROLLER] Verificando estado de la solicitud', [
+                'current_status' => $accreditationRequest->status->value,
+                'required_status' => 'submitted'
+            ]);
+            
+            if ($accreditationRequest->status->value !== 'submitted') {
+                Log::warning('[REVIEW CONTROLLER] Estado no válido para visto bueno', [
+                    'current_status' => $accreditationRequest->status->value
+                ]);
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('warning', 'Solo se pueden dar visto bueno a solicitudes enviadas.');
+            }
+            
+            Log::info('[REVIEW CONTROLLER] Llamando al servicio reviewRequest...');
+            $this->accreditationRequestService->reviewRequest($accreditationRequest, $request->get('comments'));
+            Log::info('[REVIEW CONTROLLER] Servicio reviewRequest ejecutado exitosamente');
+            
+            Log::info('[REVIEW CONTROLLER] Registrando acción en log...');
+            $this->logAction('dar visto bueno', 'solicitud de acreditación', $accreditationRequest->id);
+            Log::info('[REVIEW CONTROLLER] Acción registrada exitosamente');
+            
+            Log::info('[REVIEW CONTROLLER] Redirigiendo con mensaje de éxito');
+            return $this->redirectWithSuccess(
+                'accreditation-requests.index', 
+                [], 
+                'Visto bueno otorgado correctamente'
+            );
+                
+        } catch (\Throwable $e) {
+            Log::error('[REVIEW CONTROLLER] Error durante el visto bueno', [
+                'uuid' => $accreditationRequest->uuid,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            return $this->handleException($e, 'Dar visto bueno a solicitud');
+        }
+    }
+
+
+}

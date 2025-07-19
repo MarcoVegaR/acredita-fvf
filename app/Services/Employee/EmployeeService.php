@@ -3,13 +3,15 @@
 namespace App\Services\Employee;
 
 use App\Models\Employee;
-use App\Models\Provider;
 use App\Repositories\Employee\EmployeeRepositoryInterface;
 use App\Repositories\Provider\ProviderRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -101,6 +103,7 @@ class EmployeeService implements EmployeeServiceInterface
         DB::beginTransaction();
         
         try {
+            // Primero, creamos el empleado con los datos básicos
             $employee = $this->employeeRepository->create([
                 'uuid' => Str::uuid(),
                 'provider_id' => $data['provider_id'],
@@ -113,16 +116,17 @@ class EmployeeService implements EmployeeServiceInterface
             ]);
             
             // Process employee photo if provided
-            if (isset($data['photo'])) {
+            if (isset($data['photo']) && $data['photo']) {
                 $photoPath = $this->processEmployeePhoto($data['photo'], $employee);
                 if ($photoPath) {
+                    // Actualizamos el modelo con la ruta de la foto
                     $employee->photo_path = $photoPath;
                     $employee->save();
                 }
             }
             
             DB::commit();
-            return $employee;
+            return $employee->fresh(); // Devolvemos el empleado recién cargado para asegurar que tenga todos los datos
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -200,6 +204,53 @@ class EmployeeService implements EmployeeServiceInterface
     }
     
     /**
+     * Get employees accessible to the current user based on permissions.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getAccessibleEmployees(Request $request): array
+    {
+        $query = Employee::query();
+        $user = Auth::user();
+
+        // Filtrar según permisos
+        if ($user->hasRole('admin') || $user->hasPermissionTo('employee.manage')) {
+            // Admin o con permiso employee.manage puede ver todos los empleados
+        } elseif ($user->hasPermissionTo('employee.manage_own_provider')) {
+            // Usuarios con permiso employee.manage_own_provider solo ven empleados de proveedores en su área
+            $userAreaId = $user->area_id;
+            $query->whereHas('provider', function ($q) use ($userAreaId) {
+                $q->where('area_id', $userAreaId);
+            });
+        } elseif ($user->hasPermissionTo('employee.view')) {
+            // Usuarios con permiso employee.view solo ven empleados de proveedores públicos
+            $query->whereHas('provider', function ($q) {
+                $q->where('is_public', true);
+            });
+        } else {
+            // Sin permisos, no retorna empleados
+            return [];
+        }
+        
+        // Filtramos empleados activos solamente para la selección
+        $query->where('active', true);
+        
+        // Ordenamos por nombre
+        $query->orderBy('first_name');
+        
+        // Obtener los empleados con sus relaciones necesarias
+        $employees = $query->get();
+        
+        // Transformar los empleados para incluir atributos adicionales
+        return $employees->map(function ($employee) {
+            $data = $employee->toArray();
+            $data['name'] = $employee->getFullNameAttribute(); // Añadir el nombre completo
+            return $data;
+        })->toArray();
+    }
+    
+    /**
      * Process and store employee photo.
      *
      * @param mixed $photo
@@ -274,5 +325,88 @@ class EmployeeService implements EmployeeServiceInterface
         }
         
         return [];
+    }
+    
+    /**
+     * Find employee by ID.
+     *
+     * @param int $id
+     * @return Employee
+     * @throws \Exception if employee not found
+     */
+    public function findById(int $id): Employee
+    {
+        $employee = $this->employeeRepository->find($id);
+        
+        if (!$employee) {
+            throw new \Exception("Employee not found");
+        }
+        
+        return $employee;
+    }
+    
+    /**
+     * Get employees available for bulk accreditation requests (without active requests for the event).
+     *
+     * @param int $eventId
+     * @return Collection
+     */
+    public function getEmployeesForBulkRequest(int $eventId): Collection
+    {
+        $user = Auth::user();
+        
+        $query = $this->employeeRepository->query()
+            ->with(['provider', 'accreditationRequests' => function ($query) use ($eventId) {
+                $query->where('event_id', $eventId)
+                      ->whereIn('status', ['draft', 'submitted', 'under_review', 'approved']);
+            }]);
+        
+        // Aplicar filtros de acceso según el rol del usuario
+        if (Gate::denies('employee.manage')) {
+            if (Gate::allows('employee.manage_own_area')) {
+                // Area managers pueden ver empleados de proveedores de su área
+                $accessibleProviderIds = $this->getAccessibleProviderIds();
+                $query->whereIn('provider_id', $accessibleProviderIds);
+            } else {
+                // Usuarios normales solo pueden ver empleados de su propio proveedor
+                $query->where('provider_id', $user->provider_id);
+            }
+        }
+        
+        $employees = $query->get();
+        
+        // Filtrar empleados que NO tienen solicitudes activas para este evento
+        return $employees->filter(function ($employee) {
+            return $employee->accreditationRequests->isEmpty();
+        })->values();
+    }
+    
+    /**
+     * Get multiple employees by their IDs.
+     *
+     * @param array $employeeIds
+     * @return Collection
+     */
+    public function getEmployeesByIds(array $employeeIds): Collection
+    {
+        $user = Auth::user();
+        
+        $query = $this->employeeRepository->query()
+            ->with('provider')
+            ->whereIn('id', $employeeIds);
+        
+        // Aplicar filtros de acceso según el rol del usuario
+        if (Gate::denies('employee.manage')) {
+            if (Gate::allows('employee.manage_own_area')) {
+                // Area managers pueden ver empleados de proveedores de su área
+                $accessibleProviderIds = $this->getAccessibleProviderIds();
+                $query->whereIn('provider_id', $accessibleProviderIds);
+            } else {
+                // Usuarios normales solo pueden ver empleados de su propio proveedor
+                $query->where('provider_id', $user->provider_id);
+            }
+        }
+        
+        return $query->get();
     }
 }

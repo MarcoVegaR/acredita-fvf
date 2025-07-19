@@ -39,5 +39,9 @@ class DatabaseSeeder extends Seeder
         // Call providers seeders (después de áreas y usuarios)
         $this->call(ProviderPermissionsSeeder::class);
         $this->call(ProvidersInternalSeeder::class);
+        $this->call(ProvidersExternalSeeder::class);
+        
+        // Call employees seeder (después de proveedores)
+        $this->call(EmployeesSeeder::class);
     }
 }

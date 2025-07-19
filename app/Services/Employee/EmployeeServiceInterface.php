@@ -50,6 +50,14 @@ interface EmployeeServiceInterface
     public function findByUuid(string $uuid): ?Employee;
     
     /**
+     * Get employees accessible to the current user based on permissions.
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getAccessibleEmployees(Request $request): array;
+    
+    /**
      * Process and store employee photo.
      *
      * @param mixed $photo
@@ -64,4 +72,29 @@ interface EmployeeServiceInterface
      * @return array
      */
     public function getAccessibleProviderIds(): array;
+    
+    /**
+     * Find employee by ID.
+     *
+     * @param int $id
+     * @return Employee
+     * @throws \Exception if employee not found
+     */
+    public function findById(int $id): Employee;
+    
+    /**
+     * Get employees available for bulk accreditation requests (without active requests for the event).
+     *
+     * @param int $eventId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getEmployeesForBulkRequest(int $eventId): \Illuminate\Database\Eloquent\Collection;
+    
+    /**
+     * Get multiple employees by their IDs.
+     *
+     * @param array $employeeIds
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getEmployeesByIds(array $employeeIds): \Illuminate\Database\Eloquent\Collection;
 }

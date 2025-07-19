@@ -83,6 +83,22 @@ class Provider extends Model
     {
         return $query->where('active', $active);
     }
+
+    /**
+     * Check if the provider is internal.
+     */
+    public function isInternal(): bool
+    {
+        return $this->type === 'internal';
+    }
+
+    /**
+     * Check if the provider is external.
+     */
+    public function isExternal(): bool
+    {
+        return $this->type === 'external';
+    }
     
     /**
      * Get the route key for the model.

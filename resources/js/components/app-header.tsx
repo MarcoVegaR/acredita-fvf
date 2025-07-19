@@ -11,7 +11,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { usePermissions } from '@/hooks/use-permissions';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck, UserRound } from 'lucide-react';
+import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck, UserRound, TicketCheck } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -71,6 +71,12 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
                 href: '/employees',
                 icon: UserRound,
                 permission: 'employee.view',
+            },
+            {
+                title: 'Acreditaciones',
+                href: '/accreditation-requests',
+                icon: TicketCheck,
+                permission: 'accreditation_request.index',
             },
         ],
     },
