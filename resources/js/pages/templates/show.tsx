@@ -1,18 +1,30 @@
 import React from "react";
 import { BaseShowPage } from "@/components/base-show/base-show-page";
 import { Template } from "./schema";
-import { FileDown, Star, AlertCircle, Info, Image, Layout, Clock } from "lucide-react";
+import { FileDown, Star, AlertCircle, Info, Image, Layout, Clock, RefreshCw } from "lucide-react";
 import { route } from "ziggy-js";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { TextBlock } from "./types";
+import { usePage } from "@inertiajs/react";
 
 // Define las props para la vista de detalle
 interface ShowTemplateProps {
   template: Template;
   can_set_default: boolean;
+  can_regenerate_credentials: boolean;
 }
 
-export default function ShowTemplate({ template, can_set_default }: ShowTemplateProps) {
+export default function ShowTemplate({ template, can_set_default, can_regenerate_credentials }: ShowTemplateProps) {
+  const { auth } = usePage<{ auth: { user?: { permissions?: string[] } } }>().props;
+  
+  // Debug logs
+  console.log('ShowTemplate props:', { 
+    template, 
+    can_set_default, 
+    can_regenerate_credentials,
+    auth_permissions: auth?.user?.permissions 
+  });
+
   // Opciones para la vista de detalle
   const options = {
     title: template.name,
@@ -265,6 +277,25 @@ export default function ShowTemplate({ template, can_set_default }: ShowTemplate
           method: "POST",
           url: route("templates.set_default", { template: template.uuid }),
           successMessage: "Plantilla establecida como predeterminada correctamente",
+          redirectUrl: null // Sin redirección
+        })
+      },
+      {
+        label: "Regenerar credenciales",
+        icon: <RefreshCw className="mr-2 h-4 w-4" />,
+        variant: "outline",
+        permission: "credentials.regenerate",
+        condition: can_regenerate_credentials,
+        confirmDialog: {
+          title: "Regenerar credenciales",
+          description: `¿Está seguro de regenerar todas las credenciales del evento "${template.event?.name}" usando esta plantilla?\n\nEsto actualizará todas las credenciales existentes con el nuevo diseño y puede tomar algunos minutos.`,
+          confirmLabel: "Regenerar",
+          cancelLabel: "Cancelar"
+        },
+        action: () => ({
+          method: "POST",
+          url: route("templates.regenerate_credentials", { template: template.uuid }),
+          successMessage: "Las credenciales se están regenerando en segundo plano",
           redirectUrl: null // Sin redirección
         })
       }

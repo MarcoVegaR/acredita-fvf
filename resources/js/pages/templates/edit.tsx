@@ -68,7 +68,6 @@ export default function EditTemplate({ template, events }: EditTemplateProps) {
           event_id: template.event_id,
           name: template.name,
           layout_meta: template.layout_meta,
-          is_default: template.is_default,
         }}
         serverErrors={{}} // Opcional, para errores del servidor
         FormComponent={TemplateForm}

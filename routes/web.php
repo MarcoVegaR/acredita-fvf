@@ -129,6 +129,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:templates.set_default')
             ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
             ->name('templates.set_default');
+            
+        Route::post('templates/{template}/regenerate-credentials', 'regenerateCredentials')
+            ->middleware('permission:credentials.regenerate')
+            ->where('template', '[0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+            ->name('templates.regenerate_credentials');
     });
     
     // Area management routes grouped by controller and permissions
@@ -319,9 +324,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('accreditation-requests.reject');
             
         // Devolver a borrador para corrección
-        Route::post('accreditation-requests/{accreditation_request:uuid}/return-to-draft', 'returnToDraft')
+        Route::post('accreditation-requests/{request:uuid}/return-to-draft', 'returnToDraft')
             ->middleware('permission:accreditation_request.return')
             ->name('accreditation-requests.return-to-draft');
+            
+        // Credential management routes
+        Route::controller(\App\Http\Controllers\CredentialController::class)->group(function () {
+            Route::get('accreditation-requests/{request:uuid}/credential', 'show')
+                ->middleware('can:view,request')
+                ->name('accreditation-requests.credential.show');
+                
+            Route::get('accreditation-requests/{request:uuid}/credential/preview', 'preview')
+                ->name('accreditation-requests.credential.preview');
+                
+            Route::get('accreditation-requests/{request:uuid}/credential/download/image', 'downloadImage')
+                ->name('accreditation-requests.credential.download.image');
+                
+            Route::get('accreditation-requests/{request:uuid}/credential/download/pdf', 'downloadPdf')
+                ->name('accreditation-requests.credential.download.pdf');
+                
+            Route::get('accreditation-requests/{request:uuid}/credential/status', 'status')
+                ->name('accreditation-requests.credential.status');
+                
+            Route::post('accreditation-requests/{request:uuid}/credential/regenerate', 'regenerate')
+                ->name('accreditation-requests.credential.regenerate');
+        });
             
         // Dar visto bueno (area manager)
         Route::post('accreditation-requests/{accreditation_request:uuid}/review', 'review')
@@ -382,7 +409,41 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
 
+// Verificación pública de credenciales (sin autenticación)
+Route::middleware(['throttle:30,1'])->group(function () {
+    Route::get('/verify/{qrCode}', [\App\Http\Controllers\CredentialController::class, 'verify'])
+         ->name('credentials.verify');
+});
+
+// Test de permisos
+Route::get('/test-permissions', function () {
+    $user = Auth::user();
+    
+    if (!$user) {
+        return response()->json(['error' => 'Usuario no logueado']);
+    }
+    
+    return response()->json([
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+        ],
+        'credential_permissions' => [
+            'credential.view' => $user->can('credential.view'),
+            'credential.download' => $user->can('credential.download'),
+            'credential.preview' => $user->can('credential.preview'),
+            'credential.regenerate' => $user->can('credential.regenerate'),
+        ]
+    ]);
+})->middleware('auth');
+
 // Define fallback route for 404 errors with custom handling
 Route::fallback(function () {
     return Inertia::render('errors/404');
 });
+
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';

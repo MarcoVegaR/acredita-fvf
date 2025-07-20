@@ -66,8 +66,9 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
         $this->app->bind(ProviderRepositoryInterface::class, EloquentProviderRepository::class);
-        $this->app->bind(EmployeeRepositoryInterface::class, EmployeeRepository::class);
         $this->app->bind(AccreditationRequestRepositoryInterface::class, AccreditationRequestRepository::class);
+        $this->app->bind(\App\Repositories\Credential\CredentialRepositoryInterface::class, \App\Repositories\Credential\CredentialRepository::class);
+        $this->app->bind(EmployeeRepositoryInterface::class, EmployeeRepository::class);
         
         // Register services
         $this->app->bind(UserServiceInterface::class, UserService::class);
@@ -81,6 +82,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ProviderServiceInterface::class, ProviderService::class);
         $this->app->bind(EmployeeServiceInterface::class, EmployeeService::class);
         $this->app->bind(AccreditationRequestServiceInterface::class, AccreditationRequestService::class);
+        $this->app->bind(\App\Services\Credential\CredentialServiceInterface::class, \App\Services\Credential\CredentialService::class);
     }
 
     /**

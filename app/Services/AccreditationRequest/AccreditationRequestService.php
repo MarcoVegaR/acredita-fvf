@@ -327,6 +327,31 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
             'approved_by' => $freshRequest->approved_by
         ]);
         
+        // 🚀 NUEVA LÓGICA: Crear credencial inicial y disparar job asíncrono
+        Log::info('[APPROVE SERVICE] Iniciando generación de credencial...');
+        
+        try {
+            $credentialService = app(\App\Services\Credential\CredentialServiceInterface::class);
+            $credential = $credentialService->createCredentialForRequest($freshRequest);
+            
+            // Disparar job asíncrono para generación completa
+            \App\Jobs\GenerateCredentialJob::dispatch($credential);
+            
+            Log::info('[APPROVE SERVICE] Job de generación de credencial disparado', [
+                'credential_id' => $credential->id,
+                'credential_uuid' => $credential->uuid
+            ]);
+            
+        } catch (Exception $e) {
+            Log::error('[APPROVE SERVICE] Error creando credencial', [
+                'request_uuid' => $freshRequest->uuid,
+                'error' => $e->getMessage()
+            ]);
+            
+            // No fallar la aprobación si hay error en credencial
+            // La credencial se puede generar manualmente después
+        }
+        
         return $freshRequest;
     }
 

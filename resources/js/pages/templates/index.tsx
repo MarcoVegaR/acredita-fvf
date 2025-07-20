@@ -1,5 +1,7 @@
 import React from "react";
+import { router } from "@inertiajs/react";
 import { BaseIndexPage, BaseIndexOptions } from "@/components/base-index/base-index-page";
+import { RefreshCw } from "lucide-react";
 import { columns } from "./columns";
 import { Template } from "./schema";
 import { TableTemplate } from "./types";
@@ -119,30 +121,27 @@ export default function Index({ templates, stats, events, filters = {} }: Templa
         label: "Eliminar",
         permission: "templates.delete",
         confirmMessage: (template: Template) => `¿Está seguro que desea eliminar la plantilla "${template.name}"?`,
-      }
+      },
+      custom: [
+        {
+          label: "Regenerar credenciales",
+          icon: <RefreshCw className="h-4 w-4" />,
+          permission: "credentials.regenerate",
+          showCondition: (template: TableTemplate) => !!template.event,
+          confirmMessage: (template: TableTemplate) => 
+            `¿Está seguro de regenerar todas las credenciales del evento "${template.event?.name}" usando esta plantilla?\n\nEsto actualizará todas las credenciales existentes con el nuevo diseño y puede tomar varios minutos.`,
+          confirmTitle: "Regenerar credenciales",
+          handler: (template: TableTemplate) => {
+            router.post(`/templates/${template.uuid}/regenerate-credentials`, {}, {
+              onSuccess: () => {
+                // El mensaje de éxito se muestra automáticamente desde el backend
+              }
+            });
+          }
+        }
+      ]
     }
   };
-
-  /* Acciones personalizadas para cada fila - deshabilitadas ya que no están siendo usadas actualmente
-  const customRowActions = [
-    {
-      id: "setDefault",
-      label: "Establecer como predeterminada",
-      icon: "Star", // Cambiado a string para cumplir con el tipo esperado
-      permission: "templates.set_default",
-      condition: (template: Template) => !template.is_default,
-      confirmDialog: {
-        title: "Establecer como predeterminada",
-        message: "¿Estás seguro de que deseas establecer esta plantilla como predeterminada para este evento? La plantilla actual dejará de ser predeterminada.",
-        confirmText: "Establecer como predeterminada",
-        cancelText: "Cancelar",
-      },
-      action: (row: Template) => {
-        window.location.href = route('templates.set-default', { template: row.id });
-      }
-    }
-  ];
-  */
 
   // Asegurar que todos los templates tengan un id no nulo (requerido por Entity)
   const safeTemplates = {

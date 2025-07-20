@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, Head } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { router } from '@inertiajs/react';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AccreditationRequest } from './columns';
 
 interface Event {
   id: number;
@@ -39,7 +40,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
     employee_id: request.employee_id,
     event_id: request.event_id,
     comments: request.comments || '',
-    zones: request.zones?.map(z => z.id) || [],
+    zones: request.zones?.map((z: Zone) => z.id) || [],
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -243,7 +244,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                               if (checked) {
                                 setData('zones', [...data.zones, zone.id]);
                               } else {
-                                setData('zones', data.zones.filter(id => id !== zone.id));
+                                setData('zones', data.zones.filter((id: number) => id !== zone.id));
                               }
                             }}
                             disabled={processing || request.status !== 'draft'}

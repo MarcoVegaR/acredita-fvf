@@ -1,6 +1,16 @@
-import React from "react";
-import { BaseShowPage } from "@/components/base-show/base-show-page";
+import React, { ReactNode } from "react";
+import { usePage } from "@inertiajs/react";
+import { BaseShowPage, TabConfig, BaseShowOptions } from "@/components/base-show/base-show-page";
 import { AccreditationRequest } from "./columns";
+import CredentialSection from "@/components/credential-section";
+import { 
+  UserIcon,
+  CalendarIcon,
+  MapPinIcon,
+  ClockIcon,
+  CreditCardIcon
+} from "lucide-react";
+import { DateRenderer } from "@/components/base-show/renderers/date-renderer";
 
 
 interface AccreditationRequestShowProps {
@@ -9,6 +19,7 @@ interface AccreditationRequestShowProps {
       id: number;
       first_name: string;
       last_name: string;
+      identification: string;
       document_type: string;
       document_number: string;
       photo_path?: string;
@@ -33,10 +44,21 @@ interface AccreditationRequestShowProps {
       id: number;
       name: string;
     };
+    credential?: {
+      id: number;
+      uuid: string;
+      status: 'pending' | 'generating' | 'ready' | 'failed';
+      retry_count: number;
+      error_message?: string;
+      generated_at?: string;
+      is_ready: boolean;
+    };
   };
 }
 
-export default function ShowAccreditationRequest({ request }: AccreditationRequestShowProps) {
+export default function AccreditationRequestShow({ request }: AccreditationRequestShowProps) {
+  const { auth } = usePage<{ auth: { user?: { permissions?: string[] } } }>().props;
+  
   const statusConfig = {
     draft: { label: 'Borrador', bgColor: 'bg-gray-50', textColor: 'text-gray-700' },
     submitted: { label: 'Enviada', bgColor: 'bg-blue-50', textColor: 'text-blue-700' },
@@ -46,30 +68,103 @@ export default function ShowAccreditationRequest({ request }: AccreditationReque
     cancelled: { label: 'Cancelada', bgColor: 'bg-gray-50', textColor: 'text-gray-500' },
   };
 
-  const options = {
+  // Verificar si puede ver credenciales (solicitud aprobada)
+  const canViewCredential = request.status === 'approved';
+  const canDownload = auth.user?.permissions?.includes('credential.download') ?? false;
+  const canRegenerate = auth.user?.permissions?.includes('credential.regenerate') ?? false;
+
+  // Configuración de tabs
+  const tabs: TabConfig[] = [
+    { 
+      value: "general", 
+      label: "Información General", 
+      icon: <ClockIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "employee", 
+      label: "Empleado", 
+      icon: <UserIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "event", 
+      label: "Evento", 
+      icon: <CalendarIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "zones", 
+      label: "Zonas", 
+      icon: <MapPinIcon className="h-4 w-4" /> 
+    },
+    ...(canViewCredential ? [
+      { 
+        value: "credential", 
+        label: "Credencial", 
+        icon: <CreditCardIcon className="h-4 w-4" /> 
+      }
+    ] : []),
+    { 
+      value: "metadata", 
+      label: "Metadatos", 
+      icon: <ClockIcon className="h-4 w-4" /> 
+    },
+  ];
+
+  const showOptions: BaseShowOptions<AccreditationRequest> = {
     title: `Solicitud de Acreditación #${request.id}`,
     subtitle: `${request.employee.first_name} ${request.employee.last_name} - ${request.event.name}`,
+    headerContent: (
+      <div className="flex items-center space-x-4 py-3">
+        <div className="flex-shrink-0">
+          <div className="flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 text-primary font-semibold text-xl">
+            #{request.id}
+          </div>
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-foreground">{request.employee.first_name} {request.employee.last_name}</h2>
+            <div className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-2.5 py-0.5 text-xs font-medium ${
+              statusConfig[request.status as keyof typeof statusConfig]?.bgColor || 'bg-gray-50'
+            } ${
+              statusConfig[request.status as keyof typeof statusConfig]?.textColor || 'text-gray-700'
+            }`}>
+              {statusConfig[request.status as keyof typeof statusConfig]?.label || request.status}
+            </div>
+          </div>
+          <p className="text-muted-foreground">{request.event.name}</p>
+          <p className="text-sm text-muted-foreground">{request.employee.document_type}: {request.employee.document_number}</p>
+        </div>
+      </div>
+    ),
     breadcrumbs: [
       { title: 'Dashboard', href: '/dashboard' },
       { title: 'Solicitudes de Acreditación', href: '/accreditation-requests' },
       { title: `Solicitud #${request.id}`, href: `/accreditation-requests/${request.uuid}` },
     ],
-    backUrl: '/accreditation-requests',
     entity: request,
     moduleName: 'accreditation_requests',
+    
+    // Configuración de tabs
+    tabs,
+    defaultTab: "general",
+    
     sections: [
+      // Tab: Información General
       {
-        title: 'Información General',
+        title: 'Estado de la Solicitud',
+        tab: 'general',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
         fields: [
           { 
             key: 'id' as keyof typeof request, 
             label: 'ID de Solicitud',
-            render: (value: unknown) => `#${value}`
+            render: (value: unknown): ReactNode => (
+              <span className="font-mono text-xs bg-muted px-2 py-1 rounded">#{value as string | number}</span>
+            )
           },
           {
             key: 'status' as keyof typeof request,
             label: 'Estado',
-            render: (value: unknown) => {
+            render: (value: unknown): ReactNode => {
               const status = value as string;
               const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
               return (
@@ -82,85 +177,94 @@ export default function ShowAccreditationRequest({ request }: AccreditationReque
           {
             key: 'requested_at' as keyof typeof request,
             label: 'Fecha de Envío',
-            render: (value: unknown) => {
+            render: (value: unknown): ReactNode => {
               const dateValue = value as string;
-              return dateValue ? new Date(dateValue).toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              }) : 'No enviada aún';
+              return dateValue ? <DateRenderer value={dateValue} /> : <>No enviada aún</>;
             }
           },
           {
             key: 'comments' as keyof typeof request,
             label: 'Comentarios',
-            render: (value: unknown) => (value as string) || 'Sin comentarios'
+            render: (value: unknown): ReactNode => <>{(value as string) || 'Sin comentarios'}</>
           }
         ],
       },
+      
+      // Tab: Empleado
       {
-        title: 'Empleado',
+        title: 'Información Personal',
+        tab: 'employee',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
         fields: [
           {
             key: 'employee' as keyof typeof request,
             label: 'Nombre Completo',
-            render: () => `${request.employee.first_name} ${request.employee.last_name}`
+            render: (): ReactNode => <>{request.employee.first_name} {request.employee.last_name}</>
           },
           {
             key: 'employee' as keyof typeof request,
             label: 'Documento',
-            render: () => `${request.employee.document_type}: ${request.employee.document_number}`
-          },
+            render: (): ReactNode => <>{request.employee.document_type}: {request.employee.document_number}</>
+          }
+        ],
+      },
+      {
+        title: 'Proveedor',
+        tab: 'employee',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
+        fields: [
           {
             key: 'employee' as keyof typeof request,
             label: 'Proveedor',
-            render: () => request.employee.provider?.name || 'No asignado'
+            render: (): ReactNode => <>{request.employee.provider?.name || 'No asignado'}</>
           },
           {
             key: 'employee' as keyof typeof request,
             label: 'Área',
-            render: () => request.employee.provider?.area || 'No asignada'
+            render: (): ReactNode => <>{request.employee.provider?.area || 'No asignada'}</>
           }
         ],
       },
+      
+      // Tab: Evento
       {
-        title: 'Evento',
+        title: 'Detalles del Evento',
+        tab: 'event',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
         fields: [
           {
             key: 'event' as keyof typeof request,
             label: 'Nombre del Evento',
-            render: () => request.event.name
+            render: (): ReactNode => <>{request.event.name}</>
           },
           {
             key: 'event' as keyof typeof request,
             label: 'Fecha del Evento',
-            render: () => new Date(request.event.date).toLocaleDateString('es-CO', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })
+            render: (): ReactNode => <DateRenderer value={request.event.date} />
           },
           {
             key: 'event' as keyof typeof request,
             label: 'Lugar',
-            render: () => request.event.venue
+            render: (): ReactNode => <>{request.event.venue}</>
           },
           {
             key: 'event' as keyof typeof request,
             label: 'Descripción',
-            render: () => request.event.description || 'Sin descripción'
+            render: (): ReactNode => <>{request.event.description || 'Sin descripción'}</>
           }
         ],
       },
+      
+      // Tab: Zonas
       {
         title: 'Zonas Solicitadas',
+        tab: 'zones',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
         fields: [
           {
             key: 'zones' as keyof typeof request,
             label: 'Zonas',
-            render: () => {
+            render: (): ReactNode => {
               if (!request.zones || request.zones.length === 0) {
                 return <span className="text-gray-500 italic">Sin zonas asignadas</span>;
               }
@@ -180,46 +284,56 @@ export default function ShowAccreditationRequest({ request }: AccreditationReque
           }
         ],
       },
+      
+      // Tab: Credencial (solo si está aprobada)
+      ...(canViewCredential ? [
+        {
+          title: 'Credencial Digital',
+          tab: 'credential',
+          className: 'bg-card rounded-lg border shadow-sm p-6',
+          fields: [
+            {
+              key: 'credential' as keyof typeof request,
+              label: '',
+              render: (): ReactNode => (
+                <div className="w-full">
+                  <CredentialSection 
+                    request={request} 
+                    canDownload={canDownload}
+                    canRegenerate={canRegenerate}
+                  />
+                </div>
+              )
+            }
+          ]
+        }
+      ] : []),
+      
+      // Tab: Metadatos
       {
-        title: 'Metadatos',
+        title: 'Información del Sistema',
+        tab: 'metadata',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
         fields: [
           {
             key: 'creator' as keyof typeof request,
             label: 'Creado por',
-            render: () => request.creator?.name || 'Sistema'
+            render: (): ReactNode => <>{request.creator?.name || 'Sistema'}</>
           },
           {
             key: 'created_at' as keyof typeof request,
             label: 'Fecha de Creación',
-            render: (value: unknown) => {
-              const dateValue = value as string;
-              return new Date(dateValue).toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              });
-            }
+            render: (value: unknown): ReactNode => <DateRenderer value={value as string} />
           },
           {
             key: 'updated_at' as keyof typeof request,
             label: 'Última Modificación',
-            render: (value: unknown) => {
-              const dateValue = value as string;
-              return new Date(dateValue).toLocaleDateString('es-CO', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              });
-            }
+            render: (value: unknown): ReactNode => <DateRenderer value={value as string} />
           }
         ],
       }
     ],
   };
 
-  return <BaseShowPage options={options} />;
+  return <BaseShowPage options={showOptions} />;
 }

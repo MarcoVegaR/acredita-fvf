@@ -91,7 +91,7 @@ class AccreditationRequestController extends BaseController
             $this->logAction('ver', 'solicitud de acreditación', $accreditationRequest->id);
             
             return $this->respondWithSuccess('accreditation-requests/show', [
-                'request' => $accreditationRequest->load(['employee.provider', 'event', 'zones']),
+                'request' => $accreditationRequest->load(['employee.provider', 'event', 'zones', 'credential']),
             ]);
         } catch (\Throwable $e) {
             Log::error('[SHOW] Error en visualización de solicitud', [

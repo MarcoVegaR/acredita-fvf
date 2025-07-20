@@ -1,7 +1,7 @@
 import React from "react";
 import { BaseIndexPage } from "@/components/base-index/base-index-page";
 import { columns, type AccreditationRequest } from "./columns";
-import { TicketCheck, FileTextIcon, CheckCircle, XCircle, RotateCcw, Users, Plus, ChevronDown } from "lucide-react";
+import { TicketCheck, FileTextIcon, CheckCircle, XCircle, RotateCcw, RefreshCw, Users, Plus, ChevronDown } from "lucide-react";
 import { router } from "@inertiajs/react";
 import { Button } from "@/components/ui/button";
 import { usePage } from "@inertiajs/react";
@@ -413,6 +413,52 @@ export default function Index({ accreditation_requests, stats, filters = {} }: A
                 }
               }
             );
+          }
+        },
+        // Regenerar credencial - solo para solicitudes aprobadas con credencial
+        {
+          label: "Regenerar credencial",
+          icon: <RefreshCw className="h-4 w-4" />,
+          permission: "credentials.regenerate",
+          showCondition: (request: AccreditationRequest): boolean => {
+            const hasCredential = request.status === 'approved' && 
+                                 request.credential != null && 
+                                 request.credential.status === 'ready';
+            console.log('[REGENERATE CONDITION] Verificando condición para regenerar:', {
+              uuid: request.uuid,
+              status: request.status,
+              hasCredential: hasCredential,
+              credentialStatus: request.credential?.status,
+              employee: `${request.employee.first_name} ${request.employee.last_name}`
+            });
+            return hasCredential;
+          },
+          confirmMessage: (request: AccreditationRequest) => 
+            `¿Está seguro de regenerar la credencial de ${request.employee.first_name} ${request.employee.last_name}?\n\nEsto actualizará la credencial con el diseño actual de la plantilla.`,
+          confirmTitle: "Regenerar Credencial",
+          handler: (request: AccreditationRequest) => {
+            console.log('[REGENERATE ACTION] Iniciando regeneración de credencial:', {
+              uuid: request.uuid,
+              credentialId: request.credential?.id,
+              employee: `${request.employee.first_name} ${request.employee.last_name}`
+            });
+            
+            router.post(`/accreditation-requests/${request.uuid}/credential/regenerate`, {}, {
+              preserveState: false,
+              preserveScroll: true,
+              onStart: () => {
+                console.log('[REGENERATE ACTION] Petición POST iniciada');
+              },
+              onSuccess: (page) => {
+                console.log('[REGENERATE ACTION] Éxito - Credencial regenerada:', page);
+              },
+              onError: (errors) => {
+                console.error('[REGENERATE ACTION] Error en la petición:', errors);
+              },
+              onFinish: () => {
+                console.log('[REGENERATE ACTION] Petición finalizada');
+              }
+            });
           }
         }
       ]

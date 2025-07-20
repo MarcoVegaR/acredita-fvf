@@ -64,6 +64,18 @@ export interface AccreditationRequest extends Entity {
   created_at: string;
   updated_at: string;
   submitted_at?: string;
+  // Propiedad credential opcional para solicitudes aprobadas
+  credential?: {
+    id: number;
+    uuid: string;
+    status: 'pending' | 'generating' | 'ready' | 'failed';
+    is_ready: boolean;
+    is_expired: boolean;
+    qr_code?: string;
+    credential_image_path?: string;
+    expires_at?: string;
+    generated_at?: string;
+  };
   // Añadimos la propiedad [key: string]: unknown para cumplir con Entity
   [key: string]: unknown;
 }

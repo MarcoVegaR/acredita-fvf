@@ -91,8 +91,7 @@ export const templateSchema = z.object({
         })
       })
     ).optional().default([])
-  }),
-  is_default: z.boolean().optional().default(false)
+  })
 });
 
 // Valor por defecto para un nuevo layout meta

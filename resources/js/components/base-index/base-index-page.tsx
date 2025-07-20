@@ -129,6 +129,9 @@ export interface BaseIndexOptions<T extends Entity> {
       icon?: React.ReactNode;
       permission?: string | string[];
       showCondition?: (row: T) => boolean;
+      // Soporte para confirmación en acciones personalizadas
+      confirmMessage?: string | ((row: T) => string);
+      confirmTitle?: string;
     }>;
   };
 }

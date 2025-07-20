@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { LayoutEditor } from "./layout-editor/layout-editor";
 import { EventOption, LayoutMeta } from "./types";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -236,14 +235,10 @@ export function TemplateForm({ options }: { options: BaseFormOptions<FormData> &
     }
   };
   
-  // Seleccionar la pestaña activa dependiendo si hay un archivo cargado
+  // Pestaña activa - empieza siempre en información básica
   const [activeTab, setActiveTab] = useState<string>("info");
   
-  useEffect(() => {
-    if (previewUrl && activeTab === "info") {
-      setActiveTab("layout");
-    }
-  }, [previewUrl, activeTab]);
+  // Ya no forzamos el cambio automático de tab - el usuario puede navegar libremente
 
   // Limpieza de URLs de objeto cuando se desmonta el componente
   useEffect(() => {
@@ -355,28 +350,7 @@ export function TemplateForm({ options }: { options: BaseFormOptions<FormData> &
             </Card>
           )}
           
-          {/* Campo predeterminada */}
-          <FormField
-            control={form.control}
-            name="is_default"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0 mt-6">
-                <FormControl>
-                  <Checkbox 
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel>Establecer como predeterminada</FormLabel>
-                  <FormDescription>
-                    Si marca esta opción, esta plantilla se usará como predeterminada para el evento seleccionado.
-                  </FormDescription>
-                </div>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+
         </TabsContent>
         
         {/* Pestaña de editor de layout */}

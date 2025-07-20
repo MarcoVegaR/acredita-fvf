@@ -150,7 +150,7 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   // Definición del tamaño de la imagen cargada - usado en setImage.onload
   const [, setImageSize] = useState({ width: 0, height: 0 });
-  const [nextTextBlockId, setNextTextBlockId] = useState(1);
+  // const [nextTextBlockId, setNextTextBlockId] = useState(1); // Commented out as not currently used
 
   // Obtener valores del formulario
   const layoutMeta = form.watch("layout_meta") as LayoutMeta;
@@ -297,30 +297,89 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
     }
   };
 
+  // Inicializar campos predeterminados si no existen
+  const initializeDefaultFields = () => {
+    const defaultFields = [
+      {
+        id: 'cedula',
+        x: 50,
+        y: 80,
+        width: 150,
+        height: 18,
+        font_size: 10,
+        alignment: "left" as "left" | "center" | "right"
+      },
+      {
+        id: 'nombre',
+        x: 150,
+        y: 120,
+        width: 200,
+        height: 25,
+        font_size: 14,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'rol',
+        x: 150,
+        y: 150,
+        width: 200,
+        height: 20,
+        font_size: 12,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona',
+        x: 50,
+        y: 280,
+        width: 300,
+        height: 35,
+        font_size: 10,
+        alignment: "left" as "left" | "center" | "right"
+      }
+    ];
+
+    // Solo agregar campos que no existen
+    const existingIds = text_blocks.map(block => block.id);
+    const newFields = defaultFields.filter(field => !existingIds.includes(field.id));
+    
+    if (newFields.length > 0) {
+      form.setValue("layout_meta.text_blocks", [...text_blocks, ...newFields]);
+    }
+  };
+
   const addTextBlock = () => {
-    // Determinar el siguiente ID basado en los bloques existentes para evitar duplicados
-    const existingIds = text_blocks.map(block => {
-      const match = block.id.match(/text_(\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    });
+    // Siempre inicializar campos por defecto primero
+    initializeDefaultFields();
     
-    // Usar el máximo ID existente + 1 o nextTextBlockId, lo que sea mayor
-    const maxExistingId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    const safeNextId = Math.max(maxExistingId + 1, nextTextBlockId);
+    // Si hay campos personalizados por agregar
+    const customId = prompt('ID personalizado (opcional, deje vacío para solo inicializar campos estándar):');
     
-    const newBlock = {
-      id: `text_${safeNextId}`,
-      x: 50,
-      y: 50,
-      width: 100,
-      height: 30,
-      font_size: 12,
-      alignment: "left" as "left" | "center" | "right"
-    };
-    
-    form.setValue("layout_meta.text_blocks", [...text_blocks, newBlock]);
-    setNextTextBlockId(safeNextId + 1); // Actualizar al siguiente ID seguro
-    setSelectedItem(newBlock.id);
+    if (customId && customId.trim()) {
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(customId)) {
+        alert('ID inválido. Debe comenzar con letra o guión bajo y contener solo letras, números y guiones bajos.');
+        return;
+      }
+      
+      const usedIds = form.getValues("layout_meta.text_blocks")?.map(block => block.id) || [];
+      if (usedIds.includes(customId)) {
+        alert('Este ID ya está en uso. Elija uno diferente.');
+        return;
+      }
+      
+      const newBlock = {
+        id: customId,
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 30,
+        font_size: 12,
+        alignment: "left" as "left" | "center" | "right"
+      };
+      
+      const currentBlocks = form.getValues("layout_meta.text_blocks") || [];
+      form.setValue("layout_meta.text_blocks", [...currentBlocks, newBlock]);
+      setSelectedItem(newBlock.id);
+    }
   };
 
   const removeTextBlock = (id: string) => {
@@ -510,7 +569,7 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
             }}
           >
             <Plus className="h-4 w-4" />
-            Añadir bloque de texto
+            Inicializar campos estándar
           </Button>
         </div>
       </div>

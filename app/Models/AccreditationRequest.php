@@ -62,6 +62,14 @@ class AccreditationRequest extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Relación con credencial
+     */
+    public function credential()
+    {
+        return $this->hasOne(Credential::class);
+    }
+
     public function isDraft()
     {
         return $this->status === AccreditationStatus::Draft;

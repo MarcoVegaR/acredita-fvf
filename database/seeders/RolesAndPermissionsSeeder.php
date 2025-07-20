@@ -88,6 +88,13 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('accreditation_request.reject', 'Rechazar solicitudes de acreditación');
         $this->createPermission('accreditation_request.return', 'Devolver solicitudes a borrador');
         $this->createPermission('accreditation_request.review', 'Dar visto bueno a solicitudes');
+        
+        // Credential management permissions
+        $this->createPermission('credential.view', 'Ver credenciales');
+        $this->createPermission('credential.download', 'Descargar credenciales');
+        $this->createPermission('credential.regenerate', 'Regenerar credenciales fallidas');
+        $this->createPermission('credentials.regenerate', 'Regenerar credenciales con nueva plantilla');
+        $this->createPermission('credential.preview', 'Previsualizar credenciales');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
@@ -142,11 +149,10 @@ class RolesAndPermissionsSeeder extends Seeder
     /**
      * Create a permission with both technical name and display name
      */
-    private function createPermission(string $name, string $nameshow): void
+    private function createPermission(string $name, string $description = '')
     {
-        Permission::create([
+        Permission::firstOrCreate([
             'name' => $name,
-            'nameshow' => $nameshow,
             'guard_name' => 'web'
         ]);
     }

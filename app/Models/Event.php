@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -82,5 +83,21 @@ class Event extends Model
     public function scopeInactive($query)
     {
         return $query->where('active', false);
+    }
+    
+    /**
+     * Get the templates associated with the event.
+     */
+    public function templates(): HasMany
+    {
+        return $this->hasMany(Template::class);
+    }
+    
+    /**
+     * Get the default template for the event.
+     */
+    public function defaultTemplate()
+    {
+        return $this->templates()->where('is_default', true)->first();
     }
 }

@@ -291,7 +291,8 @@ class TemplateController extends BaseController
                 'created_at' => $template->created_at,
                 'updated_at' => $template->updated_at
             ],
-            'can_set_default' => !$template->is_default && Auth::user()->can('templates.set_default')
+            'can_set_default' => !$template->is_default && Auth::user()->can('templates.set_default'),
+        'can_regenerate_credentials' => Auth::user()->can('credentials.regenerate')
         ]);
     }
 
@@ -477,6 +478,58 @@ class TemplateController extends BaseController
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Error al establecer la plantilla como predeterminada: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Regenerar todas las credenciales usando esta plantilla.
+     *
+     * @param  string  $uuid
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function regenerateCredentials($uuid)
+    {
+        try {
+            // Obtener plantilla
+            $template = $this->templateService->findByUuid($uuid);
+            
+            if (!$template) {
+                abort(404, 'Plantilla no encontrada');
+            }
+            
+            // Obtener el evento de la plantilla
+            $event = $template->event;
+            if (!$event) {
+                return redirect()->back()
+                    ->with('error', 'La plantilla no tiene un evento asociado.');
+            }
+            
+            // Obtener todas las credenciales activas del evento
+            $credentials = \App\Models\Credential::whereHas('accreditationRequest', function ($query) use ($event) {
+                $query->where('event_id', $event->id)
+                      ->where('status', 'approved');
+            })->get();
+            
+            if ($credentials->isEmpty()) {
+                return redirect()->back()
+                    ->with('info', 'No hay credenciales activas para regenerar en este evento.');
+            }
+            
+            // Despachar job para regenerar credenciales en segundo plano
+            \App\Jobs\RegenerateCredentialsJob::dispatch($event, $template);
+            
+            return redirect()->back()
+                ->with('success', "Se están regenerando {$credentials->count()} credenciales usando esta plantilla. El proceso puede tomar varios minutos.");
+                
+        } catch (\Exception $e) {
+            \Log::error('Error regenerando credenciales', [
+                'template_uuid' => $uuid,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'Error al regenerar credenciales: ' . $e->getMessage());
         }
     }
 }
