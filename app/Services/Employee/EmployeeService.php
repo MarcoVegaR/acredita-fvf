@@ -259,14 +259,24 @@ class EmployeeService implements EmployeeServiceInterface
      */
     public function processEmployeePhoto($photo, Employee $employee): ?string
     {
+        \Log::info('[EMPLOYEE PHOTO] Starting photo processing', [
+            'employee_id' => $employee->id,
+            'photo_type' => gettype($photo),
+            'photo_length' => is_string($photo) ? strlen($photo) : 'not_string'
+        ]);
+        
         if (!$photo) {
+            \Log::info('[EMPLOYEE PHOTO] No photo provided');
             return null;
         }
         
         $path = "employees/{$employee->provider_id}/{$employee->uuid}";
+        \Log::info('[EMPLOYEE PHOTO] Storage path: ' . $path);
         
         // Si es un string base64, convertir a archivo
         if (is_string($photo) && strpos($photo, 'data:image') === 0) {
+            \Log::info('[EMPLOYEE PHOTO] Processing base64 image');
+            
             // Es una imagen base64
             $image_parts = explode(";", $photo);
             $image_type_aux = explode("image/", $image_parts[0]);
@@ -274,19 +284,32 @@ class EmployeeService implements EmployeeServiceInterface
             $image_base64 = explode(",", $image_parts[1])[1];
             $imageData = base64_decode($image_base64);
             
+            \Log::info('[EMPLOYEE PHOTO] Image details', [
+                'image_type' => $image_type,
+                'image_data_size' => strlen($imageData)
+            ]);
+            
             $fileName = uniqid() . '.' . $image_type;
             $fullPath = $path . '/' . $fileName;
             
+            \Log::info('[EMPLOYEE PHOTO] Attempting to save to: ' . $fullPath);
+            
             // Guardar la imagen en el disco
             if (Storage::disk('public')->put($fullPath, $imageData)) {
+                \Log::info('[EMPLOYEE PHOTO] Image saved successfully: ' . $fullPath);
                 return $fullPath;
+            } else {
+                \Log::error('[EMPLOYEE PHOTO] Failed to save image to storage');
             }
             
             return null;
         }
         
+        \Log::info('[EMPLOYEE PHOTO] Processing uploaded file');
         // Si es un archivo cargado (UploadedFile)
-        return $photo->store($path, 'public');
+        $result = $photo->store($path, 'public');
+        \Log::info('[EMPLOYEE PHOTO] File stored: ' . ($result ?: 'FAILED'));
+        return $result;
     }
     
     /**

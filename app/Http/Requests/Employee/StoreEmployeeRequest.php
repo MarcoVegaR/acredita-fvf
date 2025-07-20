@@ -4,6 +4,7 @@ namespace App\Http\Requests\Employee;
 
 use App\Repositories\Employee\EmployeeRepositoryInterface;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class StoreEmployeeRequest extends FormRequest
@@ -56,7 +57,29 @@ class StoreEmployeeRequest extends FormRequest
             'first_name' => ['required', 'string', 'max:50'],
             'last_name' => ['required', 'string', 'max:50'],
             'function' => ['required', 'string', 'max:100'],
-            'photo' => ['nullable', 'image', 'max:2048'], // Max 2MB
+            'photo' => ['nullable', function ($attribute, $value, $fail) {
+                if ($value) {
+                    // Si es string (base64), verificar formato
+                    if (is_string($value)) {
+                        if (!preg_match('/^data:image\/(jpeg|jpg|png|gif|webp);base64,/', $value)) {
+                            $fail('El campo ' . $attribute . ' debe ser una imagen válida.');
+                        }
+                        // Verificar tamaño (aproximado, base64 es ~33% más grande)
+                        $sizeBytes = strlen($value) * 0.75;
+                        if ($sizeBytes > 2048 * 1024) { // 2MB
+                            $fail('El campo ' . $attribute . ' no debe ser mayor a 2MB.');
+                        }
+                    } else {
+                        // Si es archivo, usar validación normal
+                        $validator = \Validator::make([$attribute => $value], [
+                            $attribute => 'image|max:2048'
+                        ]);
+                        if ($validator->fails()) {
+                            $fail($validator->errors()->first($attribute));
+                        }
+                    }
+                }
+            }],
             'active' => ['nullable', 'boolean'],
         ];
     }
