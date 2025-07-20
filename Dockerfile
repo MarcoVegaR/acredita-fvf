@@ -55,6 +55,9 @@ USER appuser
 # Instalar dependencias de Composer (sin dev para producción, sin scripts)
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
+# Instalar Faker específicamente para seeders en producción
+RUN composer require fakerphp/faker --no-interaction
+
 # Instalar dependencias de NPM
 RUN npm ci --only=production
 
