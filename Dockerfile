@@ -33,25 +33,48 @@ RUN apk add --no-cache \
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Instalar Node.js para poder ejecutar npm commands manualmente
+# Instalar Node.js y NPM
 RUN apk add --no-cache nodejs npm
 
-# Configurar usuario www-data
+# Configurar usuario
 RUN adduser -D -s /bin/bash -u 1000 appuser \
     && mkdir -p /var/www/html \
-    && mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
-    && chown -R appuser:appuser /var/www/html \
-    && find /var/www/html -type f -exec chmod 644 {} \; || true \
-    && find /var/www/html -type d -exec chmod 755 {} \; || true \
-    && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache
+    && chown -R appuser:appuser /var/www/html
 
 WORKDIR /var/www/html
 
-# Copiar código fuente (dependencias se instalarán manualmente)
+# Copiar archivos de dependencias primero para aprovechar cache de Docker
+COPY --chown=appuser:appuser composer.json composer.lock package.json package-lock.json ./
+
+# Crear archivo .env desde .env.prod para build
+COPY --chown=appuser:appuser .env.prod .env
+
+# Cambiar a usuario appuser para instalaciones
+USER appuser
+
+# Instalar dependencias de Composer (sin dev para producción)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+# Instalar dependencias de NPM
+RUN npm ci --only=production
+
+# Copiar el resto del código fuente
+USER root
 COPY --chown=appuser:appuser . .
 
-# Configurar permisos para desarrollo
-RUN chown -R appuser:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
+# Crear directorios necesarios y configurar permisos
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build \
+    && chown -R appuser:www-data storage bootstrap/cache public/build \
+    && chmod -R 775 storage bootstrap/cache public/build
+
+# Cambiar a appuser para compilar assets
+USER appuser
+
+# Compilar assets para producción
+RUN npm run build
+
+# Cambiar de vuelta a root para configuraciones finales
+USER root
 
 # Configurar Nginx
 COPY docker/nginx/nginx.conf /etc/nginx/nginx.conf
