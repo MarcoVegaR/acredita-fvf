@@ -16,6 +16,8 @@ RUN apk add --no-cache \
     libxml2-dev \
     postgresql-dev \
     mysql-client \
+    imagemagick \
+    imagemagick-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
@@ -28,6 +30,8 @@ RUN apk add --no-cache \
         opcache \
         bcmath \
         xml \
+    && pecl install imagick \
+    && docker-php-ext-enable imagick \
         soap
 
 # Instalar Composer
