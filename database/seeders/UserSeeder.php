@@ -20,7 +20,7 @@ class UserSeeder extends Seeder
         $adminUser->assignRole('admin');
         
         // Create regular users (79 active with random roles, 20 inactive with random roles)
-        User::factory(79)->withRandomRole()->create();
-        User::factory(20)->inactive()->withRandomRole()->create();
+        //User::factory(79)->withRandomRole()->create();
+        //User::factory(20)->inactive()->withRandomRole()->create();
     }
 }

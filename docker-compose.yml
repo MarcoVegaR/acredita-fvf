@@ -1,0 +1,120 @@
+services:
+  # Aplicación Laravel
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: acredita_app
+    restart: unless-stopped
+    ports:
+      - "8094:80"
+      - "8443:443"
+    volumes:
+      # Solo para desarrollo - comentar en producción
+      # - ./storage/app:/var/www/html/storage/app
+      # - ./storage/logs:/var/www/html/storage/logs
+      
+      # Para certificados SSL en producción
+      # - ./ssl:/etc/ssl/certs:ro
+      
+      # Volúmenes persistentes para producción
+      - app_storage:/var/www/html/storage/app
+      - app_logs:/var/www/html/storage/logs
+      
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_CONNECTION=pgsql
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_DATABASE=acredita-fvf
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - CACHE_DRIVER=database
+      - SESSION_DRIVER=database
+      - QUEUE_CONNECTION=database
+      - RUN_MIGRATIONS=true
+      - RUN_SEEDERS=false
+      - CLEAR_CACHE=false
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - acredita_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:16-alpine
+    container_name: acredita_db
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: acredita-fvf
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=es_ES.UTF-8 --lc-ctype=es_ES.UTF-8"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - acredita_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d acredita-fvf"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # pgAdmin para administración de PostgreSQL (opcional, solo desarrollo)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: acredita_pgadmin
+    restart: unless-stopped
+    ports:
+      - "8095:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@acredita.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - acredita_network
+    profiles:
+      - development  # Solo se ejecuta con --profile development
+
+  # Mailhog para testing de emails (opcional, solo desarrollo)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: acredita_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8096:8025"
+    networks:
+      - acredita_network
+    profiles:
+      - development  # Solo se ejecuta con --profile development
+
+volumes:
+  db_data:
+    driver: local
+  app_storage:
+    driver: local
+  app_logs:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  acredita_network:
+    driver: bridge

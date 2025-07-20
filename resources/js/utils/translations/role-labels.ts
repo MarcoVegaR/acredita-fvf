@@ -42,9 +42,40 @@ export function getRoleDescription(field: string): string | undefined {
 
 // Module names translation for permissions
 export const moduleTranslations: Record<string, string> = {
+  // Sistema y administración
   users: "Usuarios",
   roles: "Roles",
   permissions: "Permisos",
+  areas: "Áreas",
+  
+  // Gestión de proveedores
+  provider: "Proveedor",
+  providers: "Proveedores",
+  
+  // Gestión de empleados
+  employee: "Empleado",
+  employees: "Empleados",
+  
+  // Eventos y zonas
+  events: "Eventos",
+  zones: "Zonas",
+  
+  // Plantillas de credenciales
+  templates: "Plantillas",
+  
+  // Solicitudes de acreditación
+  accreditation_request: "Solicitud de acreditación",
+  accreditation_requests: "Solicitudes de acreditación",
+  
+  // Credenciales y QR
+  credential: "Credencial",
+  credentials: "Credenciales",
+  
+  // Gestión de archivos
+  documents: "Documentos",
+  images: "Imágenes",
+  
+  // Otros módulos generales
   dashboard: "Dashboard",
   reports: "Informes",
   settings: "Configuración",
@@ -56,30 +87,50 @@ export const moduleTranslations: Record<string, string> = {
   teams: "Equipos",
   projects: "Proyectos",
   tasks: "Tareas",
-  documents: 'Documentos',
-  activities: 'Actividades',
-  customers: 'Clientes',
-  products: 'Productos',
-  invoices: 'Facturas',
-  categories: 'Categorías',
-  tags: 'Etiquetas',
-  comments: 'Comentarios',
+  activities: "Actividades",
+  customers: "Clientes",
+  products: "Productos",
+  invoices: "Facturas",
+  categories: "Categorías",
+  tags: "Etiquetas",
+  comments: "Comentarios",
+  
   // Additional modules to prevent undefined values
-  '': 'General',
-  undefined: 'General'
+  '': "General",
+  undefined: "General"
 };
 
 // Traducción de acciones para permisos
 export const actionTranslations: Record<string, string> = {
+  // Acciones básicas CRUD
   index: "Listar",
   show: "Ver detalles",
   create: "Crear",
   edit: "Editar",
   update: "Actualizar",
   delete: "Eliminar",
+  
+  // Acciones de gestión
   manage: "Administrar",
+  manage_own_area: "Administrar (propia área)",
+  manage_own_provider: "Administrar (propio proveedor)",
+  
+  // Acciones específicas para solicitudes
+  submit: "Enviar",
+  review: "Revisar",
+  return: "Devolver",
+  
+  // Acciones específicas para credenciales
+  view: "Ver",
+  download: "Descargar",
+  preview: "Previsualizar",
+  regenerate: "Regenerar",
+  
+  // Otras acciones comunes
   export: "Exportar",
   import: "Importar",
+  approve: "Aprobar",
+  reject: "Rechazar",
 };
 
 // Get module name with fallback
@@ -103,5 +154,62 @@ export function formatPermissionName(permission: string): string {
   const moduleTrans = moduleTranslations[module] || module;
   const actionTrans = actionTranslations[action] || action;
   
+  // Casos especiales para formateo más natural en español
+  
+  // 1. Permisos de gestión por área/proveedor
+  if (action === 'manage_own_area') {
+    if (module === 'provider') return 'Administrar proveedores de su área';
+    if (module === 'employee') return 'Administrar empleados de su área';
+    if (module === 'accreditation_request') return 'Administrar solicitudes de su área';
+    return `Administrar ${moduleTrans} de su área`;
+  }
+  
+  if (action === 'manage_own_provider') {
+    if (module === 'employee') return 'Administrar empleados de su proveedor';
+    if (module === 'accreditation_request') return 'Administrar solicitudes de su proveedor';
+    return `Administrar ${moduleTrans} de su proveedor`;
+  }
+  
+  // 2. Permisos de tipo CRUD
+  if (action === 'index') {
+    return `Listar ${moduleTrans}`;
+  }
+  
+  if (action === 'show') {
+    return `Ver detalles de ${moduleTrans}`;
+  }
+  
+  if (action === 'create') {
+    return `Crear ${moduleTrans}`;
+  }
+  
+  if (action === 'edit' || action === 'update') {
+    return `Editar ${moduleTrans}`;
+  }
+  
+  if (action === 'delete') {
+    return `Eliminar ${moduleTrans}`;
+  }
+  
+  // 3. Permisos de credenciales
+  if (module === 'credential' || module === 'credentials') {
+    if (action === 'view') return 'Ver credenciales';
+    if (action === 'download') return 'Descargar credenciales';
+    if (action === 'preview') return 'Previsualizar credenciales';
+  }
+  
+  // 4. Permisos de plantillas
+  if (module === 'templates' && action === 'regenerate') {
+    return 'Regenerar plantillas';
+  }
+  
+  // 5. Acciones especiales para solicitudes
+  if (module === 'accreditation_request') {
+    if (action === 'submit') return 'Enviar solicitud de acreditación';
+    if (action === 'review') return 'Revisar solicitud de acreditación';
+    if (action === 'return') return 'Devolver solicitud de acreditación';
+  }
+  
+  // Para el resto de los casos, seguimos el formato estándar
   return `${actionTrans} ${moduleTrans}`;
 }

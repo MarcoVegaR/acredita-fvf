@@ -166,3 +166,292 @@ Para más información sobre cómo usar el componente DataTable, consulta la [do
 ## Créditos
 
 - [Marco Vega](https://github.com/MarcoVegaR)
+
+# 🏆 Sistema de Acreditación FVF
+
+Sistema de acreditación para la Federación Venezolana de Fútbol desarrollado con Laravel 12 + React + Inertia.js + PostgreSQL.
+
+## 🚀 Deployment en Producción (EC2 Amazon)
+
+### Prerrequisitos
+
+- Instancia EC2 Ubuntu 20.04+ con al menos 2GB RAM
+- Docker y Docker Compose instalados
+- Acceso SSH a la instancia
+- Puertos 8094 y 5435 abiertos en el Security Group
+
+### 📋 Paso a Paso - Instalación Completa
+
+#### 1. Conectar a la instancia EC2
+
+```bash
+# Conectar vía SSH
+ssh -i "your-key.pem" ubuntu@your-ec2-public-ip
+```
+
+#### 2. Actualizar el sistema
+
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+#### 3. Instalar Docker
+
+```bash
+# Instalar Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Agregar usuario al grupo docker
+sudo usermod -aG docker $USER
+
+# Instalar Docker Compose
+sudo curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+
+# Verificar instalación
+docker --version
+docker compose version
+
+# Reiniciar sesión o usar:
+newgrp docker
+```
+
+#### 4. Clonar el repositorio
+
+```bash
+# Clonar desde GitHub
+git clone https://github.com/MarcoVegaR/acredita-fvf.git
+cd acredita-fvf
+```
+
+#### 5. Configurar variables de entorno
+
+```bash
+# Copiar configuración de producción
+cp .env.prod .env
+
+# Editar variables según tu servidor (opcional)
+nano .env
+```
+
+**Variables importantes a verificar/modificar:**
+
+```env
+# Cambiar por tu dominio real
+APP_URL=https://acredita.tu-dominio.com
+
+# Configuración de base de datos (mantener estos valores)
+DB_CONNECTION=pgsql
+DB_HOST=db
+DB_PORT=5432
+DB_DATABASE=acredita-fvf
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+
+# Configuración de correo para producción
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=tu-email@gmail.com
+MAIL_PASSWORD=tu-app-password
+MAIL_FROM_ADDRESS=noreply@tu-dominio.com
+```
+
+#### 6. Construir e iniciar contenedores
+
+```bash
+# Iniciar servicios con Docker Compose
+docker compose up -d --build
+
+# Verificar que los contenedores estén corriendo
+docker ps
+```
+
+#### 7. Configuración dentro del contenedor
+
+```bash
+# Entrar al contenedor de la aplicación
+docker exec -it -u root acredita_app bash
+
+# Dentro del contenedor, ejecutar:
+composer install --optimize-autoloader --no-dev
+npm install
+npm run build
+php artisan migrate --force
+php artisan db:seed --force
+php artisan storage:link
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Configurar permisos
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Salir del contenedor
+exit
+```
+
+#### 8. Verificar instalación
+
+```bash
+# Verificar logs
+docker logs -f acredita_app
+
+# Verificar health check
+curl http://localhost:8094/health
+```
+
+### 🌐 URLs de acceso
+
+- **Aplicación:** `http://your-ec2-public-ip:8094`
+- **pgAdmin:** `http://your-ec2-public-ip:8095`
+  - Usuario: `admin@acredita.com`
+  - Contraseña: `admin123`
+
+### 📱 Configuración de HTTPS (Producción)
+
+Para producción con dominio propio:
+
+1. **Configurar dominio:**
+   - Apuntar tu dominio a la IP pública de EC2
+   - Actualizar `APP_URL` en `.env`
+
+2. **Configurar SSL con Certbot:**
+
+```bash
+# Instalar Certbot
+sudo apt install certbot python3-certbot-nginx -y
+
+# Obtener certificado SSL
+sudo certbot --nginx -d tu-dominio.com
+
+# Renovación automática
+sudo crontab -e
+# Agregar: 0 12 * * * /usr/bin/certbot renew --quiet
+```
+
+3. **Actualizar configuración de Nginx:**
+   - Descomentar configuración HTTPS en `docker/nginx/default.conf`
+   - Rebuildar contenedor: `docker compose up -d --build`
+
+### 🔧 Comandos útiles de mantenimiento
+
+```bash
+# Ver logs de la aplicación
+docker logs -f acredita_app
+
+# Entrar al contenedor
+docker exec -it -u root acredita_app bash
+
+# Reiniciar servicios
+docker compose restart
+
+# Parar servicios
+docker compose down
+
+# Actualizar desde Git
+git pull origin main
+docker compose up -d --build
+
+# Backup de base de datos
+docker exec acredita_db pg_dump -U postgres acredita-fvf > backup.sql
+
+# Restaurar backup
+docker exec -i acredita_db psql -U postgres acredita-fvf < backup.sql
+```
+
+### 📊 Monitoreo
+
+```bash
+# Ver estado de contenedores
+docker ps
+
+# Ver uso de recursos
+docker stats
+
+# Ver logs del sistema
+journalctl -u docker.service
+```
+
+### 🛡️ Seguridad
+
+1. **Firewall (UFW):**
+
+```bash
+sudo ufw enable
+sudo ufw allow ssh
+sudo ufw allow 8094/tcp
+sudo ufw allow 443/tcp
+sudo ufw allow 80/tcp
+```
+
+2. **Actualizaciones automáticas:**
+
+```bash
+sudo apt install unattended-upgrades -y
+sudo dpkg-reconfigure -plow unattended-upgrades
+```
+
+### 🚨 Troubleshooting
+
+**Problema: Contenedor no inicia**
+```bash
+docker logs acredita_app
+docker logs acredita_db
+```
+
+**Problema: Error de permisos**
+```bash
+docker exec -it -u root acredita_app chown -R www-data:www-data /var/www/html/storage
+```
+
+**Problema: Base de datos no conecta**
+```bash
+docker exec -it acredita_db psql -U postgres -d acredita-fvf
+```
+
+**Problema: Assets no cargan**
+```bash
+docker exec -it acredita_app npm run build
+docker exec -it acredita_app php artisan storage:link
+```
+
+### 📈 Performance
+
+- **RAM recomendada:** 4GB para producción
+- **CPU:** 2 vCPUs mínimo
+- **Storage:** 20GB+ SSD
+- **Monitoreo:** Configurar CloudWatch para métricas
+
+### 🏗️ Arquitectura
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Nginx + PHP   │───▶│   PostgreSQL    │    │     pgAdmin     │
+│   (Port 8094)   │    │   (Port 5435)   │    │   (Port 8095)   │
+│   acredita_app  │    │   acredita_db   │    │  acredita_pgadmin│
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### 👥 Roles del Sistema
+
+- **Admin:** Acceso completo al sistema
+- **Area Manager:** Gestión de proveedores, empleados y solicitudes de su área
+- **Provider:** Gestión de empleados y solicitudes de su propio proveedor
+
+### 📞 Soporte
+
+Para reportar problemas o solicitar ayuda:
+
+- **GitHub Issues:** [https://github.com/MarcoVegaR/acredita-fvf/issues](https://github.com/MarcoVegaR/acredita-fvf/issues)
+- **Email:** marco@caracoders.com.ve
+
+---
+
+**Desarrollado por:** [Caracoders](https://caracoders.com.ve)  
+**Versión:** 1.0.0  
+**Laravel:** 12.x  
+**React:** 18.x  
+**PostgreSQL:** 16.x

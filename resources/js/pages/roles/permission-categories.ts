@@ -6,40 +6,67 @@
 // Define categories and their modules
 export const permissionCategories = [
   {
-    id: 'core',
+    id: 'system',
     label: 'Sistema y Administración',
-    icon: 'Shield', // Indicates icon to use
-    modules: ['system', 'dashboard', 'settings', 'audit']
+    icon: 'Shield',
+    description: 'Permisos para administración del sistema y configuración general',
+    modules: ['users', 'roles', 'areas']
   },
   {
-    id: 'users',
-    label: 'Usuarios y Seguridad',
+    id: 'providers',
+    label: 'Gestión de Proveedores',
+    icon: 'Building2',
+    description: 'Permisos para gestionar proveedores internos y externos',
+    modules: ['provider']
+  },
+  {
+    id: 'employees',
+    label: 'Gestión de Empleados',
     icon: 'Users',
-    modules: ['users', 'roles', 'permissions', 'profile']
+    description: 'Permisos para gestionar empleados de proveedores',
+    modules: ['employee']
   },
   {
-    id: 'content',
-    label: 'Contenido y Archivos',
+    id: 'events',
+    label: 'Eventos y Zonas',
+    icon: 'Calendar',
+    description: 'Permisos para gestionar eventos deportivos y sus zonas',
+    modules: ['events', 'zones']
+  },
+  {
+    id: 'templates',
+    label: 'Plantillas de Credenciales',
+    icon: 'FileImage',
+    description: 'Permisos para gestionar plantillas y diseños de credenciales',
+    modules: ['templates']
+  },
+  {
+    id: 'accreditation',
+    label: 'Solicitudes de Acreditación',
+    icon: 'FileCheck',
+    description: 'Permisos para gestionar el flujo completo de acreditación',
+    modules: ['accreditation_request']
+  },
+  {
+    id: 'credentials',
+    label: 'Credenciales y QR',
+    icon: 'CreditCard',
+    description: 'Permisos para visualizar, generar y gestionar credenciales',
+    modules: ['credential', 'credentials']
+  },
+  {
+    id: 'files',
+    label: 'Gestión de Archivos',
     icon: 'FileText',
-    modules: ['files', 'documents', 'categories', 'tags', 'comments']
-  },
-  {
-    id: 'business',
-    label: 'Gestión de Negocios',
-    icon: 'Briefcase',
-    modules: ['customers', 'products', 'invoices', 'reports']
-  },
-  {
-    id: 'communications',
-    label: 'Comunicaciones',
-    icon: 'MessageCircle',
-    modules: ['notifications', 'activities']
+    description: 'Permisos para manejar documentos e imágenes del sistema',
+    modules: ['documents', 'images']
   },
   {
     id: 'other',
-    label: 'Otros Módulos',
+    label: 'Otros Permisos',
     icon: 'MoreHorizontal',
-    modules: [] // Will capture modules not in other categories
+    description: 'Permisos que no encajan en otras categorías',
+    modules: []
   }
 ];
 

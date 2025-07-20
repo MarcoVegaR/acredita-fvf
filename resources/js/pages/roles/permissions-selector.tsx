@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from "react";
 import { 
   Search, ChevronDown, ChevronRight, Shield, CheckIcon, CheckSquare, 
-  BoxSelect, X, Users, FileText, Briefcase, MessageCircle, MoreHorizontal
+  BoxSelect, X, Users, FileText, MoreHorizontal, Building2, Calendar,
+  FileImage, FileCheck, CreditCard
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getModuleLabel } from "@/utils/translations/role-labels";
+import { getModuleLabel, formatPermissionName } from "@/utils/translations/role-labels";
 import { toast } from "sonner";
 import { permissionCategories, groupPermissionsByCategory } from "./permission-categories";
 
@@ -250,10 +251,13 @@ export const PermissionsSelector: React.FC<PermissionSelectorProps> = ({
     if (typeof icon === 'string') {
       const iconMap: Record<string, React.ReactNode> = {
         Shield: <Shield className="h-4 w-4" />,
+        Building2: <Building2 className="h-4 w-4" />,
         Users: <Users className="h-4 w-4" />,
+        Calendar: <Calendar className="h-4 w-4" />,
+        FileImage: <FileImage className="h-4 w-4" />,
+        FileCheck: <FileCheck className="h-4 w-4" />,
+        CreditCard: <CreditCard className="h-4 w-4" />,
         FileText: <FileText className="h-4 w-4" />,
-        Briefcase: <Briefcase className="h-4 w-4" />,
-        MessageCircle: <MessageCircle className="h-4 w-4" />,
         MoreHorizontal: <MoreHorizontal className="h-4 w-4" />
       };
       

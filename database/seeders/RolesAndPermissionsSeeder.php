@@ -59,6 +59,20 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('images.upload.users', 'Subir imágenes de usuarios');
         $this->createPermission('images.delete.users', 'Eliminar imágenes de usuarios');
         
+        // Event management permissions
+        $this->createPermission('events.index', 'Listar eventos');
+        $this->createPermission('events.show', 'Ver detalles de evento');
+        $this->createPermission('events.create', 'Crear eventos');
+        $this->createPermission('events.edit', 'Editar eventos');
+        $this->createPermission('events.delete', 'Eliminar eventos');
+        
+        // Zone management permissions
+        $this->createPermission('zones.index', 'Listar zonas');
+        $this->createPermission('zones.show', 'Ver detalles de zona');
+        $this->createPermission('zones.create', 'Crear zonas');
+        $this->createPermission('zones.edit', 'Editar zonas');
+        $this->createPermission('zones.delete', 'Eliminar zonas');
+        
         // Template management permissions
         $this->createPermission('templates.index', 'Listar plantillas');
         $this->createPermission('templates.show', 'Ver detalles de plantilla');
@@ -66,6 +80,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('templates.edit', 'Editar plantillas');
         $this->createPermission('templates.delete', 'Eliminar plantillas');
         $this->createPermission('templates.set_default', 'Establecer plantilla predeterminada');
+        $this->createPermission('templates.regenerate', 'Regenerar credenciales con plantilla');
         
         // Provider management permissions
         $this->createPermission('provider.view', 'Ver proveedores');
@@ -100,49 +115,62 @@ class RolesAndPermissionsSeeder extends Seeder
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // Create roles
+        
+        // ADMIN ROLE - Acceso completo al sistema
         $adminRole = Role::create(['name' => 'admin']);
         $adminRole->givePermissionTo(Permission::all());
         
-        // Create editor role with limited permissions
-        $editorRole = Role::create(['name' => 'editor']);
-        $editorRole->givePermissionTo([
-            'users.index', 'users.show',
-            'users.edit', // Can edit but not create or delete users
-        ]);
-        
-        // Create viewer role with read-only permissions
-        $viewerRole = Role::create(['name' => 'viewer']);
-        $viewerRole->givePermissionTo([
-            'users.index', 'users.show',
-            'roles.index', 'roles.show',
-        ]);
-        
-        // Create area_manager role with specific permissions
-        // Puede dar visto bueno, cancelar solicitudes, ver todas las de su área
+        // AREA_MANAGER ROLE - Gestión de su área y visto bueno de solicitudes
+        // Puede dar visto bueno, devolver solicitudes, ver todas las de su área
         $areaManagerRole = Role::create(['name' => 'area_manager']);
         $areaManagerRole->givePermissionTo([
-            'areas.index', 'areas.show',
+            // Gestión de proveedores (solo su área)
+            'provider.view', 'provider.manage_own_area',
+            
+            // Gestión de empleados (solo su área)
+            'employee.view', 'employee.manage',
+            
+            // Gestión de eventos y zonas (lectura)
+            'events.index', 'events.show',
+            'zones.index', 'zones.show',
+            
+            // Plantillas (lectura)
+            'templates.index', 'templates.show',
+            
+            // Solicitudes de acreditación (gestión completa de su área)
             'accreditation_request.index', 'accreditation_request.view',
             'accreditation_request.create', 'accreditation_request.update', 
             'accreditation_request.delete', 'accreditation_request.submit',
-            'accreditation_request.review', 'accreditation_request.return'
+            'accreditation_request.review', 'accreditation_request.return',
+            
+            // Credenciales (solo visualización)
+            'credential.view', 'credential.preview'
             // Los permisos se filtran por área a través de la policy
         ]);
         
-        // Create provider role with permissions to manage their own employees and requests
+        // PROVIDER ROLE - Gestión de empleados y solicitudes del proveedor
         // Solo puede crear borradores, editarlos, eliminarlos y enviarlos
         $providerRole = Role::create(['name' => 'provider']);
         $providerRole->givePermissionTo([
+            // Gestión de empleados de su propio proveedor
             'employee.view', 'employee.manage_own_provider',
+            
+            // Gestión de eventos y zonas (solo lectura necesaria)
+            'events.index', 'events.show',
+            'zones.index', 'zones.show',
+            
+            // Plantillas (solo lectura)
+            'templates.index', 'templates.show',
+            
+            // Solicitudes de acreditación (gestión de su propio proveedor)
             'accreditation_request.index', 'accreditation_request.view',
             'accreditation_request.create', 'accreditation_request.update',
-            'accreditation_request.delete', 'accreditation_request.submit'
+            'accreditation_request.delete', 'accreditation_request.submit',
+            
+            // Credenciales (visualización y descarga de sus propias credenciales)
+            'credential.view', 'credential.download', 'credential.preview'
             // Los permisos se filtran por proveedor a través de la policy
         ]);
-        
-        // Create user role with minimal permissions
-        $userRole = Role::create(['name' => 'user']);
-        $userRole->givePermissionTo([]);
         
     }
 

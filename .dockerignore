@@ -1,0 +1,76 @@
+# Archivos y directorios a ignorar durante el build de Docker
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Logs
+*.log
+logs/
+
+# Cache y temporales
+.cache/
+.temp/
+.tmp/
+
+# Storage de Laravel (se crean en runtime)
+storage/app/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/logs/*
+!storage/app/.gitignore
+!storage/framework/.gitignore
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore
+!storage/logs/.gitignore
+
+# Bootstrap cache
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+# Archivos de entorno
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Testing
+.phpunit.result.cache
+tests/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+docs/
+
+# Otros archivos de desarrollo
+.editorconfig
+.eslintrc.js
+.prettier*
+phpcs.xml
+phpunit.xml
+pint.json
+
+# Vendor solo si no es necesario para el build
+# vendor/
