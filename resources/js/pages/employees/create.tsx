@@ -44,12 +44,11 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
     beforeSubmit: (data: Record<string, unknown>) => {
       // Convertir la foto en base64 al campo correcto para el backend
       if (data.croppedPhoto) {
-        // Subimos la foto recortada como un campo específico que el backend procesará
-        data.photo_base64 = data.croppedPhoto;
+        // Backend espera el campo 'photo', no 'photo_base64'
+        data.photo = data.croppedPhoto;
         
         // Eliminamos los campos temporales que no deben ir al servidor
         delete data.croppedPhoto;
-        delete data.photo;
       }
       return data;
     },
