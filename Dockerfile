@@ -73,6 +73,7 @@ USER root
 
 # Crear directorios necesarios y configurar permisos
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build \
+    && mkdir -p /var/log/supervisor \
     && chown -R appuser:www-data storage bootstrap/cache public/build \
     && chmod -R 775 storage bootstrap/cache public/build
 
