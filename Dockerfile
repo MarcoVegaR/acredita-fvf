@@ -39,9 +39,10 @@ RUN apk add --no-cache nodejs npm
 # Configurar usuario www-data
 RUN adduser -D -s /bin/bash -u 1000 appuser \
     && mkdir -p /var/www/html \
+    && mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache \
     && chown -R appuser:appuser /var/www/html \
-    && find /var/www/html -type f -exec chmod 644 {} \; \
-    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && find /var/www/html -type f -exec chmod 644 {} \; || true \
+    && find /var/www/html -type d -exec chmod 755 {} \; || true \
     && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache
 
 WORKDIR /var/www/html
