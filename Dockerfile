@@ -2,6 +2,7 @@
 FROM php:8.2-fpm-alpine AS php-base
 
 # Instalar dependencias del sistema
+# Instalar dependencias del sistema y de desarrollo
 RUN apk add --no-cache \
     nginx \
     supervisor \
@@ -18,6 +19,13 @@ RUN apk add --no-cache \
     mysql-client \
     imagemagick \
     imagemagick-dev \
+    # Dependencias temporales para compilación
+    && apk add --virtual .build-deps \
+    $PHPIZE_DEPS \
+    autoconf \
+    g++ \
+    make \
+    # Configurar y compilar extensiones PHP
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) \
         pdo \
@@ -30,9 +38,12 @@ RUN apk add --no-cache \
         opcache \
         bcmath \
         xml \
+        soap \
+    # Instalar ImageMagick extension
     && pecl install imagick \
     && docker-php-ext-enable imagick \
-        soap
+    # Limpiar dependencias de desarrollo
+    && apk del .build-deps
 
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
