@@ -52,8 +52,8 @@ COPY --chown=appuser:appuser .env.prod .env
 # Cambiar a usuario appuser para instalaciones
 USER appuser
 
-# Instalar dependencias de Composer (sin dev para producción)
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+# Instalar dependencias de Composer (sin dev para producción, sin scripts)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
 # Instalar dependencias de NPM
 RUN npm ci --only=production
@@ -61,6 +61,15 @@ RUN npm ci --only=production
 # Copiar el resto del código fuente
 USER root
 COPY --chown=appuser:appuser . .
+
+# Cambiar a appuser para ejecutar scripts de Composer
+USER appuser
+
+# Ejecutar scripts de Composer ahora que artisan está disponible
+RUN composer run-script post-autoload-dump
+
+# Cambiar de vuelta a root
+USER root
 
 # Crear directorios necesarios y configurar permisos
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build \
