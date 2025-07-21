@@ -91,10 +91,10 @@ RUN composer run-script post-autoload-dump \
 USER root
 
 # Crear directorios necesarios y configurar permisos
-RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build \
+RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build public/fonts \
     && mkdir -p /var/log/supervisor \
-    && chown -R appuser:www-data storage bootstrap/cache public/build \
-    && chmod -R 775 storage bootstrap/cache public/build
+    && chown -R appuser:www-data storage bootstrap/cache public/build public/fonts \
+    && chmod -R 775 storage bootstrap/cache public/build public/fonts
 
 # Cambiar a appuser para compilar assets
 USER appuser
