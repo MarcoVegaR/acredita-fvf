@@ -223,14 +223,29 @@ class CredentialService implements CredentialServiceInterface
         $filename = 'credential_' . $credential->uuid . '.png';
         $imagePath = config('credentials.paths.images') . '/' . $filename;
         
+        // DEBUGGING: Información del canvas antes de guardar
         $encodedImage = $canvas->toPng();
+        $imageSize = strlen($encodedImage);
+        
+        Log::info('[CREDENTIAL SERVICE] DEBUGGING - Guardando imagen final', [
+            'filename' => $filename,
+            'image_path' => $imagePath,
+            'image_size_bytes' => $imageSize,
+            'canvas_dimensions' => $dimensions['width'] . 'x' . $dimensions['height'],
+            'storage_path' => Storage::disk('public')->path($imagePath)
+        ]);
+        
         Storage::disk('public')->put($imagePath, $encodedImage);
-
         $credential->update(['credential_image_path' => $imagePath]);
 
-        Log::info('[CREDENTIAL SERVICE] Imagen de credencial generada', [
+        // Verificar que el archivo se guardó correctamente
+        $savedFileSize = Storage::disk('public')->size($imagePath);
+        Log::info('[CREDENTIAL SERVICE] Imagen de credencial generada y verificada', [
             'image_path' => $imagePath,
-            'final_dimensions' => $dimensions['width'] . 'x' . $dimensions['height']
+            'final_dimensions' => $dimensions['width'] . 'x' . $dimensions['height'],
+            'saved_file_size' => $savedFileSize,
+            'encoding_size' => $imageSize,
+            'sizes_match' => $savedFileSize === $imageSize
         ]);
 
         return $imagePath;
@@ -453,14 +468,12 @@ class CredentialService implements CredentialServiceInterface
         $event = $credential->event_snapshot;
         $template = $credential->template_snapshot;
         
-        // Obtener zonas de la solicitud de acreditación
-        $zones = null;
-        if ($credential->accreditationRequest) {
-            $zones = $credential->accreditationRequest->zones?->toArray();
-            Log::info('[CREDENTIAL SERVICE] Zonas obtenidas de la solicitud', [
-                'zones_count' => $zones ? count($zones) : 0
-            ]);
-        }
+        // Obtener zonas del snapshot (inmutable) - CORREGIDO
+        $zones = $credential->zones_snapshot;
+        Log::info('[CREDENTIAL SERVICE] Zonas obtenidas del snapshot', [
+            'zones_count' => $zones ? count($zones) : 0,
+            'zones_data' => $zones
+        ]);
 
         if (!$template || !isset($template['layout_meta']['text_blocks'])) {
             Log::warning('[CREDENTIAL SERVICE] No hay text_blocks en el template');
@@ -489,38 +502,53 @@ class CredentialService implements CredentialServiceInterface
                 // Escalar coordenadas y tamaño de fuente
                 $scaledX = intval($block['x'] * $scaleX);
                 $scaledY = intval($block['y'] * $scaleY);
-                $scaledFontSize = intval(($block['font_size'] ?? 12) * min($scaleX, $scaleY));
                 
-                try {
-                    $canvas->text($text, $scaledX, $scaledY, function ($font) use ($block, $scaledFontSize) {
-                        $font->file(public_path('fonts/arial.ttf')); // Fallback si no hay fuente
-                        $font->size($scaledFontSize);
-                        $font->color('#000000');
-                        $font->align($block['alignment'] ?? 'left');
-                    });
-                    
-                    Log::info('[CREDENTIAL SERVICE] Texto agregado', [
-                        'block_id' => $block['id'],
-                        'text' => $text,
-                        'original_position' => ['x' => $block['x'], 'y' => $block['y']],
-                        'scaled_position' => ['x' => $scaledX, 'y' => $scaledY],
-                        'original_font_size' => $block['font_size'] ?? 12,
-                        'scaled_font_size' => $scaledFontSize
-                    ]);
-                } catch (Exception $e) {
-                    // Si falla con fuente personalizada, usar sin fuente
-                    $canvas->text($text, $scaledX, $scaledY, function ($font) use ($block, $scaledFontSize) {
-                        $font->size($scaledFontSize);
-                        $font->color('#000000');
-                        $font->align($block['alignment'] ?? 'left');
-                    });
-                    
-                    Log::info('[CREDENTIAL SERVICE] Texto agregado (sin fuente personalizada)', [
-                        'block_id' => $block['id'],
-                        'text' => $text,
-                        'scaled_position' => ['x' => $scaledX, 'y' => $scaledY]
-                    ]);
-                }
+                // CORREGIR: Font size está en milímetros, convertir a píxeles, luego a puntos para GD
+                $fontSizeMm = $block['font_size'] ?? 12;
+                $mmToPxFactor = 3.78; // 96 DPI estándar: 1mm = 3.78px
+                $baseFontSizePx = $fontSizeMm * $mmToPxFactor;
+                $fontScaleFactor = max(min($scaleX, $scaleY), 0.5); // Mínimo 50% del tamaño original
+                $scaledFontSizePx = intval($baseFontSizePx * $fontScaleFactor);
+                
+                // CRÍTICO: GD usa PUNTOS, no píxeles. Conversión: pt = px × 72 / DPI
+                $dpi = 96; // DPI estándar
+                $scaledFontSizePt = $scaledFontSizePx * 72 / $dpi;
+                $finalFontSize = max($scaledFontSizePt, 8); // Mínimo 8pt para legibilidad
+                
+                // DEBUGGING: Crear imagen de test con el font size CORREGIDO
+                $testImage = $this->imageManager->create(800, 200);
+                $testImage->fill('#ffffff');
+                $testImage->text($text . ' - PT:' . round($finalFontSize, 1), 50, 100, function ($font) use ($finalFontSize) {
+                    $font->file(public_path('fonts/arial.ttf')); // TTF válido
+                    $font->size($finalFontSize); // Usar puntos, no píxeles
+                    $font->color('#ff0000'); // Rojo para destacar
+                });
+                $testPath = 'credentials/debug_font_' . $block['id'] . '_' . round($finalFontSize, 1) . 'pt.png';
+                $testImage->save(storage_path('app/public/' . $testPath));
+                
+                // Aplicar texto con fuente TTF y tamaño en puntos
+                $canvas->text($text, $scaledX, $scaledY, function ($font) use ($finalFontSize, $block) {
+                    $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
+                    $font->size($finalFontSize); // Puntos, no píxeles
+                    $font->color('#000000');
+                    $font->align($block['alignment'] ?? 'left');
+                });
+                
+                Log::info('[CREDENTIAL SERVICE] SOLUCIÓN APLICADA - TTF + Puntos', [
+                    'block_id' => $block['id'],
+                    'text' => $text,
+                    'original_position' => ['x' => $block['x'], 'y' => $block['y']],
+                    'scaled_position' => ['x' => $scaledX, 'y' => $scaledY],
+                    'font_size_mm' => $fontSizeMm,
+                    'font_size_px_base' => $baseFontSizePx,
+                    'font_size_px_scaled' => $scaledFontSizePx,
+                    'font_size_pt_final' => round($finalFontSize, 2),
+                    'scale_factor' => $fontScaleFactor,
+                    'conversion' => $scaledFontSizePx . 'px * 72 / 96 DPI = ' . round($finalFontSize, 2) . 'pt',
+                    'test_image_path' => $testPath,
+                    'ttf_font' => 'fonts/arial.ttf',
+                    'intervention_version' => '3.11'
+                ]);
             }
         }
         

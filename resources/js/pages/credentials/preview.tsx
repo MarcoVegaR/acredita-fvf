@@ -81,7 +81,7 @@ export default function PreviewCredential({
                 <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-4">
                         <Button asChild variant="outline" size="sm">
-                            <Link href={`/accreditation-requests/${request.uuid}/credential`}>
+                            <Link href={`/accreditation-requests/${request.uuid}`}>
                                 <ArrowLeft className="h-4 w-4 mr-2" />
                                 Volver
                             </Link>

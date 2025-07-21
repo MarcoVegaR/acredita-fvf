@@ -48,6 +48,8 @@ export default function CredentialSection({
     canRegenerate = false 
 }: CredentialSectionProps) {
     const [credential, setCredential] = useState<Credential | null>(request.credential || null);
+    
+
     const [isPolling, setIsPolling] = useState(false);
 
     // Polling para estados pendientes/generating
@@ -173,27 +175,48 @@ export default function CredentialSection({
                         </div>
                         
                         {canDownload && (
-                            <div className="flex flex-wrap gap-3">
-                                <Button asChild>
-                                    <Link href={`/accreditation-requests/${request.uuid}/credential/preview`}>
-                                        <Eye className="h-4 w-4 mr-2" />
-                                        Ver Credencial
-                                    </Link>
-                                </Button>
+                            <div className="space-y-3">
+                                {/* Botón principal */}
+                                <div className="flex justify-center">
+                                    <Button asChild size="lg" className="w-full sm:w-auto">
+                                        <Link href={`/accreditation-requests/${request.uuid}/credential/preview`}>
+                                            <Eye className="h-5 w-5 mr-2" />
+                                            Ver Credencial
+                                        </Link>
+                                    </Button>
+                                </div>
                                 
-                                <Button asChild variant="outline">
-                                    <Link href={`/accreditation-requests/${request.uuid}/credential/download/image`}>
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Descargar PNG
-                                    </Link>
-                                </Button>
-                                
-                                <Button asChild variant="outline">
-                                    <Link href={`/accreditation-requests/${request.uuid}/credential/download/pdf`}>
-                                        <Download className="h-4 w-4 mr-2" />
-                                        Descargar PDF
-                                    </Link>
-                                </Button>
+                                {/* Botones secundarios */}
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    <Button asChild variant="outline">
+                                        <a href={`/accreditation-requests/${request.uuid}/credential/download/image`} target="_blank">
+                                            <Download className="h-4 w-4 mr-2" />
+                                            PNG
+                                        </a>
+                                    </Button>
+                                    
+                                    <Button asChild variant="outline">
+                                        <a href={`/accreditation-requests/${request.uuid}/credential/download/pdf`} target="_blank">
+                                            <Download className="h-4 w-4 mr-2" />
+                                            PDF
+                                        </a>
+                                    </Button>
+                                    
+                                    {canRegenerate && (
+                                        <Button 
+                                            asChild 
+                                            variant="secondary"
+                                        >
+                                            <Link 
+                                                href={`/accreditation-requests/${request.uuid}/credential/regenerate`}
+                                                method="post"
+                                            >
+                                                <RefreshCw className="h-4 w-4 mr-2" />
+                                                Regenerar
+                                            </Link>
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>

@@ -54,10 +54,18 @@ interface AccreditationRequestShowProps {
       is_ready: boolean;
     };
   };
+  canDownload?: boolean;
+  canRegenerate?: boolean;
 }
 
-export default function AccreditationRequestShow({ request }: AccreditationRequestShowProps) {
+export default function AccreditationRequestShow({ 
+  request, 
+  canDownload = false, 
+  canRegenerate = false 
+}: AccreditationRequestShowProps) {
   const { auth } = usePage<{ auth: { user?: { permissions?: string[] } } }>().props;
+  
+
   
   const statusConfig = {
     draft: { label: 'Borrador', bgColor: 'bg-gray-50', textColor: 'text-gray-700' },
@@ -70,8 +78,7 @@ export default function AccreditationRequestShow({ request }: AccreditationReque
 
   // Verificar si puede ver credenciales (solicitud aprobada)
   const canViewCredential = request.status === 'approved';
-  const canDownload = auth.user?.permissions?.includes('credential.download') ?? false;
-  const canRegenerate = auth.user?.permissions?.includes('credential.regenerate') ?? false;
+  // Usar props del backend en lugar de calcular en frontend
 
   // Configuración de tabs
   const tabs: TabConfig[] = [

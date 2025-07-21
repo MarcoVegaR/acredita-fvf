@@ -92,6 +92,8 @@ class AccreditationRequestController extends BaseController
             
             return $this->respondWithSuccess('accreditation-requests/show', [
                 'request' => $accreditationRequest->load(['employee.provider', 'event', 'zones', 'credential']),
+                'canDownload' => $accreditationRequest->credential && $accreditationRequest->credential->is_ready && auth()->user()->can('credential.download'),
+                'canRegenerate' => $accreditationRequest->credential && auth()->user()->can('templates.regenerate'),
             ]);
         } catch (\Throwable $e) {
             Log::error('[SHOW] Error en visualización de solicitud', [

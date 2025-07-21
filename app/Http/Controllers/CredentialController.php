@@ -19,37 +19,7 @@ class CredentialController extends BaseController
         $this->credentialService = $credentialService;
     }
 
-    /**
-     * Mostrar página de credencial
-     */
-    public function show(AccreditationRequest $request)
-    {
-        Gate::authorize('credential.view');
-        
-        $this->logAction('view_credential', "Ver credencial de solicitud: {$request->uuid}");
-
-        try {
-            $request->load(['credential', 'employee', 'event', 'zones']);
-
-            if (!$request->credential) {
-                return $this->respondWithError(
-                    'accreditation-requests.show',
-                    ['request' => $request],
-                    'Esta solicitud no tiene credencial generada.',
-                    404
-                );
-            }
-
-            return Inertia::render('credentials/show', [
-                'request' => $request,
-                'credential' => $request->credential,
-                'canDownload' => $request->credential->is_ready
-            ]);
-
-        } catch (\Throwable $e) {
-            return $this->handleException($e, 'Mostrar credencial');
-        }
-    }
+    // Removed: show method - functionality moved to AccreditationRequest show with tabs
 
     /**
      * Previsualizar credencial en modal
@@ -257,6 +227,9 @@ class CredentialController extends BaseController
                     'retry_count' => 0
                 ]);
             }
+
+            // IMPORTANTE: Re-capturar template actual para obtener cambios de font_size
+            $this->credentialService->captureSnapshots($credential);
 
             // Disparar job
             \App\Jobs\GenerateCredentialJob::dispatch($credential);

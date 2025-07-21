@@ -328,28 +328,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.return')
             ->name('accreditation-requests.return-to-draft');
             
-        // Credential management routes
-        Route::controller(\App\Http\Controllers\CredentialController::class)->group(function () {
-            Route::get('accreditation-requests/{request:uuid}/credential', 'show')
-                ->middleware('can:view,request')
-                ->name('accreditation-requests.credential.show');
-                
-            Route::get('accreditation-requests/{request:uuid}/credential/preview', 'preview')
-                ->name('accreditation-requests.credential.preview');
-                
-            Route::get('accreditation-requests/{request:uuid}/credential/download/image', 'downloadImage')
-                ->name('accreditation-requests.credential.download.image');
-                
-            Route::get('accreditation-requests/{request:uuid}/credential/download/pdf', 'downloadPdf')
-                ->name('accreditation-requests.credential.download.pdf');
-                
-            Route::get('accreditation-requests/{request:uuid}/credential/status', 'status')
-                ->name('accreditation-requests.credential.status');
-                
-            Route::post('accreditation-requests/{request:uuid}/credential/regenerate', 'regenerate')
-                ->name('accreditation-requests.credential.regenerate');
-        });
-            
         // Dar visto bueno (area manager)
         Route::post('accreditation-requests/{accreditation_request:uuid}/review', 'review')
             ->middleware('permission:accreditation_request.review')
@@ -364,6 +342,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('accreditation-requests/{accreditation_request:uuid}', 'show')
             ->middleware('permission:accreditation_request.view')
             ->name('accreditation-requests.show');
+    });
+        
+    // Credential management routes
+    Route::controller(\App\Http\Controllers\CredentialController::class)->group(function () {
+        // Removed redundant credential show route - use tabs instead
+        
+        Route::get('accreditation-requests/{request:uuid}/credential/preview', 'preview')
+            ->name('accreditation-requests.credential.preview');
+            
+        Route::get('accreditation-requests/{request:uuid}/credential/download/image', 'downloadImage')
+            ->name('accreditation-requests.credential.download.image');
+            
+        Route::get('accreditation-requests/{request:uuid}/credential/download/pdf', 'downloadPdf')
+            ->name('accreditation-requests.credential.download.pdf');
+            
+        Route::get('accreditation-requests/{request:uuid}/credential/status', 'status')
+            ->name('accreditation-requests.credential.status');
+            
+        Route::post('accreditation-requests/{request:uuid}/credential/regenerate', 'regenerate')
+            ->name('accreditation-requests.credential.regenerate');
     });
     
     // Rutas para solicitudes masivas de acreditación
@@ -404,7 +402,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.create')
             ->name('accreditation-requests.bulk.store');
     });
-});
+}); // Close auth middleware group
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';

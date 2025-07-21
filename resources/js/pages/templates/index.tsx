@@ -132,9 +132,16 @@ export default function Index({ templates, stats, events, filters = {} }: Templa
             `¿Está seguro de regenerar todas las credenciales del evento "${template.event?.name}" usando esta plantilla?\n\nEsto actualizará todas las credenciales existentes con el nuevo diseño y puede tomar varios minutos.`,
           confirmTitle: "Regenerar credenciales",
           handler: (template: TableTemplate) => {
+            // Usar router.post de Inertia para mantener la experiencia SPA
             router.post(`/templates/${template.uuid}/regenerate-credentials`, {}, {
+              preserveState: true, // Mantener el estado actual
+              preserveScroll: true, // Mantener la posición de scroll
               onSuccess: () => {
-                // El mensaje de éxito se muestra automáticamente desde el backend
+                // Los mensajes flash se muestran automáticamente a través de Inertia
+                // No es necesario hacer nada adicional para mantener la experiencia SPA
+              },
+              onError: (errors) => {
+                console.error('Error regenerando credenciales:', errors);
               }
             });
           }
