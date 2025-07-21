@@ -1,5 +1,4 @@
 import React, { ReactNode } from "react";
-import { usePage } from "@inertiajs/react";
 import { BaseShowPage, TabConfig, BaseShowOptions } from "@/components/base-show/base-show-page";
 import { AccreditationRequest } from "./columns";
 import CredentialSection from "@/components/credential-section";
@@ -63,9 +62,6 @@ export default function AccreditationRequestShow({
   canDownload = false, 
   canRegenerate = false 
 }: AccreditationRequestShowProps) {
-  const { auth } = usePage<{ auth: { user?: { permissions?: string[] } } }>().props;
-  
-
   
   const statusConfig = {
     draft: { label: 'Borrador', bgColor: 'bg-gray-50', textColor: 'text-gray-700' },

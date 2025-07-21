@@ -144,9 +144,14 @@ class CredentialService implements CredentialServiceInterface
             throw new Exception('No se pudo generar un código QR único después de 10 intentos');
         }
 
-        // Generar imagen QR
-        $verificationUrl = config('credentials.verification.url_base') . '/' . $qrCode;
+        // Generar imagen QR con URL completa del sistema
+        $verificationUrl = url('/verify-qr?qr=' . $qrCode);
         $qrConfig = config('credentials.qr');
+        
+        Log::info('[CREDENTIAL SERVICE] Generando QR con URL', [
+            'qr_code' => $qrCode,
+            'verification_url' => $verificationUrl
+        ]);
         
         $qrImage = QrCode::format('png')
             ->size($qrConfig['size'])
@@ -327,17 +332,35 @@ class CredentialService implements CredentialServiceInterface
      */
     public function verifyCredentialByQR(string $qrCode): ?array
     {
+        Log::info('[CREDENTIAL SERVICE] Verificando QR', [
+            'qr_code' => $qrCode
+        ]);
+        
         $credential = $this->credentialRepository->findByQRCode($qrCode);
 
         if (!$credential) {
+            Log::warning('[CREDENTIAL SERVICE] QR no encontrado en base de datos', [
+                'qr_code' => $qrCode
+            ]);
             return null;
         }
+
+        Log::info('[CREDENTIAL SERVICE] Credencial encontrada', [
+            'credential_id' => $credential->id,
+            'credential_uuid' => $credential->uuid,
+            'credential_status' => $credential->status,
+            'is_valid' => $credential->isValid(),
+            'is_expired' => $credential->isExpired(),
+            'accreditation_request_id' => $credential->accreditationRequest->id ?? null,
+            'request_status' => $credential->accreditationRequest->status ?? null
+        ]);
 
         if (!$credential->isValid()) {
             return [
                 'valid' => false,
                 'message' => $credential->isExpired() ? 'Credencial expirada' : 'Credencial inactiva',
-                'status' => $credential->status
+                'credential_status' => $credential->status,
+                'request_status' => $credential->accreditationRequest->status ?? 'unknown'
             ];
         }
 
@@ -346,6 +369,8 @@ class CredentialService implements CredentialServiceInterface
             'employee' => $credential->employee_snapshot,
             'event' => $credential->event_snapshot,
             'zones' => $credential->zones_snapshot,
+            'credential_status' => $credential->status,
+            'request_status' => $credential->accreditationRequest->status ?? 'approved',
             'issued_at' => $credential->generated_at,
             'expires_at' => $credential->expires_at
         ];
@@ -720,6 +745,10 @@ class CredentialService implements CredentialServiceInterface
                 }
                 
                 return implode(", ", $zoneNames);
+            
+            case 'proveedor':
+            case 'provider':
+                return $employee['provider'] ?? '';
             
             default:
                 Log::warning('[CREDENTIAL SERVICE] Block ID no reconocido', [

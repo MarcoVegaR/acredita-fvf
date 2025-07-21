@@ -21,6 +21,7 @@ import { router } from "@inertiajs/react";
 interface Employee {
     first_name: string;
     last_name: string;
+    identification?: string;
     position?: string;
     company?: string;
 }
@@ -38,6 +39,7 @@ interface Zone {
 }
 
 interface Credential {
+    status: string;
     issued_at: string;
     expires_at?: string;
     verified_at: string;
@@ -49,6 +51,7 @@ interface VerificationResult {
         employee: Employee;
         event: Event;
         zones: Zone[];
+        request_status: string;
         credential: Credential;
     };
     message?: string;
@@ -106,37 +109,53 @@ export default function QRVerification({ qrCode = '', result }: VerificationPage
                         </p>
                     </div>
 
-                    {/* Formulario de verificación */}
-                    <Card className="mb-8">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <QrCode className="w-5 h-5" />
-                                Verificar Credencial
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <Label htmlFor="qr-code">Código QR</Label>
-                                    <Input
-                                        id="qr-code"
-                                        type="text"
-                                        value={inputQrCode}
-                                        onChange={(e) => setInputQrCode(e.target.value)}
-                                        placeholder="Ingrese el código QR de la credencial"
-                                        className="mt-1"
-                                    />
+                    {/* Formulario de verificación - solo mostrar si no viene QR en la URL */}
+                    {!qrCode && (
+                        <Card className="mb-8">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <QrCode className="w-5 h-5" />
+                                    Verificar Credencial
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="qr-code">Código QR</Label>
+                                        <Input
+                                            id="qr-code"
+                                            type="text"
+                                            value={inputQrCode}
+                                            onChange={(e) => setInputQrCode(e.target.value)}
+                                            placeholder="Ingrese el código QR de la credencial"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <Button 
+                                        type="submit" 
+                                        disabled={!inputQrCode.trim() || isVerifying}
+                                        className="w-full"
+                                    >
+                                        {isVerifying ? 'Verificando...' : 'Verificar Credencial'}
+                                    </Button>
+                                </form>
+                            </CardContent>
+                        </Card>
+                    )}
+                    
+                    {/* Mensaje informativo cuando se accede desde QR escaneado */}
+                    {qrCode && (
+                        <Card className="mb-8 border-blue-200 bg-blue-50">
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-3 text-blue-700">
+                                    <QrCode className="w-5 h-5" />
+                                    <p className="text-sm">
+                                        <strong>Credencial escaneada:</strong> Mostrando información de la credencial verificada automáticamente.
+                                    </p>
                                 </div>
-                                <Button 
-                                    type="submit" 
-                                    disabled={!inputQrCode.trim() || isVerifying}
-                                    className="w-full"
-                                >
-                                    {isVerifying ? 'Verificando...' : 'Verificar Credencial'}
-                                </Button>
-                            </form>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Resultados de verificación */}
                     {result && (
@@ -192,6 +211,12 @@ export default function QRVerification({ qrCode = '', result }: VerificationPage
                                                     {result.data.employee.first_name} {result.data.employee.last_name}
                                                 </p>
                                             </div>
+                                            {result.data.employee.identification && (
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-500">Identificación</p>
+                                                    <p className="text-base font-mono">{result.data.employee.identification}</p>
+                                                </div>
+                                            )}
                                             {result.data.employee.position && (
                                                 <div>
                                                     <p className="text-sm font-medium text-gray-500">Cargo</p>
@@ -278,6 +303,55 @@ export default function QRVerification({ qrCode = '', result }: VerificationPage
                                         </Card>
                                     )}
 
+                                    {/* Estado de aprobación */}
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <Shield className="w-5 h-5" />
+                                                Estado de Acreditación
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-3">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-500">Estado de Solicitud</p>
+                                                <Badge
+                                                    variant={result.data.request_status === 'approved' ? 'default' : 'secondary'}
+                                                    className={`${
+                                                        result.data.request_status === 'approved' 
+                                                            ? 'bg-green-100 text-green-800 border-green-200'
+                                                            : result.data.request_status === 'pending'
+                                                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
+                                                            : result.data.request_status === 'rejected'
+                                                            ? 'bg-red-100 text-red-800 border-red-200'
+                                                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                                                    }`}
+                                                >
+                                                    {result.data.request_status === 'approved' && '✓ Aprobada'}
+                                                    {result.data.request_status === 'pending' && '⏳ Pendiente'}
+                                                    {result.data.request_status === 'rejected' && '✗ Rechazada'}
+                                                    {!['approved', 'pending', 'rejected'].includes(result.data.request_status) && result.data.request_status}
+                                                </Badge>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-500">Estado de Credencial</p>
+                                                <Badge
+                                                    variant={result.data.credential.status === 'ready' ? 'default' : 'secondary'}
+                                                    className={`${
+                                                        result.data.credential.status === 'ready' 
+                                                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                                            : result.data.credential.status === 'generating'
+                                                            ? 'bg-orange-100 text-orange-800 border-orange-200'
+                                                            : 'bg-gray-100 text-gray-800 border-gray-200'
+                                                    }`}
+                                                >
+                                                    {result.data.credential.status === 'ready' && '✓ Lista'}
+                                                    {result.data.credential.status === 'generating' && '⚙️ Generando'}
+                                                    {!['ready', 'generating'].includes(result.data.credential.status) && result.data.credential.status}
+                                                </Badge>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    
                                     {/* Información de emisión */}
                                     <Card>
                                         <CardHeader>

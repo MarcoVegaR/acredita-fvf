@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getModuleLabel, formatPermissionName } from "@/utils/translations/role-labels";
+import { getModuleLabel } from "@/utils/translations/role-labels";
 import { toast } from "sonner";
 import { permissionCategories, groupPermissionsByCategory } from "./permission-categories";
 

@@ -8,7 +8,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Trash2, Move, ZoomIn, ZoomOut, Square, QrCode } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert";
+import { Plus, Trash2, Move, ZoomIn, ZoomOut, Square, QrCode, AlertTriangle } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { FormData } from "../helpers";
 import { LayoutMeta } from "../types";
@@ -150,6 +163,10 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   // Definición del tamaño de la imagen cargada - usado en setImage.onload
   const [, setImageSize] = useState({ width: 0, height: 0 });
+  // Estados para el diálogo de campo personalizado
+  const [showCustomFieldDialog, setShowCustomFieldDialog] = useState(false);
+  const [customFieldId, setCustomFieldId] = useState('');
+  const [customFieldError, setCustomFieldError] = useState('');
   // const [nextTextBlockId, setNextTextBlockId] = useState(1); // Commented out as not currently used
 
   // Obtener valores del formulario
@@ -335,6 +352,15 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
         height: 35,
         font_size: 10,
         alignment: "left" as "left" | "center" | "right"
+      },
+      {
+        id: 'proveedor',
+        x: 50,
+        y: 320,
+        width: 250,
+        height: 20,
+        font_size: 11,
+        alignment: "left" as "left" | "center" | "right"
       }
     ];
 
@@ -347,27 +373,33 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
     }
   };
 
-  const addTextBlock = () => {
-    // Siempre inicializar campos por defecto primero
-    initializeDefaultFields();
+  // Función para validar el ID del campo personalizado
+  const validateCustomFieldId = (id: string): string | null => {
+    if (!id.trim()) return null; // ID vacío es válido (solo inicializar campos estándar)
     
-    // Si hay campos personalizados por agregar
-    const customId = prompt('ID personalizado (opcional, deje vacío para solo inicializar campos estándar):');
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(id)) {
+      return 'ID inválido. Debe comenzar con letra o guión bajo y contener solo letras, números y guiones bajos.';
+    }
     
-    if (customId && customId.trim()) {
-      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(customId)) {
-        alert('ID inválido. Debe comenzar con letra o guión bajo y contener solo letras, números y guiones bajos.');
-        return;
-      }
-      
-      const usedIds = form.getValues("layout_meta.text_blocks")?.map(block => block.id) || [];
-      if (usedIds.includes(customId)) {
-        alert('Este ID ya está en uso. Elija uno diferente.');
-        return;
-      }
-      
+    const usedIds = form.getValues("layout_meta.text_blocks")?.map(block => block.id) || [];
+    if (usedIds.includes(id)) {
+      return 'Este ID ya está en uso. Elija uno diferente.';
+    }
+    
+    return null;
+  };
+  
+  // Función para manejar la adición del campo personalizado
+  const handleAddCustomField = () => {
+    const error = validateCustomFieldId(customFieldId);
+    if (error) {
+      setCustomFieldError(error);
+      return;
+    }
+    
+    if (customFieldId.trim()) {
       const newBlock = {
-        id: customId,
+        id: customFieldId.trim(),
         x: 50,
         y: 50,
         width: 100,
@@ -378,8 +410,20 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
       
       const currentBlocks = form.getValues("layout_meta.text_blocks") || [];
       form.setValue("layout_meta.text_blocks", [...currentBlocks, newBlock]);
-      setSelectedItem(newBlock.id);
     }
+    
+    // Cerrar diálogo y limpiar estado
+    setShowCustomFieldDialog(false);
+    setCustomFieldId('');
+    setCustomFieldError('');
+  };
+
+  const addTextBlock = () => {
+    // Siempre inicializar campos por defecto primero
+    initializeDefaultFields();
+    
+    // Mostrar diálogo para campo personalizado
+    setShowCustomFieldDialog(true);
   };
 
   const removeTextBlock = (id: string) => {
@@ -837,6 +881,69 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Diálogo para agregar campo personalizado */}
+      <Dialog open={showCustomFieldDialog} onOpenChange={setShowCustomFieldDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Campo Personalizado</DialogTitle>
+            <DialogDescription>
+              Ingrese el ID del campo personalizado. Deje vacío si solo desea inicializar los campos estándar.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Input
+                placeholder="Ej: empresa, telefono, email..."
+                value={customFieldId}
+                onChange={(e) => {
+                  setCustomFieldId(e.target.value);
+                  setCustomFieldError(''); // Limpiar error cuando el usuario escribe
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddCustomField();
+                  }
+                }}
+              />
+              
+              {customFieldError && (
+                <Alert className="mt-2" variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{customFieldError}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+            
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Campos estándar disponibles</AlertTitle>
+              <AlertDescription>
+                Los campos por defecto son: <strong>nombre</strong>, <strong>cedula</strong>, <strong>rol</strong>, <strong>zona</strong>, <strong>proveedor</strong>.
+                Si alguno no está en su plantilla, se inicializará automáticamente.
+              </AlertDescription>
+            </Alert>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCustomFieldDialog(false);
+                setCustomFieldId('');
+                setCustomFieldError('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleAddCustomField}>
+              {customFieldId.trim() ? 'Agregar Campo' : 'Solo Inicializar Estándar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

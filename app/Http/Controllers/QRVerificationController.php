@@ -22,8 +22,17 @@ class QRVerificationController extends Controller
         $result = null;
 
         if ($qrCode) {
+            \Log::info('[QR VERIFICATION] Iniciando verificación', [
+                'qr_code' => $qrCode,
+                'qr_length' => strlen($qrCode)
+            ]);
+
             try {
                 $verificationResult = $this->credentialService->verifyCredentialByQR($qrCode);
+                
+                \Log::info('[QR VERIFICATION] Resultado del servicio', [
+                    'result' => $verificationResult
+                ]);
                 
                 if ($verificationResult) {
                     $result = [
@@ -32,6 +41,7 @@ class QRVerificationController extends Controller
                             'employee' => [
                                 'first_name' => $verificationResult['employee']['first_name'] ?? '',
                                 'last_name' => $verificationResult['employee']['last_name'] ?? '',
+                                'identification' => $verificationResult['employee']['identification'] ?? '',
                                 'position' => $verificationResult['employee']['position'] ?? '',
                                 'company' => $verificationResult['employee']['company'] ?? '',
                             ],
@@ -47,15 +57,21 @@ class QRVerificationController extends Controller
                                     'color' => $zone['color'] ?? ''
                                 ];
                             }, $verificationResult['zones'] ?? []),
+                            'request_status' => $verificationResult['request_status'] ?? 'unknown',
                             'credential' => [
+                                'status' => $verificationResult['credential_status'] ?? 'unknown',
                                 'issued_at' => $verificationResult['issued_at'],
                                 'expires_at' => $verificationResult['expires_at'],
                                 'verified_at' => now()->toISOString()
                             ]
                         ] : null,
-                        'message' => !$verificationResult['valid'] ? $verificationResult['message'] : null
+                        'message' => !$verificationResult['valid'] ? ($verificationResult['message'] ?? 'Credencial inválida') : null
                     ];
                 } else {
+                    \Log::warning('[QR VERIFICATION] Servicio retornó null', [
+                        'qr_code' => $qrCode
+                    ]);
+                    
                     $result = [
                         'valid' => false,
                         'message' => 'Código QR no encontrado o inválido'
@@ -64,12 +80,13 @@ class QRVerificationController extends Controller
             } catch (\Exception $e) {
                 \Log::error('[QR VERIFICATION PAGE] Error verificando QR', [
                     'qr_code' => $qrCode,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
                 ]);
                 
                 $result = [
                     'valid' => false,
-                    'message' => 'Error al verificar la credencial'
+                    'message' => 'Error al verificar la credencial: ' . $e->getMessage()
                 ];
             }
         }
