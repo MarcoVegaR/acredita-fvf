@@ -81,6 +81,22 @@ class Credential extends Model
     }
 
     /**
+     * Check if credential is expired (public method)
+     */
+    public function isExpired(): bool
+    {
+        return $this->is_expired;
+    }
+
+    /**
+     * Check if credential is valid (ready, active, and not expired)
+     */
+    public function isValid(): bool
+    {
+        return $this->status === 'ready' && $this->is_active && !$this->is_expired;
+    }
+
+    /**
      * Scope for pending credentials
      */
     public function scopePending($query)
