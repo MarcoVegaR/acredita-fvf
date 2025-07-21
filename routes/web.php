@@ -404,10 +404,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 }); // Close auth middleware group
 
+// Rutas públicas para verificación de QR (sin autenticación)
+use App\Http\Controllers\QRVerificationController;
+
+// Página web para verificar credenciales por QR (usa Inertia)
+Route::get('/verify-qr', [QRVerificationController::class, 'page'])
+    ->name('verify-qr')
+    ->middleware(['throttle:120,1']); // Rate limiting: 120 requests per minute
+
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
-// Verificación pública de credenciales (sin autenticación)
 Route::middleware(['throttle:30,1'])->group(function () {
     Route::get('/verify/{qrCode}', [\App\Http\Controllers\CredentialController::class, 'verify'])
          ->name('credentials.verify');

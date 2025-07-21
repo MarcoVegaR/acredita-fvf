@@ -254,7 +254,8 @@ class CredentialController extends BaseController
         }
 
         // Añadir un parámetro de versión para forzar recarga y evitar caché
-        $timestamp = $credential->updated_at ? $credential->updated_at->timestamp : time();
+        // Usar generated_at en lugar de updated_at para que solo cambie cuando la imagen esté lista
+        $timestamp = $credential->generated_at ? $credential->generated_at->timestamp : time();
         $url = Storage::disk('public')->url($credential->credential_image_path);
         return $url . '?v=' . $timestamp;
     }
