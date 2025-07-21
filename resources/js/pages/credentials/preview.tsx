@@ -202,7 +202,7 @@ export default function PreviewCredential({
                                 {imageUrl && credential.status === 'ready' ? (
                                     <div className="relative">
                                         <img
-                                            src={imageUrl}
+                                            src={`${imageUrl}${imageUrl.includes('?') ? '&' : '?'}nocache=${Date.now()}`}
                                             alt={`Credencial de ${request.employee.first_name} ${request.employee.last_name}`}
                                             className="max-w-none shadow-lg"
                                             style={{

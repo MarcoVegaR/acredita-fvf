@@ -253,6 +253,9 @@ class CredentialController extends BaseController
             return null;
         }
 
-        return Storage::disk('public')->url($credential->credential_image_path);
+        // Añadir un parámetro de versión para forzar recarga y evitar caché
+        $timestamp = $credential->updated_at ? $credential->updated_at->timestamp : time();
+        $url = Storage::disk('public')->url($credential->credential_image_path);
+        return $url . '?v=' . $timestamp;
     }
 }
