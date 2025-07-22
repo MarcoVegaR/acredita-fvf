@@ -89,6 +89,27 @@ class EmployeeRepository extends BaseRepository implements EmployeeRepositoryInt
     }
     
     /**
+     * Check if a document already exists globally (across all providers).
+     *
+     * @param string $documentType
+     * @param string $documentNumber
+     * @param int|null $excludeEmployeeId
+     * @return bool
+     */
+    public function documentExistsGlobally(string $documentType, string $documentNumber, ?int $excludeEmployeeId = null): bool
+    {
+        $query = $this->model
+            ->where('document_type', $documentType)
+            ->where('document_number', $documentNumber);
+            
+        if ($excludeEmployeeId) {
+            $query->where('id', '!=', $excludeEmployeeId);
+        }
+        
+        return $query->exists();
+    }
+    
+    /**
      * Find employee by UUID.
      *
      * @param string $uuid

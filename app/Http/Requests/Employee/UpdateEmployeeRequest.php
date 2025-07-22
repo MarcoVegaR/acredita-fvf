@@ -50,13 +50,12 @@ class UpdateEmployeeRequest extends FormRequest
                 function ($attribute, $value, $fail) use ($employee) {
                     $documentType = $this->input('document_type', $employee->document_type);
                     
-                    if ($this->employeeRepository->documentExistsForProvider(
+                    if ($this->employeeRepository->documentExistsGlobally(
                         $documentType,
                         $value,
-                        $this->input('provider_id', $employee->provider_id),
                         $employee->id
                     )) {
-                        $fail('El número de documento ya está registrado para este proveedor.');
+                        $fail('El número de documento ya está registrado en el sistema.');
                     }
                 },
             ],

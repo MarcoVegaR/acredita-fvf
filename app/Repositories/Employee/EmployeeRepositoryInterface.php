@@ -55,6 +55,16 @@ interface EmployeeRepositoryInterface extends RepositoryInterface
     public function documentExistsForProvider(string $documentType, string $documentNumber, int $providerId, ?int $excludeEmployeeId = null): bool;
     
     /**
+     * Check if a document already exists globally (across all providers).
+     *
+     * @param string $documentType
+     * @param string $documentNumber
+     * @param int|null $excludeEmployeeId
+     * @return bool
+     */
+    public function documentExistsGlobally(string $documentType, string $documentNumber, ?int $excludeEmployeeId = null): bool;
+    
+    /**
      * Find employee by UUID.
      *
      * @param string $uuid

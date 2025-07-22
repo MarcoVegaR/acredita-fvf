@@ -318,15 +318,6 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
   const initializeDefaultFields = () => {
     const defaultFields = [
       {
-        id: 'cedula',
-        x: 50,
-        y: 80,
-        width: 150,
-        height: 18,
-        font_size: 10,
-        alignment: "left" as "left" | "center" | "right"
-      },
-      {
         id: 'nombre',
         x: 150,
         y: 120,
@@ -345,15 +336,6 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
         alignment: "center" as "left" | "center" | "right"
       },
       {
-        id: 'zona',
-        x: 50,
-        y: 280,
-        width: 300,
-        height: 35,
-        font_size: 10,
-        alignment: "left" as "left" | "center" | "right"
-      },
-      {
         id: 'proveedor',
         x: 50,
         y: 320,
@@ -361,15 +343,103 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
         height: 20,
         font_size: 11,
         alignment: "left" as "left" | "center" | "right"
+      },
+      // Zonas individuales (1-9)
+      {
+        id: 'zona1',
+        x: 560,
+        y: 275,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona2',
+        x: 606,
+        y: 275,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona3',
+        x: 652,
+        y: 275,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona4',
+        x: 698,
+        y: 275,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona5',
+        x: 744,
+        y: 275,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona6',
+        x: 583,
+        y: 335,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona7',
+        x: 629,
+        y: 335,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona8',
+        x: 675,
+        y: 335,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
+      },
+      {
+        id: 'zona9',
+        x: 721,
+        y: 335,
+        width: 46,
+        height: 60,
+        font_size: 24,
+        alignment: "center" as "left" | "center" | "right"
       }
     ];
 
+    // Remover cualquier campo 'zona' genérico existente
+    const filteredExistingBlocks = text_blocks.filter(block => 
+      block.id !== 'zona' && block.id !== 'zonas'
+    );
+    
     // Solo agregar campos que no existen
-    const existingIds = text_blocks.map(block => block.id);
+    const existingIds = filteredExistingBlocks.map(block => block.id);
     const newFields = defaultFields.filter(field => !existingIds.includes(field.id));
     
-    if (newFields.length > 0) {
-      form.setValue("layout_meta.text_blocks", [...text_blocks, ...newFields]);
+    if (newFields.length > 0 || filteredExistingBlocks.length !== text_blocks.length) {
+      // Actualizar con bloques filtrados + nuevos campos
+      form.setValue("layout_meta.text_blocks", [...filteredExistingBlocks, ...newFields]);
     }
   };
 

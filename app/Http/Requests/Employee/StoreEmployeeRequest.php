@@ -45,12 +45,11 @@ class StoreEmployeeRequest extends FormRequest
                 'string',
                 'max:20',
                 function ($attribute, $value, $fail) {
-                    if ($this->employeeRepository->documentExistsForProvider(
+                    if ($this->employeeRepository->documentExistsGlobally(
                         $this->input('document_type'),
-                        $value,
-                        $this->input('provider_id')
+                        $value
                     )) {
-                        $fail('El número de documento ya está registrado para este proveedor.');
+                        $fail('El número de documento ya está registrado en el sistema.');
                     }
                 },
             ],

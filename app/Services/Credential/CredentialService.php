@@ -50,7 +50,7 @@ class CredentialService implements CredentialServiceInterface
         ]);
 
         $request = $credential->accreditationRequest->load([
-            'employee', 
+            'employee.provider', 
             'event.templates',
             'zones'
         ]);
@@ -72,6 +72,12 @@ class CredentialService implements CredentialServiceInterface
             'function' => $request->employee->function,
             'photo_path' => $request->employee->photo_path,
             'provider_id' => $request->employee->provider_id,
+            'provider' => [
+                'id' => $request->employee->provider->id,
+                'name' => $request->employee->provider->name,
+                'rif' => $request->employee->provider->rif,
+                'type' => $request->employee->provider->type
+            ],
             'captured_at' => now()->toISOString()
         ];
         
@@ -505,17 +511,11 @@ class CredentialService implements CredentialServiceInterface
             return;
         }
 
-        // Calcular factores de escala
-        $originalWidth = $dimensions['original_width'] ?? $dimensions['width'];
-        $originalHeight = $dimensions['original_height'] ?? $dimensions['height'];
-        $scaleX = $dimensions['width'] / $originalWidth;
-        $scaleY = $dimensions['height'] / $originalHeight;
-        
-        Log::info('[CREDENTIAL SERVICE] Factores de escala calculados', [
-            'original_dimensions' => $originalWidth . 'x' . $originalHeight,
-            'final_dimensions' => $dimensions['width'] . 'x' . $dimensions['height'],
-            'scale_x' => $scaleX,
-            'scale_y' => $scaleY
+        // CORECCIÓN: Usar coordenadas directamente sin escalado para WYSIWYG exacto
+        // Las coordenadas del editor ya están en píxeles absolutos y deben usarse tal como están
+        Log::info('[CREDENTIAL SERVICE] Usando coordenadas directas sin escalado', [
+            'dimensions' => $dimensions['width'] . 'x' . $dimensions['height'],
+            'approach' => 'WYSIWYG 1:1 coordinate mapping'
         ]);
 
         $textBlocks = $template['layout_meta']['text_blocks'];
@@ -524,55 +524,28 @@ class CredentialService implements CredentialServiceInterface
             $text = $this->getTextForBlock($block['id'], $employee, $event, $zones);
             
             if ($text) {
-                // Escalar coordenadas y tamaño de fuente
-                $scaledX = intval($block['x'] * $scaleX);
-                $scaledY = intval($block['y'] * $scaleY);
+                // Usar coordenadas directamente del editor (sin escalado)
+                $x = intval($block['x']);
+                $y = intval($block['y']);
                 
-                // CORREGIR: Font size está en milímetros, convertir a píxeles, luego a puntos para GD
-                $fontSizeMm = $block['font_size'] ?? 12;
-                $mmToPxFactor = 3.78; // 96 DPI estándar: 1mm = 3.78px
-                $baseFontSizePx = $fontSizeMm * $mmToPxFactor;
-                $fontScaleFactor = max(min($scaleX, $scaleY), 0.5); // Mínimo 50% del tamaño original
-                $scaledFontSizePx = intval($baseFontSizePx * $fontScaleFactor);
+                // Font size: usar directamente el valor del editor (sin escalado)
+                $fontSize = $block['font_size'] ?? 12;
                 
-                // CRÍTICO: GD usa PUNTOS, no píxeles. Conversión: pt = px × 72 / DPI
-                $dpi = 96; // DPI estándar
-                $scaledFontSizePt = $scaledFontSizePx * 72 / $dpi;
-                $finalFontSize = max($scaledFontSizePt, 8); // Mínimo 8pt para legibilidad
-                
-                // DEBUGGING: Crear imagen de test con el font size CORREGIDO
-                $testImage = $this->imageManager->create(800, 200);
-                $testImage->fill('#ffffff');
-                $testImage->text($text . ' - PT:' . round($finalFontSize, 1), 50, 100, function ($font) use ($finalFontSize) {
-                    $font->file(public_path('fonts/arial.ttf')); // TTF válido
-                    $font->size($finalFontSize); // Usar puntos, no píxeles
-                    $font->color('#ff0000'); // Rojo para destacar
-                });
-                $testPath = 'credentials/debug_font_' . $block['id'] . '_' . round($finalFontSize, 1) . 'pt.png';
-                $testImage->save(storage_path('app/public/' . $testPath));
-                
-                // Aplicar texto con fuente TTF y tamaño en puntos
-                $canvas->text($text, $scaledX, $scaledY, function ($font) use ($finalFontSize, $block) {
+                // Aplicar texto con coordenadas directas (WYSIWYG 1:1)
+                $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
                     $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
-                    $font->size($finalFontSize); // Puntos, no píxeles
+                    $font->size($fontSize);
                     $font->color('#000000');
                     $font->align($block['alignment'] ?? 'left');
                 });
                 
-                Log::info('[CREDENTIAL SERVICE] SOLUCIÓN APLICADA - TTF + Puntos', [
+                Log::info('[CREDENTIAL SERVICE] Texto aplicado con coordenadas directas', [
                     'block_id' => $block['id'],
                     'text' => $text,
-                    'original_position' => ['x' => $block['x'], 'y' => $block['y']],
-                    'scaled_position' => ['x' => $scaledX, 'y' => $scaledY],
-                    'font_size_mm' => $fontSizeMm,
-                    'font_size_px_base' => $baseFontSizePx,
-                    'font_size_px_scaled' => $scaledFontSizePx,
-                    'font_size_pt_final' => round($finalFontSize, 2),
-                    'scale_factor' => $fontScaleFactor,
-                    'conversion' => $scaledFontSizePx . 'px * 72 / 96 DPI = ' . round($finalFontSize, 2) . 'pt',
-                    'test_image_path' => $testPath,
-                    'ttf_font' => 'fonts/arial.ttf',
-                    'intervention_version' => '3.11'
+                    'coords' => ['x' => $x, 'y' => $y],
+                    'font_size' => $fontSize,
+                    'alignment' => $block['alignment'] ?? 'left',
+                    'approach' => 'Direct 1:1 mapping'
                 ]);
             }
         }
@@ -716,7 +689,6 @@ class CredentialService implements CredentialServiceInterface
                 return $employee['company'] ?? '';
             
             case 'identification':
-            case 'cedula':
             case 'document':
                 return trim(($employee['document_type'] ?? '') . ' ' . ($employee['document_number'] ?? ''));
             
@@ -746,9 +718,29 @@ class CredentialService implements CredentialServiceInterface
                 
                 return implode(", ", $zoneNames);
             
+            // Zonas individuales (zona1-zona9)
+            case 'zona1':
+                return $this->getZoneNumber(1, $zones);
+            case 'zona2':
+                return $this->getZoneNumber(2, $zones);
+            case 'zona3':
+                return $this->getZoneNumber(3, $zones);
+            case 'zona4':
+                return $this->getZoneNumber(4, $zones);
+            case 'zona5':
+                return $this->getZoneNumber(5, $zones);
+            case 'zona6':
+                return $this->getZoneNumber(6, $zones);
+            case 'zona7':
+                return $this->getZoneNumber(7, $zones);
+            case 'zona8':
+                return $this->getZoneNumber(8, $zones);
+            case 'zona9':
+                return $this->getZoneNumber(9, $zones);
+            
             case 'proveedor':
             case 'provider':
-                return $employee['provider'] ?? '';
+                return $employee['provider']['name'] ?? '';
             
             default:
                 Log::warning('[CREDENTIAL SERVICE] Block ID no reconocido', [
@@ -756,6 +748,25 @@ class CredentialService implements CredentialServiceInterface
                 ]);
                 return null;
         }
+    }
+    
+    /**
+     * Obtener número de zona si está autorizada
+     */
+    private function getZoneNumber(int $zoneNumber, ?array $zones = null): string
+    {
+        if (!$zones || empty($zones)) {
+            return ''; // No mostrar número si no hay zonas autorizadas
+        }
+        
+        // Verificar si la zona está en la lista de zonas autorizadas
+        foreach ($zones as $zone) {
+            if (isset($zone['id']) && intval($zone['id']) === $zoneNumber) {
+                return strval($zoneNumber); // Devolver el número como string
+            }
+        }
+        
+        return ''; // Zona no autorizada, no mostrar número
     }
 
     /**
