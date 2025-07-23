@@ -33,6 +33,41 @@ class EmployeeService implements EmployeeServiceInterface
         $this->employeeRepository = $employeeRepository;
         $this->providerRepository = $providerRepository;
     }
+    
+    /**
+     * Get statistics about employees (total, active, inactive)
+     *
+     * @return array
+     */
+    public function getEmployeeStats(): array
+    {
+        $user = auth()->user();
+        $query = $this->employeeRepository->query();
+        
+        // If user is provider, only show their employees
+        if ($user && $user->hasRole('provider')) {
+            $provider = $user->provider;
+            if ($provider) {
+                $query->where('provider_id', $provider->id);
+            }
+        }
+        // If user is area_manager, only show employees from providers in their areas
+        else if ($user && $user->hasRole('area_manager')) {
+            $managedAreas = $user->managedAreas()->pluck('id')->toArray();
+            $providerIds = $this->providerRepository->findByAreaIds($managedAreas)->pluck('id')->toArray();
+            $query->whereIn('provider_id', $providerIds);
+        }
+        
+        $total = $query->count();
+        $active = (clone $query)->where('active', true)->count();
+        $inactive = $total - $active;
+        
+        return [
+            'total' => $total,
+            'active' => $active,
+            'inactive' => $inactive
+        ];
+    }
 
     /**
      * Get paginated employees based on user's access level and request parameters.
@@ -214,11 +249,20 @@ class EmployeeService implements EmployeeServiceInterface
         $query = Employee::query();
         $user = Auth::user();
 
-        // Filtrar según permisos
-        if ($user->hasRole('admin') || $user->hasPermissionTo('employee.manage')) {
+        // Filtrar según permisos y rol
+        if ($user->hasRole('provider')) {
+            // Usuarios con rol 'provider' solo ven sus propios empleados
+            $provider = $user->provider;
+            if ($provider) {
+                $query->where('provider_id', $provider->id);
+            } else {
+                // Si el usuario es proveedor pero no tiene proveedor asignado, no debe ver empleados
+                return [];
+            }
+        } elseif ($user->hasRole('admin') || $user->hasPermissionTo('employee.manage')) {
             // Admin o con permiso employee.manage puede ver todos los empleados
-        } elseif ($user->hasPermissionTo('employee.manage_own_provider')) {
-            // Usuarios con permiso employee.manage_own_provider solo ven empleados de proveedores en su área
+        } elseif ($user->hasRole('area_manager') || $user->hasPermissionTo('employee.manage_own_provider')) {
+            // Gerentes de área o usuarios con permiso employee.manage_own_provider solo ven empleados de proveedores en su área
             $userAreaId = $user->area_id;
             $query->whereHas('provider', function ($q) use ($userAreaId) {
                 $q->where('area_id', $userAreaId);
@@ -384,16 +428,27 @@ class EmployeeService implements EmployeeServiceInterface
                       ->whereIn('status', ['draft', 'submitted', 'under_review', 'approved']);
             }]);
         
-        // Aplicar filtros de acceso según el rol del usuario
-        if (Gate::denies('employee.manage')) {
-            if (Gate::allows('employee.manage_own_area')) {
-                // Area managers pueden ver empleados de proveedores de su área
-                $accessibleProviderIds = $this->getAccessibleProviderIds();
-                $query->whereIn('provider_id', $accessibleProviderIds);
+        // Filtrar según permisos y rol
+        if ($user->hasRole('provider')) {
+            // Usuarios con rol 'provider' solo ven sus propios empleados
+            $provider = $user->provider;
+            if ($provider) {
+                $query->where('provider_id', $provider->id);
             } else {
-                // Usuarios normales solo pueden ver empleados de su propio proveedor
-                $query->where('provider_id', $user->provider_id);
+                // Si el usuario es proveedor pero no tiene proveedor asignado, devolver colección vacía
+                return collect([]);
             }
+        } elseif ($user->hasRole('admin') || $user->hasPermissionTo('employee.manage')) {
+            // Admin o con permiso employee.manage puede ver todos los empleados
+        } elseif ($user->hasRole('area_manager') || $user->hasPermissionTo('employee.manage_own_provider')) {
+            // Gerentes de área o usuarios con permiso employee.manage_own_provider solo ven empleados de proveedores en su área
+            $accessibleProviderIds = $this->getAccessibleProviderIds();
+            if (!empty($accessibleProviderIds)) {
+                $query->whereIn('provider_id', $accessibleProviderIds);
+            }
+        } else {
+            // Usuarios sin permisos especiales
+            return collect([]);
         }
         
         $employees = $query->get();

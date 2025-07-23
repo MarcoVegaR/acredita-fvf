@@ -16,6 +16,9 @@ class RolesAndPermissionsSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
+        // Dashboard permissions
+        $this->createPermission('dashboard.view', 'Ver dashboard');
+        
         // Create user management permissions
         $this->createPermission('users.index', 'Listar usuarios');
         $this->createPermission('users.show', 'Ver detalles de usuario');
@@ -152,15 +155,12 @@ class RolesAndPermissionsSeeder extends Seeder
         // Solo puede crear borradores, editarlos, eliminarlos y enviarlos
         $providerRole = Role::create(['name' => 'provider']);
         $providerRole->givePermissionTo([
-            // Gestión de empleados de su propio proveedor
-            'employee.view', 'employee.manage_own_provider',
+            // Gestión de empleados de su propio proveedor - INCLUYENDO REGISTRO
+            'employee.view', 'employee.manage_own_provider', 'employee.manage',
             
             // Gestión de eventos y zonas (solo lectura necesaria)
             'events.index', 'events.show',
             'zones.index', 'zones.show',
-            
-            // Plantillas (solo lectura)
-            'templates.index', 'templates.show',
             
             // Solicitudes de acreditación (gestión de su propio proveedor)
             'accreditation_request.index', 'accreditation_request.view',

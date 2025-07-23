@@ -43,6 +43,12 @@ class EmployeeController extends BaseController
 
             $employees = $this->employeeService->getPaginatedEmployees($request);
             $providers = $this->providerService->getAccessibleProviders();
+            $stats = $this->employeeService->getEmployeeStats();
+            
+            // Determine user role and provider status
+            $user = auth()->user();
+            $isProvider = $user && $user->hasRole('provider');
+            $currentUserRole = $user ? $user->roles->first()->name : null;
             
             $this->logAction('listar', 'empleados', null, [
                 'filters' => $request->all()
@@ -51,6 +57,9 @@ class EmployeeController extends BaseController
             return $this->respondWithSuccess('employees/index', [
                 'employees' => $employees,
                 'providers' => $providers,
+                'stats' => $stats,
+                'currentUserRole' => $currentUserRole,
+                'isProvider' => $isProvider,
                 'filters' => $request->only(['search', 'provider_id', 'active', 'sort', 'direction', 'per_page'])
             ]);
         } catch (\Throwable $e) {

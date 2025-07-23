@@ -14,7 +14,7 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         title: 'Dashboard',
         href: '/dashboard',
         icon: LayoutGrid,
-        // No requiere permiso especial
+        permission: 'dashboard.view', // Requiere permiso para ver dashboard
     },
     {
         title: 'Usuarios',

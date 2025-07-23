@@ -156,12 +156,10 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
      */
     public function scopeForUser($query, User $user)
     {
-        // MODO DEBUG: Permitir ver todas las solicitudes sin importar el rol del usuario
-        // Comentar cuando termine la depuración
-        return $query;
+        // El filtrado de solicitudes por rol de usuario está activo
         
         // Los administradores pueden ver todo
-        if ($user->hasRole('administrator')) {
+        if ($user->hasRole('admin')) {
             return $query;
         }
         

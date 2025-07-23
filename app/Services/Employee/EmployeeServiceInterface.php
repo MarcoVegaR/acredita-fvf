@@ -50,6 +50,13 @@ interface EmployeeServiceInterface
     public function findByUuid(string $uuid): ?Employee;
     
     /**
+     * Get statistics about employees (total, active, inactive)
+     *
+     * @return array
+     */
+    public function getEmployeeStats(): array;
+    
+    /**
      * Get employees accessible to the current user based on permissions.
      *
      * @param Request $request

@@ -93,8 +93,13 @@ USER root
 # Crear directorios necesarios y configurar permisos
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build public/fonts \
     && mkdir -p /var/log/supervisor \
+    && mkdir -p storage/app/public/templates \
+    && mkdir -p storage/app/public/credentials \
+    && mkdir -p storage/app/public/qr-codes \
     && chown -R appuser:www-data storage bootstrap/cache public/build public/fonts \
-    && chmod -R 775 storage bootstrap/cache public/build public/fonts
+    && chown -R appuser:www-data storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes \
+    && chmod -R 775 storage bootstrap/cache public/build public/fonts \
+    && chmod -R 775 storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes
 
 # Cambiar a appuser para compilar assets
 USER appuser

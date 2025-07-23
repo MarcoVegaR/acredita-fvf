@@ -84,7 +84,7 @@ class ProvidersExternalSeeder extends Seeder
                 $contactUser = User::create([
                     'name' => $providerData['contact_name'],
                     'email' => $providerData['contact_email'],
-                    'password' => Hash::make('password123'),
+                    'password' => Hash::make('12345678'),
                     'email_verified_at' => now(),
                 ]);
                 

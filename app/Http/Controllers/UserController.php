@@ -66,10 +66,14 @@ class UserController extends BaseController
                 'total' => $users->total()
             ]);
             
+            // Obtener roles disponibles a través del servicio
+            $roles = $this->userService->getAllRoles();
+            
             // Responder con la vista Inertia
             return $this->respondWithSuccess('users/index', [
                 'users' => $users,
                 'stats' => $stats,
+                'roles' => $roles,
                 'filters' => $request->only(['search', 'sort', 'order', 'per_page', 'active', 'role'])
             ]);
         } catch (\Throwable $e) {

@@ -241,10 +241,12 @@ class ProviderService implements ProviderServiceInterface
         if ($user->hasRole('provider')) {
             $provider = $user->provider;
             if ($provider) {
-                return collect([$provider]);
+                // Create a new Eloquent Collection with the provider
+                return new \Illuminate\Database\Eloquent\Collection([$provider]);
             }
         }
         
-        return collect();
+        // Return an empty Eloquent Collection instead of a support Collection
+        return new \Illuminate\Database\Eloquent\Collection();
     }
 }

@@ -19,16 +19,21 @@ interface UsersIndexProps {
     inactive: number;
     deleted?: number; // Añadimos contador de usuarios eliminados (soft deleted)
   };
+  roles: Array<{
+    id: string;
+    name: string;
+  }>;
   filters?: {
     search?: string;
     sort?: string;
     order?: "asc" | "desc";
     page?: number;
     per_page?: number;
+    role?: string;
   };
 }
 
-export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
+export default function Index({ users, stats, roles, filters = {} }: UsersIndexProps) {
   // Configuración centralizada para el índice de usuarios
   const indexOptions = {
     // Información principal
@@ -51,10 +56,11 @@ export default function Index({ users, stats, filters = {} }: UsersIndexProps) {
           id: "role",
           label: "Rol",
           options: [
-            { value: "admin", label: "Administrador" },
-            { value: "editor", label: "Editor" },
-            { value: "viewer", label: "Visualizador" },
-            { value: "user", label: "Usuario" }
+            { value: "all", label: "Todos los roles" },
+            ...roles.map(role => ({
+              value: role.id,
+              label: role.name
+            }))
           ]
         }
       ]
