@@ -516,6 +516,7 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
               <div className="flex items-center gap-2">
                 {/* Botón de depuración eliminado */}
                 <Button 
+                  type="button"
                   size="icon" 
                   variant="outline" 
                   onClick={() => handleZoom(1.2)}
@@ -524,6 +525,7 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
                   <ZoomIn className="h-4 w-4" />
                 </Button>
                 <Button 
+                  type="button"
                   size="icon" 
                   variant="outline" 
                   onClick={() => handleZoom(0.8)}

@@ -16,6 +16,8 @@ interface Employee {
     first_name: string;
     last_name: string;
     identification: string;
+    document_type?: string;
+    document_number?: string;
     position?: string;
     company?: string;
 }
@@ -185,8 +187,12 @@ export default function VerifyCredential({
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-sm font-medium text-muted-foreground">Identificación</p>
-                                            <p className="font-medium">{request.employee.identification}</p>
+                                            <p className="text-sm font-medium text-muted-foreground">Documento de Identidad</p>
+                                            <p className="font-medium">
+                                                {request.employee.document_type && request.employee.document_number
+                                                    ? `${request.employee.document_type}-${request.employee.document_number}`
+                                                    : request.employee.identification}
+                                            </p>
                                         </div>
                                         {request.employee.position && (
                                             <div>
@@ -194,12 +200,10 @@ export default function VerifyCredential({
                                                 <p className="font-medium">{request.employee.position}</p>
                                             </div>
                                         )}
-                                        {request.employee.company && (
-                                            <div>
-                                                <p className="text-sm font-medium text-muted-foreground">Empresa</p>
-                                                <p className="font-medium">{request.employee.company}</p>
-                                            </div>
-                                        )}
+                                        <div>
+                                            <p className="text-sm font-medium text-muted-foreground">Empresa/Proveedor</p>
+                                            <p className="font-medium">{request.employee.company || "No especificado"}</p>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

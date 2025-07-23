@@ -249,15 +249,66 @@ class TemplateService implements TemplateServiceInterface
      */
     public function saveTemplateFile(\Illuminate\Http\UploadedFile $file, string $eventUuid)
     {
-        // Generar nombre de archivo único usando timestamp
-        $timestamp = now()->format('Ymd_His');
-        $extension = $file->getClientOriginalExtension();
-        $filename = "template_{$eventUuid}_{$timestamp}.{$extension}";
-        
-        // Guardar el archivo en el disco 'templates'
-        $path = $file->storeAs("events/{$eventUuid}", $filename, 'templates');
-        
-        return $path;
+        try {
+            // Generar nombre de archivo único usando timestamp
+            $timestamp = now()->format('Ymd_His');
+            $extension = $file->getClientOriginalExtension();
+            $filename = "template_{$eventUuid}_{$timestamp}.{$extension}";
+            
+            // Verificar que el directorio base existe y tiene permisos
+            $baseDir = storage_path('app/public/templates');
+            $eventDir = $baseDir . "/events/{$eventUuid}";
+            
+            \Log::info('[TEMPLATE SERVICE] Verificando directorios', [
+                'base_dir' => $baseDir,
+                'event_dir' => $eventDir,
+                'base_exists' => file_exists($baseDir),
+                'base_writable' => is_writable($baseDir),
+                'event_exists' => file_exists($eventDir),
+            ]);
+            
+            // Crear directorio si no existe
+            if (!file_exists($eventDir)) {
+                if (!mkdir($eventDir, 0755, true)) {
+                    throw new \Exception("No se pudo crear el directorio: {$eventDir}");
+                }
+                \Log::info('[TEMPLATE SERVICE] Directorio creado', ['dir' => $eventDir]);
+            }
+            
+            // Intentar guardar el archivo en el disco 'templates'
+            $path = $file->storeAs("events/{$eventUuid}", $filename, 'templates');
+            
+            if (!$path) {
+                throw new \Exception('El método storeAs devolvió false - falló la escritura del archivo');
+            }
+            
+            // Verificar que el archivo se guardó correctamente
+            $fullPath = storage_path('app/public/templates/' . $path);
+            if (!file_exists($fullPath)) {
+                throw new \Exception("El archivo no existe después de guardarlo: {$fullPath}");
+            }
+            
+            \Log::info('[TEMPLATE SERVICE] Archivo guardado exitosamente', [
+                'path' => $path,
+                'full_path' => $fullPath,
+                'file_size' => filesize($fullPath),
+                'permissions' => substr(sprintf('%o', fileperms($fullPath)), -4)
+            ]);
+            
+            return $path;
+            
+        } catch (\Exception $e) {
+            \Log::error('[TEMPLATE SERVICE] Error guardando archivo de plantilla', [
+                'error' => $e->getMessage(),
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'event_uuid' => $eventUuid,
+                'storage_path' => storage_path('app/public/templates'),
+                'is_writable' => is_writable(storage_path('app/public/templates'))
+            ]);
+            
+            throw new \Exception("Error al guardar el archivo de plantilla: {$e->getMessage()}");
+        }
     }
     
     /**

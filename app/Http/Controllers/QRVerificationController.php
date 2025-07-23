@@ -41,9 +41,19 @@ class QRVerificationController extends Controller
                             'employee' => [
                                 'first_name' => $verificationResult['employee']['first_name'] ?? '',
                                 'last_name' => $verificationResult['employee']['last_name'] ?? '',
-                                'identification' => $verificationResult['employee']['identification'] ?? '',
-                                'position' => $verificationResult['employee']['position'] ?? '',
-                                'company' => $verificationResult['employee']['company'] ?? '',
+                                // Usamos la identificación del snapshot si existe, formato tipo-número
+                                'identification' => ($verificationResult['employee']['document_type'] && $verificationResult['employee']['document_number']) ? 
+                                    $verificationResult['employee']['document_type'] . '-' . $verificationResult['employee']['document_number'] :
+                                    $verificationResult['employee']['identification'] ?? '',
+                                // También incluimos los campos individuales para más flexibilidad en el frontend
+                                'document_type' => $verificationResult['employee']['document_type'] ?? '',
+                                'document_number' => $verificationResult['employee']['document_number'] ?? '',
+                                // Para el cargo/función usamos 'function' que es el campo correcto en el snapshot
+                                'position' => $verificationResult['employee']['function'] ?? $verificationResult['employee']['position'] ?? '',
+                                // Para la compañía usamos el nombre del proveedor desde el objeto provider anidado
+                                'company' => $verificationResult['employee']['provider']['name'] ?? 
+                                            $verificationResult['employee']['company'] ?? 
+                                            'No especificado',
                             ],
                             'event' => [
                                 'name' => $verificationResult['event']['name'] ?? '',

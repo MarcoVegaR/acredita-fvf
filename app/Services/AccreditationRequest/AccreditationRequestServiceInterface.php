@@ -82,4 +82,13 @@ interface AccreditationRequestServiceInterface
      * @return array
      */
     public function createBulkRequests(array $data): array;
+
+    /**
+     * Suspender una credencial aprobada
+     * 
+     * @param AccreditationRequest $request
+     * @param string|null $reason Motivo de la suspensión
+     * @return AccreditationRequest
+     */
+    public function suspendRequest(AccreditationRequest $request, ?string $reason = null): AccreditationRequest;
 }

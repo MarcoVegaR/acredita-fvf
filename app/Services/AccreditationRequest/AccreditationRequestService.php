@@ -356,6 +356,89 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
     }
 
     /**
+     * Suspender una credencial aprobada
+     * 
+     * @param AccreditationRequest $request
+     * @param string|null $reason Motivo de la suspensión
+     * @return AccreditationRequest
+     */
+    public function suspendRequest(AccreditationRequest $request, ?string $reason = null): AccreditationRequest
+    {
+        Log::info('[SUSPEND SERVICE] Iniciando suspensión de credencial', [
+            'uuid' => $request->uuid,
+            'id' => $request->id,
+            'current_status' => $request->status->value,
+            'employee' => $request->employee->first_name . ' ' . $request->employee->last_name,
+            'user_id' => auth()->id(),
+            'reason' => $reason,
+            'timestamp' => now()->toISOString()
+        ]);
+        
+        // Verificar que la solicitud esté aprobada
+        if ($request->status !== AccreditationStatus::Approved) {
+            Log::error('[SUSPEND SERVICE] Estado no válido para suspensión', [
+                'current_status' => $request->status->value,
+                'required_status' => 'approved'
+            ]);
+            throw new Exception('Solo se pueden suspender credenciales aprobadas.');
+        }
+
+        // Validar que exista un motivo
+        if (empty($reason)) {
+            Log::error('[SUSPEND SERVICE] Motivo de suspensión requerido');
+            throw new Exception('Se requiere un motivo para suspender la credencial.');
+        }
+        
+        Log::info('[SUSPEND SERVICE] Estado válido, procediendo con la suspensión...');
+        
+        $updateData = [
+            'status' => AccreditationStatus::Suspended,
+            'suspended_at' => now(),
+            'suspended_by' => auth()->id(),
+            'suspension_reason' => $reason
+        ];
+        
+        Log::info('[SUSPEND SERVICE] Datos para actualización:', $updateData);
+        
+        $request->update($updateData);
+        
+        Log::info('[SUSPEND SERVICE] Solicitud actualizada, obteniendo datos frescos...');
+        $freshRequest = $request->fresh();
+        
+        Log::info('[SUSPEND SERVICE] Suspensión completada exitosamente', [
+            'uuid' => $freshRequest->uuid,
+            'new_status' => $freshRequest->status->value,
+            'suspended_at' => $freshRequest->suspended_at?->toISOString(),
+            'suspended_by' => $freshRequest->suspended_by
+        ]);
+        
+        // Marcar la credencial como suspendida si existe
+        if ($request->credential) {
+            try {
+                $credential = $request->credential;
+                $credential->update([
+                    'status' => 'suspended',
+                    'suspended_at' => now(),
+                    'suspended_by' => auth()->id()
+                ]);
+                
+                Log::info('[SUSPEND SERVICE] Credencial marcada como suspendida', [
+                    'credential_id' => $credential->id,
+                    'credential_uuid' => $credential->uuid
+                ]);
+            } catch (\Exception $e) {
+                Log::error('[SUSPEND SERVICE] Error actualizando credencial', [
+                    'request_uuid' => $freshRequest->uuid,
+                    'error' => $e->getMessage()
+                ]);
+                // Continuamos aunque haya error en la actualización de la credencial
+            }
+        }
+        
+        return $freshRequest;
+    }
+
+    /**
      * Rechazar una solicitud de acreditación
      * 
      * @param AccreditationRequest $request

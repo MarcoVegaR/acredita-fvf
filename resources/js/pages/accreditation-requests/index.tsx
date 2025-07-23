@@ -1,17 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import { BaseIndexPage } from "@/components/base-index/base-index-page";
 import { columns, type AccreditationRequest } from "./columns";
-import { TicketCheck, FileTextIcon, CheckCircle, XCircle, RotateCcw, RefreshCw, Users, Plus, ChevronDown } from "lucide-react";
-import { router } from "@inertiajs/react";
-import { Button } from "@/components/ui/button";
-import { usePage } from "@inertiajs/react";
+import { 
+  Plus, 
+  RotateCcw, 
+  CheckCircle,
+  XCircle,
+  Ban as BanIcon,
+  FileText as FileTextIcon,
+  TicketCheck,
+  RefreshCw,
+  Users,
+  ChevronDown
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { SuspensionDialog } from "@/components/suspension-dialog";
+import { usePage, router } from "@inertiajs/react";
 import { SharedData } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+// Interface para manejar el diálogo de suspensión
+interface SuspensionDialogState {
+  isOpen: boolean;
+  requestData: AccreditationRequest | null;
+}
 
 // Define the props interface - adaptada para usar con BaseIndexPage
 interface AccreditationRequestsIndexProps {
@@ -38,7 +56,56 @@ interface AccreditationRequestsIndexProps {
   };
 }
 
-export default function Index({ accreditation_requests, stats, filters = {} }: AccreditationRequestsIndexProps) {
+export default function Index(props: AccreditationRequestsIndexProps) {
+  // Estado para controlar el diálogo de suspensión
+  const [suspensionDialog, setSuspensionDialog] = useState<SuspensionDialogState>({
+    isOpen: false,
+    requestData: null
+  });
+
+  // Manejador para la acción de suspensión desde el diálogo
+  const handleSuspendConfirm = (reason: string) => {
+    const request = suspensionDialog.requestData;
+    
+    if (!request) {
+      console.error('[SUSPEND ACTION] No hay datos de solicitud');
+      return;
+    }
+    
+    console.log('[SUSPEND ACTION] Enviando petición POST:', {
+      url: `/accreditation-requests/${request.uuid}/suspend`,
+      data: { reason: reason }
+    });
+    
+    router.post(`/accreditation-requests/${request.uuid}/suspend`, 
+      { reason: reason }, 
+      {
+        preserveState: false,
+        preserveScroll: true,
+        onStart: () => {
+          console.log('[SUSPEND ACTION] Petición POST iniciada');
+        },
+        onSuccess: (page) => {
+          console.log('[SUSPEND ACTION] Éxito - Credencial suspendida:', page);
+          toast.success('La credencial ha sido suspendida exitosamente');
+        },
+        onError: (errors) => {
+          console.error('[SUSPEND ACTION] Error en la petición:', errors);
+          console.error('[SUSPEND ACTION] Detalles del error:', {
+            uuid: request.uuid,
+            errors: errors,
+            reason: reason,
+            timestamp: new Date().toISOString()
+          });
+          toast.error('Error al suspender la credencial');
+        },
+        onFinish: () => {
+          console.log('[SUSPEND ACTION] Petición finalizada');
+        }
+      }
+    );
+  };
+
   // Configuración centralizada para el índice de solicitudes de acreditación
   const indexOptions = {
     // Información principal
@@ -80,19 +147,19 @@ export default function Index({ accreditation_requests, stats, filters = {} }: A
     // Estadísticas para mostrar en las tarjetas
     stats: [
       { 
-        value: stats?.total || 0, 
+        value: props.stats?.total || 0, 
         label: "Total de solicitudes",
         icon: "ticket",
         color: "text-blue-500"
       },
       { 
-        value: stats?.draft || 0, 
+        value: props.stats?.draft || 0, 
         label: "Borradores",
         icon: "edit",
         color: "text-amber-500"
       },
       { 
-        value: stats?.submitted || 0, 
+        value: props.stats?.submitted || 0, 
         label: "Enviadas",
         icon: "check-circle",
         color: "text-green-500"
@@ -352,6 +419,28 @@ export default function Index({ accreditation_requests, stats, filters = {} }: A
             });
           }
         },
+        // Suspender/Anular una credencial aprobada
+        {
+          label: "Suspender",
+          icon: <BanIcon className="h-4 w-4" />,
+          permission: "accreditation_request.approve", // Mismo permiso que para aprobar
+          showCondition: (request: AccreditationRequest) => {
+            return request.status === 'approved';
+          },
+          handler: (request: AccreditationRequest) => {
+            console.log('[SUSPEND ACTION] Iniciando diálogo de suspensión:', {
+              uuid: request.uuid,
+              status: request.status,
+              employee: `${request.employee.first_name} ${request.employee.last_name}`
+            });
+            
+            // Abrir diálogo de suspensión
+            setSuspensionDialog({
+              isOpen: true,
+              requestData: request
+            });
+          }
+        },
         // Devolver a borrador para corrección
         {
           label: "Devolver para corrección",
@@ -469,12 +558,22 @@ export default function Index({ accreditation_requests, stats, filters = {} }: A
   const { auth } = usePage<SharedData>().props;
   const canCreate = Array.isArray(auth.user?.permissions) && auth.user.permissions.includes('accreditation_request.create');
 
-  // Usar el componente base con la configuración específica
   return (
     <>
+      {/* Diálogo de suspensión */}
+      <SuspensionDialog 
+        open={suspensionDialog.isOpen}
+        onOpenChange={(open) => setSuspensionDialog(prev => ({ ...prev, isOpen: open }))}
+        title="Suspender Credencial"
+        description={suspensionDialog.requestData ? 
+          `¿Está seguro que desea suspender la credencial de ${suspensionDialog.requestData.employee.first_name} ${suspensionDialog.requestData.employee.last_name}? Esta acción no puede deshacerse.` : 
+          ""}
+        onConfirm={handleSuspendConfirm}
+      />
+      
       <BaseIndexPage<AccreditationRequest> 
-        data={accreditation_requests} 
-        filters={filters} 
+        data={props.accreditation_requests} 
+        filters={props.filters} 
         options={{
           ...indexOptions,
           newButton: {

@@ -444,6 +444,82 @@ class AccreditationRequestController extends BaseController
     }
 
     /**
+     * Suspender una credencial aprobada
+     *
+     * @param AccreditationRequest $accreditationRequest
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function suspend(AccreditationRequest $accreditationRequest, Request $request)
+    {
+        Log::info('[SUSPEND CONTROLLER] Iniciando suspensión de credencial', [
+            'uuid' => $accreditationRequest->uuid,
+            'id' => $accreditationRequest->id,
+            'status' => $accreditationRequest->status->value,
+            'employee' => $accreditationRequest->employee->first_name . ' ' . $accreditationRequest->employee->last_name,
+            'user_id' => auth()->id(),
+            'user_email' => auth()->user()->email ?? 'N/A',
+            'timestamp' => now()->toISOString()
+        ]);
+
+        try {
+            Log::info('[SUSPEND CONTROLLER] Verificando autorización...');
+            Gate::authorize('update', $accreditationRequest);
+            Log::info('[SUSPEND CONTROLLER] Autorización exitosa');
+
+            Log::info('[SUSPEND CONTROLLER] Verificando estado de la solicitud', [
+                'current_status' => $accreditationRequest->status->value,
+                'required_status' => 'approved'
+            ]);
+            
+            if ($accreditationRequest->status->value !== 'approved') {
+                Log::warning('[SUSPEND CONTROLLER] Estado no válido para suspensión', [
+                    'current_status' => $accreditationRequest->status->value
+                ]);
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Solo se pueden suspender credenciales aprobadas.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+            
+            // Validar que exista una razón de suspensión
+            $reason = $request->get('reason');
+            if (empty($reason)) {
+                Log::warning('[SUSPEND CONTROLLER] Motivo de suspensión requerido');
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Se requiere un motivo para suspender la credencial.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
+            
+            Log::info('[SUSPEND CONTROLLER] Llamando al servicio suspendRequest...');
+            $this->accreditationRequestService->suspendRequest($accreditationRequest, $reason);
+            Log::info('[SUSPEND CONTROLLER] Servicio suspendRequest ejecutado exitosamente');
+
+            Log::info('[SUSPEND CONTROLLER] Registrando acción en log...');
+            $this->logAction('suspender', 'credencial de acreditación', $accreditationRequest->id);
+            Log::info('[SUSPEND CONTROLLER] Acción registrada exitosamente');
+            
+            Log::info('[SUSPEND CONTROLLER] Redirigiendo con mensaje de éxito');
+            return $this->redirectWithSuccess(
+                'accreditation-requests.index', 
+                [], 
+                'Credencial suspendida correctamente'
+            );
+                
+        } catch (\Throwable $e) {
+            Log::error('[SUSPEND CONTROLLER] Error durante la suspensión', [
+                'uuid' => $accreditationRequest->uuid,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
+            return $this->handleException($e, 'Suspender credencial');
+        }
+    }
+
+    /**
      * Give approval to the accreditation request (area manager).
      *
      * @param AccreditationRequest $accreditationRequest

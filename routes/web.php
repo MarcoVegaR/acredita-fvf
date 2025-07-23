@@ -328,6 +328,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.return')
             ->name('accreditation-requests.return-to-draft');
             
+        // Suspender una credencial aprobada
+        Route::post('accreditation-requests/{accreditation_request:uuid}/suspend', 'suspend')
+            ->middleware('permission:accreditation_request.approve')
+            ->name('accreditation-requests.suspend');
+            
         // Dar visto bueno (area manager)
         Route::post('accreditation-requests/{accreditation_request:uuid}/review', 'review')
             ->middleware('permission:accreditation_request.review')

@@ -72,127 +72,127 @@ class TemplatesTableSeeder extends Seeder
                 'name' => 'Plantilla estándar ' . $event->name,
                 'file_path' => $relativePath,
                 'layout_meta' => [
-                    'fold_mm' => 139.7, // Línea de pliegue (mitad de la hoja carta)
+                    'fold_mm' => 776, // Línea de pliegue actualizada según servidor EC2
                     'rect_photo' => [
-                        'x' => 20,
-                        'y' => 20,
-                        'width' => 35,
-                        'height' => 45
+                        'x' => 812,
+                        'y' => 229,
+                        'width' => 192,
+                        'height' => 194
                     ],
                     'rect_qr' => [
-                        'x' => 170,
-                        'y' => 20,
-                        'width' => 25,
-                        'height' => 25
+                        'x' => 852,
+                        'y' => 434,
+                        'width' => 114,
+                        'height' => 58
                     ],
                     'text_blocks' => [
                         [
                             'id' => 'nombre',
-                            'x' => 835,
-                            'y' => 430,
-                            'width' => 200,
-                            'height' => 25,
-                            'font_size' => 14,
-                            'alignment' => 'center'
+                            'x' => 1042,
+                            'y' => 273,
+                            'width' => 464,
+                            'height' => 22,
+                            'font_size' => 40,
+                            'alignment' => 'left'
                         ],
                         [
                             'id' => 'rol',
-                            'x' => 835,
-                            'y' => 475,
-                            'width' => 200,
-                            'height' => 20,
-                            'font_size' => 12,
-                            'alignment' => 'center'
+                            'x' => 1042,
+                            'y' => 368,
+                            'width' => 468,
+                            'height' => 22,
+                            'font_size' => 22,
+                            'alignment' => 'left'
                         ],
                         [
                             'id' => 'proveedor',
-                            'x' => 835,
-                            'y' => 500,
-                            'width' => 250,
+                            'x' => 1034,
+                            'y' => 457,
+                            'width' => 473,
                             'height' => 20,
-                            'font_size' => 11,
-                            'alignment' => 'center'
+                            'font_size' => 30,
+                            'alignment' => 'left'
                         ],
-                        // Zonas individuales (1-9) - Ajustadas a las posiciones de los recuadros
+                        // Zonas individuales (1-9) - Ajustadas según servidor EC2
                         [
                             'id' => 'zona1',
-                            'x' => 788,
-                            'y' => 540,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 841,
+                            'y' => 623,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona2',
-                            'x' => 834,
-                            'y' => 540,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 976,
+                            'y' => 621,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona3',
-                            'x' => 880,
-                            'y' => 540,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1111,
+                            'y' => 623,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona4',
-                            'x' => 926,
-                            'y' => 540,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1242,
+                            'y' => 623,
+                            'width' => 84,
+                            'height' => 84,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona5',
-                            'x' => 972,
-                            'y' => 540,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1366,
+                            'y' => 624,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona6',
-                            'x' => 811,
-                            'y' => 600,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 912,
+                            'y' => 760,
+                            'width' => 84,
+                            'height' => 84,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona7',
-                            'x' => 857,
-                            'y' => 600,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1045,
+                            'y' => 762,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona8',
-                            'x' => 903,
-                            'y' => 600,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1182,
+                            'y' => 760,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ],
                         [
                             'id' => 'zona9',
-                            'x' => 949,
-                            'y' => 600,
-                            'width' => 46,
-                            'height' => 60,
-                            'font_size' => 20,
+                            'x' => 1312,
+                            'y' => 759,
+                            'width' => 84,
+                            'height' => 85,
+                            'font_size' => 100,
                             'alignment' => 'center'
                         ]
                     ]

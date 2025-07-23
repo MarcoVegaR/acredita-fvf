@@ -1,19 +1,14 @@
 import { Head } from "@inertiajs/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+// No necesitamos el Badge component
 import { 
     CheckCircle, 
     XCircle, 
     QrCode, 
-    User, 
-    MapPin, 
-    Calendar,
-    Building,
-    Shield,
-    Clock
+    User
 } from "lucide-react";
 import { useState, FormEvent } from "react";
 import { router } from "@inertiajs/react";
@@ -21,16 +16,16 @@ import { router } from "@inertiajs/react";
 interface Employee {
     first_name: string;
     last_name: string;
-    identification?: string;
-    position?: string;
+    document_type?: string;
+    document_number?: string;
+    photo_path?: string;
     company?: string;
+    position?: string;
 }
 
 interface Event {
     name: string;
     location?: string;
-    start_date?: string;
-    end_date?: string;
 }
 
 interface Zone {
@@ -40,8 +35,6 @@ interface Zone {
 
 interface Credential {
     status: string;
-    issued_at: string;
-    expires_at?: string;
     verified_at: string;
 }
 
@@ -76,26 +69,12 @@ export default function QRVerification({ qrCode = '', result }: VerificationPage
         });
     };
 
-    const formatDate = (dateString: string) => {
-        try {
-            return new Date(dateString).toLocaleDateString('es-ES', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch {
-            return dateString;
-        }
-    };
-
     return (
         <>
             <Head title="Verificación de Credencial QR" />
             
             <div className="min-h-screen bg-gray-50 py-8">
-                <div className="container mx-auto px-4 max-w-4xl">
+                <div className="container mx-auto px-4 max-w-2xl">
                     {/* Header */}
                     <div className="text-center mb-8">
                         <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
@@ -109,293 +88,275 @@ export default function QRVerification({ qrCode = '', result }: VerificationPage
                         </p>
                     </div>
 
-                    {/* Formulario de verificación - solo mostrar si no viene QR en la URL */}
+                    {/* Formulario de Búsqueda QR - Diseño Minimalista */}
                     {!qrCode && (
-                        <Card className="mb-8">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <QrCode className="w-5 h-5" />
-                                    Verificar Credencial
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="qr-code">Código QR</Label>
-                                        <Input
-                                            id="qr-code"
-                                            type="text"
-                                            value={inputQrCode}
-                                            onChange={(e) => setInputQrCode(e.target.value)}
-                                            placeholder="Ingrese el código QR de la credencial"
-                                            className="mt-1"
-                                        />
+                        <Card className="border-0 shadow-sm">
+                            <div className="p-8">
+                                <div className="text-center mb-8">
+                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <QrCode className="w-8 h-8 text-blue-600" />
                                     </div>
-                                    <Button 
-                                        type="submit" 
-                                        disabled={!inputQrCode.trim() || isVerifying}
-                                        className="w-full"
-                                    >
-                                        {isVerifying ? 'Verificando...' : 'Verificar Credencial'}
-                                    </Button>
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Verificar Credencial</h2>
+                                    <p className="text-gray-600">Ingrese el código QR para verificar la autenticidad de la credencial</p>
+                                </div>
+                                <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+                                    <div className="space-y-4">
+                                        <div>
+                                            <Label htmlFor="qrcode" className="text-sm font-medium text-gray-700">Código QR</Label>
+                                            <div className="flex mt-2 space-x-3">
+                                                <Input
+                                                    id="qrcode"
+                                                    type="text"
+                                                    value={inputQrCode}
+                                                    onChange={(e) => setInputQrCode(e.target.value)}
+                                                    placeholder="Ejemplo: CRD_ABC123XYZ_456"
+                                                    className="flex-1 font-mono text-sm"
+                                                    autoFocus
+                                                />
+                                                <Button 
+                                                    type="submit" 
+                                                    disabled={isVerifying || !inputQrCode.trim()}
+                                                    className="px-6"
+                                                >
+                                                    {isVerifying ? 'Verificando...' : 'Verificar'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </form>
-                            </CardContent>
+                            </div>
                         </Card>
                     )}
-                    
-                    {/* Mensaje informativo cuando se accede desde QR escaneado */}
-                    {qrCode && (
+
+                    {/* Information message when accessed from scanned QR */}
+                    {qrCode && !result && (
                         <Card className="mb-8 border-blue-200 bg-blue-50">
-                            <CardContent className="pt-6">
+                            <CardContent className="p-4">
                                 <div className="flex items-center gap-3 text-blue-700">
-                                    <QrCode className="w-5 h-5" />
+                                    <QrCode className="w-5 h-5 flex-shrink-0" />
                                     <p className="text-sm">
-                                        <strong>Credencial escaneada:</strong> Mostrando información de la credencial verificada automáticamente.
+                                        <strong>Verificando credencial...</strong> Por favor espere mientras verificamos la información.
                                     </p>
                                 </div>
                             </CardContent>
                         </Card>
                     )}
 
-                    {/* Resultados de verificación */}
+                    {/* Verification Results */}
                     {result && (
-                        <div className="space-y-6">
-                            {/* Estado de verificación */}
-                            <Card>
-                                <CardContent className="pt-6">
-                                    <div className="flex items-center justify-center space-x-3">
-                                        {result.valid ? (
-                                            <>
-                                                <CheckCircle className="w-12 h-12 text-green-500" />
-                                                <div className="text-center">
-                                                    <h2 className="text-2xl font-bold text-green-700">
-                                                        ✓ Credencial Válida
+                        <>
+                            {/* Mensaje de Error - Diseño Minimalista */}
+                            {(!result.valid || !result.data) && (
+                                <Card className="border-0 shadow-sm">
+                                    <div className="px-6 py-4 border-l-4 bg-red-50 border-red-500">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <XCircle className="h-5 w-5 text-red-600" />
+                                                <div>
+                                                    <h2 className="text-lg font-semibold text-red-900">
+                                                        Credencial No Válida
                                                     </h2>
-                                                    <p className="text-green-600">
-                                                        La credencial ha sido verificada exitosamente
+                                                    <p className="text-sm text-red-700">
+                                                        El código QR no corresponde a ninguna credencial válida
                                                     </p>
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <XCircle className="w-12 h-12 text-red-500" />
-                                                <div className="text-center">
-                                                    <h2 className="text-2xl font-bold text-red-700">
-                                                        ✗ Credencial Inválida
-                                                    </h2>
-                                                    <p className="text-red-600">
-                                                        {result.message || 'La credencial no pudo ser verificada'}
-                                                    </p>
-                                                </div>
-                                            </>
-                                        )}
+                                            </div>
+                                            <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium bg-red-100 text-red-800">
+                                                INVÁLIDO
+                                            </div>
+                                        </div>
                                     </div>
-                                </CardContent>
-                            </Card>
+                                    
+                                    <div className="p-6">
+                                        <div className="text-center">
+                                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                <XCircle className="h-8 w-8 text-red-500" />
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-gray-900 mb-2">Credencial No Encontrada</h3>
+                                            <p className="text-gray-600 mb-6">
+                                                {result.message || "El código QR escaneado no corresponde a ninguna credencial válida en nuestro sistema."}
+                                            </p>
+                                            
+                                            <Button 
+                                                onClick={() => router.get('/verify-qr')}
+                                                variant="outline"
+                                                className="px-6"
+                                            >
+                                                Intentar con Otro Código
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )}
 
-                            {/* Detalles de la credencial válida */}
+                            {/* Valid Credential Result - Rediseño Profesional */}
                             {result.valid && result.data && (
-                                <div className="grid gap-6 md:grid-cols-2">
-                                    {/* Información del titular */}
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <User className="w-5 h-5" />
-                                                Titular de la Credencial
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Nombre</p>
-                                                <p className="text-lg font-semibold">
-                                                    {result.data.employee.first_name} {result.data.employee.last_name}
-                                                </p>
+                                <div className="space-y-6">
+                                    {/* Header de Estado - Diseño Minimalista */}
+                                    <Card className="border-0 shadow-sm">
+                                        <div className={`px-6 py-4 border-l-4 ${
+                                            result.data.request_status === 'approved' 
+                                                ? 'bg-green-50 border-green-500' 
+                                                : 'bg-red-50 border-red-500'
+                                        }`}>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center space-x-3">
+                                                    {result.data.request_status === 'approved' ? 
+                                                        <CheckCircle className="h-5 w-5 text-green-600" /> : 
+                                                        <XCircle className="h-5 w-5 text-red-600" />
+                                                    }
+                                                    <div>
+                                                        <h2 className={`text-lg font-semibold ${
+                                                            result.data.request_status === 'approved' 
+                                                                ? 'text-green-900' 
+                                                                : 'text-red-900'
+                                                        }`}>
+                                                            {result.data.request_status === 'approved' 
+                                                                ? 'Credencial Válida' 
+                                                                : 'Credencial No Válida'}
+                                                        </h2>
+                                                        <p className={`text-sm ${
+                                                            result.data.request_status === 'approved' 
+                                                                ? 'text-green-700' 
+                                                                : 'text-red-700'
+                                                        }`}>
+                                                            Verificación realizada el {new Date().toLocaleDateString('es-ES', {
+                                                                year: 'numeric',
+                                                                month: 'long',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium ${
+                                                    result.data.request_status === 'approved' 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-red-100 text-red-800'
+                                                }`}>
+                                                    {result.data.request_status === 'approved' ? 'APROBADO' : 'NO APROBADO'}
+                                                </div>
                                             </div>
-                                            {result.data.employee.identification && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Identificación</p>
-                                                    <p className="text-base font-mono">{result.data.employee.identification}</p>
-                                                </div>
-                                            )}
-                                            {result.data.employee.position && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Cargo</p>
-                                                    <p className="text-base">{result.data.employee.position}</p>
-                                                </div>
-                                            )}
-                                            {result.data.employee.company && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Empresa</p>
-                                                    <p className="text-base flex items-center gap-2">
-                                                        <Building className="w-4 h-4" />
-                                                        {result.data.employee.company}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </CardContent>
+                                        </div>
                                     </Card>
-
-                                    {/* Información del evento */}
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Calendar className="w-5 h-5" />
-                                                Evento
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Nombre del Evento</p>
-                                                <p className="text-lg font-semibold">{result.data.event.name}</p>
+                                    
+                                    {/* Sección Principal - Información del Portador */}
+                                    <Card className="border-0 shadow-sm">
+                                        <div className="p-6">
+                                            <div className="flex flex-col lg:flex-row lg:space-x-8">
+                                                {/* Foto del Portador */}
+                                                <div className="flex-shrink-0 mb-6 lg:mb-0">
+                                                    <div className="flex justify-center">
+                                                        {result.data.employee.photo_path ? (
+                                                            <img 
+                                                                src={`/storage/${result.data.employee.photo_path}`}
+                                                                alt="Foto de perfil" 
+                                                                className="h-32 w-32 object-cover rounded-full ring-4 ring-gray-100"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-32 w-32 bg-gray-100 flex items-center justify-center rounded-full ring-4 ring-gray-200">
+                                                                <User className="h-12 w-12 text-gray-400" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Información del Portador */}
+                                                <div className="flex-1">
+                                                    <div className="text-center lg:text-left mb-6">
+                                                        <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                                                            {result.data.employee.first_name} {result.data.employee.last_name}
+                                                        </h3>
+                                                        <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-2">
+                                                            {(result.data.employee.document_type && result.data.employee.document_number) && (
+                                                                <div className="inline-flex items-center px-3 py-1 text-sm bg-gray-50 text-gray-700 rounded-full font-medium">
+                                                                    {result.data.employee.document_type}-{result.data.employee.document_number}
+                                                                </div>
+                                                            )}
+                                                            {result.data.employee.company && (
+                                                                <div className="inline-flex items-center px-3 py-1 text-sm bg-blue-50 text-blue-700 rounded-full font-medium">
+                                                                    {result.data.employee.company}
+                                                                </div>
+                                                            )}
+                                                            {result.data.employee.position && (
+                                                                <div className="inline-flex items-center px-3 py-1 text-sm bg-gray-50 text-gray-700 rounded-full font-medium">
+                                                                    {result.data.employee.position}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {result.data.event.location && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Ubicación</p>
-                                                    <p className="text-base flex items-center gap-2">
-                                                        <MapPin className="w-4 h-4" />
+                                        </div>
+                                    </Card>
+                                            
+                                    {/* Sección de Evento y Zonas - Rediseño Minimalista */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Información del Evento */}
+                                        <Card className="border-0 shadow-sm">
+                                            <div className="p-6">
+                                                <div className="flex items-center space-x-2 mb-4">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                    <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Evento</h4>
+                                                </div>
+                                                <h5 className="text-lg font-semibold text-gray-900 mb-2">
+                                                    {result.data.event.name}
+                                                </h5>
+                                                {result.data.event.location && (
+                                                    <p className="text-sm text-gray-600">
                                                         {result.data.event.location}
                                                     </p>
+                                                )}
+                                            </div>
+                                        </Card>
+                                        
+                                        {/* Zonas Autorizadas */}
+                                        <Card className="border-0 shadow-sm">
+                                            <div className="p-6">
+                                                <div className="flex items-center space-x-2 mb-4">
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                    <h4 className="text-sm font-semibold text-gray-600 uppercase tracking-wide">Zonas Autorizadas</h4>
                                                 </div>
-                                            )}
-                                            {result.data.event.start_date && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">
-                                                        Fecha {result.data.event.end_date ? 'de Inicio' : ''}
-                                                    </p>
-                                                    <p className="text-base">{formatDate(result.data.event.start_date)}</p>
-                                                </div>
-                                            )}
-                                            {result.data.event.end_date && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Fecha de Fin</p>
-                                                    <p className="text-base">{formatDate(result.data.event.end_date)}</p>
-                                                </div>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Zonas de acceso */}
-                                    {result.data.zones && result.data.zones.length > 0 && (
-                                        <Card>
-                                            <CardHeader>
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Shield className="w-5 h-5" />
-                                                    Zonas de Acceso
-                                                </CardTitle>
-                                            </CardHeader>
-                                            <CardContent>
                                                 <div className="flex flex-wrap gap-2">
                                                     {result.data.zones.map((zone, index) => (
-                                                        <Badge
+                                                        <div
                                                             key={index}
-                                                            variant="secondary"
+                                                            className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full border"
                                                             style={{
-                                                                backgroundColor: zone.color ? `${zone.color}20` : undefined,
-                                                                borderColor: zone.color || undefined,
-                                                                color: zone.color || undefined
+                                                                backgroundColor: zone.color ? `${zone.color}15` : '#f3f4f6',
+                                                                borderColor: zone.color || '#d1d5db',
+                                                                color: zone.color || '#6b7280'
                                                             }}
                                                         >
                                                             {zone.name}
-                                                        </Badge>
+                                                        </div>
                                                     ))}
                                                 </div>
-                                            </CardContent>
+                                            </div>
                                         </Card>
-                                    )}
-
-                                    {/* Estado de aprobación */}
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Shield className="w-5 h-5" />
-                                                Estado de Acreditación
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Estado de Solicitud</p>
-                                                <Badge
-                                                    variant={result.data.request_status === 'approved' ? 'default' : 'secondary'}
-                                                    className={`${
-                                                        result.data.request_status === 'approved' 
-                                                            ? 'bg-green-100 text-green-800 border-green-200'
-                                                            : result.data.request_status === 'pending'
-                                                            ? 'bg-yellow-100 text-yellow-800 border-yellow-200'
-                                                            : result.data.request_status === 'rejected'
-                                                            ? 'bg-red-100 text-red-800 border-red-200'
-                                                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                                                    }`}
-                                                >
-                                                    {result.data.request_status === 'approved' && '✓ Aprobada'}
-                                                    {result.data.request_status === 'pending' && '⏳ Pendiente'}
-                                                    {result.data.request_status === 'rejected' && '✗ Rechazada'}
-                                                    {!['approved', 'pending', 'rejected'].includes(result.data.request_status) && result.data.request_status}
-                                                </Badge>
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Estado de Credencial</p>
-                                                <Badge
-                                                    variant={result.data.credential.status === 'ready' ? 'default' : 'secondary'}
-                                                    className={`${
-                                                        result.data.credential.status === 'ready' 
-                                                            ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                                            : result.data.credential.status === 'generating'
-                                                            ? 'bg-orange-100 text-orange-800 border-orange-200'
-                                                            : 'bg-gray-100 text-gray-800 border-gray-200'
-                                                    }`}
-                                                >
-                                                    {result.data.credential.status === 'ready' && '✓ Lista'}
-                                                    {result.data.credential.status === 'generating' && '⚙️ Generando'}
-                                                    {!['ready', 'generating'].includes(result.data.credential.status) && result.data.credential.status}
-                                                </Badge>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                    
-                                    {/* Información de emisión */}
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Clock className="w-5 h-5" />
-                                                Información de Verificación
-                                            </CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="space-y-3">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Credencial Emitida</p>
-                                                <p className="text-base">{formatDate(result.data.credential.issued_at)}</p>
-                                            </div>
-                                            {result.data.credential.expires_at && (
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-500">Fecha de Expiración</p>
-                                                    <p className="text-base">{formatDate(result.data.credential.expires_at)}</p>
-                                                </div>
-                                            )}
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-500">Verificado el</p>
-                                                <p className="text-base">{formatDate(result.data.credential.verified_at)}</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                    </div>
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
 
-                    {/* Información adicional */}
-                    <Card className="mt-8">
-                        <CardContent className="pt-6">
-                            <div className="text-center text-sm text-gray-500">
-                                <p>
-                                    Esta verificación confirma la autenticidad de la credencial en el momento de la consulta.
-                                </p>
-                                <p className="mt-2">
-                                    Para mayor seguridad, siempre verifique que la información mostrada 
-                                    coincida con la credencial física presentada.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Footer Informativo - Diseño Minimalista */}
+                    <div className="mt-8 p-6 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-center space-x-2 mb-3">
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Verificación Oficial</h4>
+                            <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div>
+                        </div>
+                        <div className="text-center space-y-2">
+                            <p className="text-sm text-gray-600">
+                                Esta verificación confirma la autenticidad de la credencial en el momento de la consulta.
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                Para mayor seguridad, siempre verifique que la información mostrada coincida con la credencial física presentada.
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </>

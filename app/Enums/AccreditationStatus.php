@@ -10,6 +10,7 @@ enum AccreditationStatus: string
     case Approved = 'approved';
     case Rejected = 'rejected';
     case Cancelled = 'cancelled';
+    case Suspended = 'suspended';
 
     public function label(): string
     {
@@ -20,6 +21,7 @@ enum AccreditationStatus: string
             self::Approved => 'Aprobada',
             self::Rejected => 'Rechazada',
             self::Cancelled => 'Cancelada',
+            self::Suspended => 'Suspendida',
         };
     }
 
@@ -32,6 +34,7 @@ enum AccreditationStatus: string
             self::Approved => 'green',
             self::Rejected => 'red',
             self::Cancelled => 'gray',
+            self::Suspended => 'orange',
         };
     }
 }

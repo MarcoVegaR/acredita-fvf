@@ -28,6 +28,7 @@ import { BaseFormOptions, useFormContext } from "@/components/base-form/base-for
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { usePage } from "@inertiajs/react";
 
 interface RoleInfo {
   id: number;
@@ -41,6 +42,13 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
   // Obtener el formulario del contexto
   const { form, isSubmitting } = useFormContext<User>();
   
+  // Obtener roles desde las props de Inertia
+  interface PageProps {
+    roles?: RoleInfo[];
+  }
+
+  const { roles = [] } = usePage().props as PageProps;
+
   // Estados para la UI
   const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
   const [loadingRoles, setLoadingRoles] = useState<boolean>(true);
@@ -51,35 +59,17 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
   // Determinar si es formulario de edición o creación
   const isEditing = options.isEdit;
   
-  // Cargar roles disponibles desde la API
+  // Cargar roles disponibles desde las props de Inertia
   useEffect(() => {
-    const fetchRoles = async () => {
-      try {
-        setLoadingRoles(true);
-        // En un entorno real, esto sería una llamada a la API
-        // Por ejemplo: const response = await fetch('/api/roles');
-        
-        // Simular carga desde la API con los datos del seeder
-        // En producción esto debería venir del backend
-        setTimeout(() => {
-          const roles: RoleInfo[] = [
-            { id: 1, name: "admin", nameshow: "Administrador", description: "Acceso completo a todas las funcionalidades del sistema" },
-            { id: 2, name: "editor", nameshow: "Editor", description: "Puede ver y editar usuarios, pero no crear o eliminar" },
-            { id: 3, name: "viewer", nameshow: "Visualizador", description: "Solo puede ver información, sin capacidad de modificación" },
-            { id: 4, name: "user", nameshow: "Usuario", description: "Acceso básico con permisos mínimos" }
-          ];
-          setAvailableRoles(roles);
-          setLoadingRoles(false);
-        }, 500);
-      } catch (error) {
-        console.error("Error al cargar los roles:", error);
-        toast.error("No se pudieron cargar los roles disponibles");
-        setLoadingRoles(false);
-      }
-    };
-    
-    fetchRoles();
-  }, []);
+    if (roles) {
+      setAvailableRoles(roles);
+      setLoadingRoles(false);
+    } else {
+      console.error("No se encontraron roles en las props de Inertia");
+      toast.error("No se pudieron cargar los roles disponibles");
+      setLoadingRoles(false);
+    }
+  }, [roles]);
   
   // Obtener la descripción del rol
   const getRoleDescription = (role: RoleInfo): string => {

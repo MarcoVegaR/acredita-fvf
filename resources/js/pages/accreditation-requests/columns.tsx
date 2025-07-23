@@ -54,7 +54,7 @@ export interface AccreditationRequest extends Entity {
     id: number;
     name: string;
   }[];
-  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'cancelled';
+  status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'cancelled' | 'suspended';
   created_by_id: number;
   created_by: {
     id: number;
@@ -192,6 +192,7 @@ export const columns: ColumnDef<AccreditationRequest>[] = [
         approved: { label: 'Aprobada', bgColor: 'bg-green-50', textColor: 'text-green-700' },
         rejected: { label: 'Rechazada', bgColor: 'bg-red-50', textColor: 'text-red-700' },
         cancelled: { label: 'Cancelada', bgColor: 'bg-gray-50', textColor: 'text-gray-500' },
+        suspended: { label: 'Suspendida', bgColor: 'bg-orange-50', textColor: 'text-orange-700' },
       };
       
       const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
