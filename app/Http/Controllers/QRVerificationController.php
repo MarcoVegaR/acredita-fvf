@@ -54,6 +54,8 @@ class QRVerificationController extends Controller
                                 'company' => $verificationResult['employee']['provider']['name'] ?? 
                                             $verificationResult['employee']['company'] ?? 
                                             'No especificado',
+                                // Incluir la ruta de la foto
+                                'photo_path' => $verificationResult['employee']['photo_path'] ?? null,
                             ],
                             'event' => [
                                 'name' => $verificationResult['event']['name'] ?? '',

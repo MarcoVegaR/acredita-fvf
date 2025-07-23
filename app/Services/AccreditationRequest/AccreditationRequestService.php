@@ -470,19 +470,53 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
      */
     public function returnToDraft(AccreditationRequest $request, ?string $reason = null): AccreditationRequest
     {
+        Log::info('[RETURN SERVICE] Iniciando devolución a borrador', [
+            'uuid' => $request->uuid,
+            'current_status' => $request->status->value,
+            'reason' => $reason,
+            'user_id' => auth()->id()
+        ]);
+        
+        // Verificar que la solicitud esté en estado válido
         if (!in_array($request->status, [AccreditationStatus::Submitted, AccreditationStatus::UnderReview])) {
+            Log::error('[RETURN SERVICE] Estado no válido para devolución', [
+                'current_status' => $request->status->value,
+                'allowed_statuses' => ['submitted', 'under_review']
+            ]);
             throw new Exception('Solo se pueden devolver a borrador solicitudes enviadas o en revisión.');
         }
-
-        $request->update([
+        
+        // Validar que exista un motivo
+        if (empty($reason)) {
+            Log::error('[RETURN SERVICE] Motivo de devolución requerido');
+            throw new Exception('Se requiere un motivo para devolver la solicitud.');
+        }
+        
+        Log::info('[RETURN SERVICE] Estado válido, procediendo con la devolución...');
+        
+        $updateData = [
             'status' => AccreditationStatus::Draft,
             'requested_at' => null,
             'returned_at' => now(),
             'returned_by' => auth()->id(),
             'return_reason' => $reason
+        ];
+        
+        Log::info('[RETURN SERVICE] Actualizando solicitud con datos:', $updateData);
+        
+        $request->update($updateData);
+        
+        Log::info('[RETURN SERVICE] Solicitud actualizada, recargando modelo...');
+        $freshRequest = $request->fresh();
+        
+        Log::info('[RETURN SERVICE] Devolución completada exitosamente', [
+            'uuid' => $freshRequest->uuid,
+            'new_status' => $freshRequest->status->value,
+            'returned_at' => $freshRequest->returned_at?->toISOString(),
+            'returned_by' => $freshRequest->returned_by
         ]);
         
-        return $request->fresh();
+        return $freshRequest;
     }
 
     /**

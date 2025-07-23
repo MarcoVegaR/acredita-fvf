@@ -7,9 +7,11 @@ import {
   CalendarIcon,
   MapPinIcon,
   ClockIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  History
 } from "lucide-react";
 import { DateRenderer } from "@/components/base-show/renderers/date-renderer";
+import { TimelineTab } from "@/components/timeline-tab";
 
 
 interface AccreditationRequestShowProps {
@@ -55,12 +57,24 @@ interface AccreditationRequestShowProps {
   };
   canDownload?: boolean;
   canRegenerate?: boolean;
+  canViewCredential?: boolean;
+  timeline?: Array<{
+    type: string;
+    timestamp: string;
+    user: { id: number; name: string } | null;
+    message: string;
+    details: string | null;
+    icon: string;
+    color: string;
+  }>;
 }
 
 export default function AccreditationRequestShow({ 
   request, 
   canDownload = false, 
-  canRegenerate = false 
+  canRegenerate = false,
+  canViewCredential = false,
+  timeline = []
 }: AccreditationRequestShowProps) {
   
   const statusConfig = {
@@ -73,7 +87,7 @@ export default function AccreditationRequestShow({
   };
 
   // Verificar si puede ver credenciales (solicitud aprobada)
-  const canViewCredential = request.status === 'approved';
+  // El permiso ahora viene desde el backend
   // Usar props del backend en lugar de calcular en frontend
 
   // Configuración de tabs
@@ -109,6 +123,11 @@ export default function AccreditationRequestShow({
       value: "metadata", 
       label: "Metadatos", 
       icon: <ClockIcon className="h-4 w-4" /> 
+    },
+    { 
+      value: "timeline", 
+      label: "Historial", 
+      icon: <History className="h-4 w-4" /> 
     },
   ];
 
@@ -334,6 +353,19 @@ export default function AccreditationRequestShow({
             render: (value: unknown): ReactNode => <DateRenderer value={value as string} />
           }
         ],
+      },
+      
+      // Tab: Timeline/Historial
+      {
+        title: 'Historial de Cambios',
+        tab: 'timeline',
+        className: 'bg-card rounded-lg border shadow-sm p-6',
+        fields: [
+          {
+            key: 'id' as keyof typeof request, // Campo dummy requerido
+            render: (): ReactNode => <TimelineTab timeline={timeline} />
+          }
+        ]
       }
     ],
   };

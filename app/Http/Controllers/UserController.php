@@ -199,6 +199,9 @@ class UserController extends BaseController
             // Incluir userRoles separadamente para facilitar la selección en el formulario
             $data['userRoles'] = $data['user']->role_names;
             
+            // Agregar roles para consistencia con create (frontend espera 'roles')
+            $data['roles'] = $data['allRoles'];
+            
             return $this->respondWithSuccess('users/edit', $data);
         } catch (\Throwable $e) {
             return $this->handleException($e, 'Editar usuario');

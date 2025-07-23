@@ -98,8 +98,11 @@ RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cac
     && mkdir -p storage/app/public/qr-codes \
     && chown -R appuser:www-data storage bootstrap/cache public/build public/fonts \
     && chown -R appuser:www-data storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes \
-    && chmod -R 775 storage bootstrap/cache public/build public/fonts \
-    && chmod -R 775 storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes
+    # Configurar permisos 777 para directorios que necesitan ser escritos por el servidor web
+    && chmod -R 777 storage \
+    && chmod -R 777 bootstrap/cache \
+    # Específicamente asegurar permisos para directorios críticos de la aplicación
+    && chmod -R 777 storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes
 
 # Cambiar a appuser para compilar assets
 USER appuser

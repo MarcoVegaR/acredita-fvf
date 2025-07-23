@@ -90,10 +90,26 @@ class AccreditationRequestController extends BaseController
 
             $this->logAction('ver', 'solicitud de acreditación', $accreditationRequest->id);
             
+            // Cargar relaciones necesarias para el timeline
+            $accreditationRequest->load([
+                'employee.provider', 
+                'event', 
+                'zones', 
+                'credential',
+                'creator',
+                'reviewedBy',
+                'approvedBy', 
+                'rejectedBy',
+                'returnedBy',
+                'suspendedBy'
+            ]);
+            
             return $this->respondWithSuccess('accreditation-requests/show', [
-                'request' => $accreditationRequest->load(['employee.provider', 'event', 'zones', 'credential']),
+                'request' => $accreditationRequest,
+                'timeline' => $accreditationRequest->getTimeline(),
                 'canDownload' => $accreditationRequest->credential && $accreditationRequest->credential->is_ready && auth()->user()->can('credential.download'),
                 'canRegenerate' => $accreditationRequest->credential && auth()->user()->can('templates.regenerate'),
+                'canViewCredential' => $accreditationRequest->status->value === 'approved' && auth()->user()->can('credential.view'),
             ]);
         } catch (\Throwable $e) {
             Log::error('[SHOW] Error en visualización de solicitud', [
@@ -419,26 +435,69 @@ class AccreditationRequestController extends BaseController
      */
     public function returnToDraft(AccreditationRequest $accreditationRequest, Request $request)
     {
+        Log::info('[RETURN CONTROLLER] Iniciando devolución a borrador', [
+            'uuid' => $accreditationRequest->uuid,
+            'id' => $accreditationRequest->id,
+            'status' => $accreditationRequest->status->value,
+            'employee' => $accreditationRequest->employee->first_name . ' ' . $accreditationRequest->employee->last_name,
+            'user_id' => auth()->id(),
+            'user_email' => auth()->user()->email ?? 'N/A',
+            'timestamp' => now()->toISOString()
+        ]);
+        
         try {
+            Log::info('[RETURN CONTROLLER] Verificando autorización...');
             Gate::authorize('update', $accreditationRequest);
+            Log::info('[RETURN CONTROLLER] Autorización exitosa');
+            
+            Log::info('[RETURN CONTROLLER] Verificando estado de la solicitud', [
+                'current_status' => $accreditationRequest->status->value,
+                'required_statuses' => ['submitted', 'under_review']
+            ]);
             
             if (!in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+                Log::warning('[RETURN CONTROLLER] Estado no válido para devolución', [
+                    'current_status' => $accreditationRequest->status->value
+                ]);
                 return redirect()
                     ->route('accreditation-requests.index')
                     ->with('flash.banner', 'Solo se pueden devolver a borrador solicitudes enviadas o en revisión.')
                     ->with('flash.bannerStyle', 'warning');
             }
             
-            $this->accreditationRequestService->returnToDraft($accreditationRequest, $request->get('reason'));
+            // Validar que exista una razón de devolución
+            $reason = $request->get('reason');
+            if (empty($reason)) {
+                Log::warning('[RETURN CONTROLLER] Motivo de devolución requerido');
+                return redirect()
+                    ->route('accreditation-requests.index')
+                    ->with('flash.banner', 'Se requiere un motivo para devolver la solicitud.')
+                    ->with('flash.bannerStyle', 'warning');
+            }
             
+            Log::info('[RETURN CONTROLLER] Llamando al servicio returnToDraft...');
+            $this->accreditationRequestService->returnToDraft($accreditationRequest, $reason);
+            Log::info('[RETURN CONTROLLER] Servicio returnToDraft ejecutado exitosamente');
+            
+            Log::info('[RETURN CONTROLLER] Registrando acción en log...');
             $this->logAction('devolver a borrador', 'solicitud de acreditación', $accreditationRequest->id);
+            Log::info('[RETURN CONTROLLER] Acción registrada exitosamente');
             
-            return redirect()
-                ->route('accreditation-requests.index')
-                ->with('flash.banner', 'Solicitud devuelta a borrador para corrección')
-                ->with('flash.bannerStyle', 'success');
+            Log::info('[RETURN CONTROLLER] Redirigiendo con mensaje de éxito');
+            return $this->redirectWithSuccess(
+                'accreditation-requests.index', 
+                [], 
+                'Solicitud devuelta a borrador para corrección'
+            );
                 
         } catch (\Throwable $e) {
+            Log::error('[RETURN CONTROLLER] Error durante la devolución', [
+                'uuid' => $accreditationRequest->uuid,
+                'error_message' => $e->getMessage(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString()
+            ]);
             return $this->handleException($e, 'Devolver solicitud a borrador');
         }
     }

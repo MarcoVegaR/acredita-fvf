@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SuspensionDialog } from "@/components/suspension-dialog";
+import { ActionDialog } from "@/components/action-dialog";
 import { usePage, router } from "@inertiajs/react";
 import { SharedData } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Interface para manejar el diálogo de suspensión
+// Interfaces para manejar los diálogos
 interface SuspensionDialogState {
   isOpen: boolean;
   requestData: AccreditationRequest | null;
+}
+
+interface ActionDialogState {
+  isOpen: boolean;
+  requestData: AccreditationRequest | null;
+  action: 'reject' | 'return' | null;
 }
 
 // Define the props interface - adaptada para usar con BaseIndexPage
@@ -63,6 +70,13 @@ export default function Index(props: AccreditationRequestsIndexProps) {
     requestData: null
   });
 
+  // Estado para controlar los diálogos de acción (rechazar o devolver)
+  const [actionDialog, setActionDialog] = useState<ActionDialogState>({
+    isOpen: false,
+    requestData: null,
+    action: null
+  });
+
   // Manejador para la acción de suspensión desde el diálogo
   const handleSuspendConfirm = (reason: string) => {
     const request = suspensionDialog.requestData;
@@ -78,7 +92,8 @@ export default function Index(props: AccreditationRequestsIndexProps) {
     });
     
     router.post(`/accreditation-requests/${request.uuid}/suspend`, 
-      { reason: reason }, 
+      // Asegurarse de que reason nunca sea null
+      { reason: reason || '' }, 
       {
         preserveState: false,
         preserveScroll: true,
@@ -101,6 +116,55 @@ export default function Index(props: AccreditationRequestsIndexProps) {
         },
         onFinish: () => {
           console.log('[SUSPEND ACTION] Petición finalizada');
+        }
+      }
+    );
+  };
+
+  // Manejador para las acciones de rechazo y devolución desde el diálogo
+  const handleActionConfirm = (reason: string) => {
+    const request = actionDialog.requestData;
+    const action = actionDialog.action;
+    
+    if (!request || !action) {
+      console.error(`[${action?.toUpperCase()} ACTION] No hay datos de solicitud o acción`);
+      return;
+    }
+    
+    const urlEndpoint = action === 'reject' ? 'reject' : 'return-to-draft';
+    const actionLabel = action === 'reject' ? 'rechazada' : 'devuelta para corrección';
+    const logPrefix = action === 'reject' ? 'REJECT' : 'RETURN';
+    
+    console.log(`[${logPrefix} ACTION] Enviando petición POST:`, {
+      url: `/accreditation-requests/${request.uuid}/${urlEndpoint}`,
+      data: { reason: reason }
+    });
+    
+    router.post(`/accreditation-requests/${request.uuid}/${urlEndpoint}`, 
+      // Asegurarse de que reason nunca sea null
+      { reason: reason || '' }, 
+      {
+        preserveState: false,
+        preserveScroll: true,
+        onStart: () => {
+          console.log(`[${logPrefix} ACTION] Petición POST iniciada`);
+        },
+        onSuccess: (page) => {
+          console.log(`[${logPrefix} ACTION] Éxito - Solicitud ${actionLabel}:`, page);
+          toast.success(`La solicitud ha sido ${actionLabel} exitosamente`);
+        },
+        onError: (errors) => {
+          console.error(`[${logPrefix} ACTION] Error en la petición:`, errors);
+          console.error(`[${logPrefix} ACTION] Detalles del error:`, {
+            uuid: request.uuid,
+            errors: errors,
+            reason: reason,
+            timestamp: new Date().toISOString()
+          });
+          toast.error(`Error al procesar la solicitud`);
+        },
+        onFinish: () => {
+          console.log(`[${logPrefix} ACTION] Petición finalizada`);
         }
       }
     );
@@ -320,52 +384,19 @@ export default function Index(props: AccreditationRequestsIndexProps) {
             });
             return canReject;
           },
-          confirmMessage: (request: AccreditationRequest) => 
-            `¿Está seguro que desea rechazar la solicitud de ${request.employee.first_name} ${request.employee.last_name}?`,
-          confirmTitle: "Rechazar Solicitud",
           handler: (request: AccreditationRequest) => {
-            console.log('[REJECT ACTION] Iniciando rechazo:', {
+            console.log('[REJECT ACTION] Abriendo diálogo de rechazo:', {
               uuid: request.uuid,
               status: request.status,
               employee: `${request.employee.first_name} ${request.employee.last_name}`
             });
             
-            const reason = prompt('Motivo del rechazo (opcional):');
-            console.log('[REJECT ACTION] Motivo ingresado:', reason);
-            
-            // Continuar aunque el usuario cancele el prompt (reason es opcional)
-            const finalReason = reason || ''; // Si es null, usar string vacío
-            
-            console.log('[REJECT ACTION] Enviando petición POST:', {
-              url: `/accreditation-requests/${request.uuid}/reject`,
-              data: { reason: finalReason }
+            // Abrir diálogo de acción para rechazar
+            setActionDialog({
+              isOpen: true,
+              requestData: request,
+              action: 'reject'
             });
-            
-            router.post(`/accreditation-requests/${request.uuid}/reject`, 
-              { reason: finalReason }, 
-              {
-                preserveState: false,
-                preserveScroll: true,
-                onStart: () => {
-                  console.log('[REJECT ACTION] Petición POST iniciada');
-                },
-                onSuccess: (page) => {
-                  console.log('[REJECT ACTION] Éxito - Solicitud rechazada:', page);
-                },
-                onError: (errors) => {
-                  console.error('[REJECT ACTION] Error en la petición:', errors);
-                  console.error('[REJECT ACTION] Detalles del error:', {
-                    uuid: request.uuid,
-                    errors: errors,
-                    reason: finalReason,
-                    timestamp: new Date().toISOString()
-                  });
-                },
-                onFinish: () => {
-                  console.log('[REJECT ACTION] Petición finalizada');
-                }
-              }
-            );
           }
         },
         // Acción para dar visto bueno (area manager)
@@ -456,52 +487,20 @@ export default function Index(props: AccreditationRequestsIndexProps) {
             });
             return canReturn;
           },
-          confirmMessage: (request: AccreditationRequest) => 
-            `¿Está seguro que desea devolver para corrección la solicitud de ${request.employee.first_name} ${request.employee.last_name}?`,
-          confirmTitle: "Devolver para Corrección",
+          // No confirmMessage ni confirmTitle aquí porque usamos ActionDialog personalizado
           handler: (request: AccreditationRequest) => {
-            console.log('[RETURN ACTION] Iniciando devolución:', {
+            console.log('[RETURN ACTION] Abriendo diálogo de devolución:', {
               uuid: request.uuid,
               status: request.status,
               employee: `${request.employee.first_name} ${request.employee.last_name}`
             });
             
-            const reason = prompt('Motivo para devolver (opcional):');
-            console.log('[RETURN ACTION] Motivo ingresado:', reason);
-            
-            // Continuar aunque el usuario cancele el prompt (motivo es opcional)
-            const finalReason = reason || ''; // Si es null, usar string vacío
-            
-            console.log('[RETURN ACTION] Enviando petición POST:', {
-              url: `/accreditation-requests/${request.uuid}/return-to-draft`,
-              data: { reason: finalReason }
+            // Abrir diálogo de acción para devolver
+            setActionDialog({
+              isOpen: true,
+              requestData: request,
+              action: 'return'
             });
-            
-            router.post(`/accreditation-requests/${request.uuid}/return-to-draft`, 
-              { reason: finalReason }, 
-              {
-                preserveState: false,
-                preserveScroll: true,
-                onStart: () => {
-                  console.log('[RETURN ACTION] Petición POST iniciada');
-                },
-                onSuccess: (page) => {
-                  console.log('[RETURN ACTION] Éxito - Solicitud devuelta a borrador:', page);
-                },
-                onError: (errors) => {
-                  console.error('[RETURN ACTION] Error en la petición:', errors);
-                  console.error('[RETURN ACTION] Detalles del error:', {
-                    uuid: request.uuid,
-                    errors: errors,
-                    reason: finalReason,
-                    timestamp: new Date().toISOString()
-                  });
-                },
-                onFinish: () => {
-                  console.log('[RETURN ACTION] Petición finalizada');
-                }
-              }
-            );
           }
         },
         // Regenerar credencial - solo para solicitudes aprobadas con credencial
@@ -569,6 +568,24 @@ export default function Index(props: AccreditationRequestsIndexProps) {
           `¿Está seguro que desea suspender la credencial de ${suspensionDialog.requestData.employee.first_name} ${suspensionDialog.requestData.employee.last_name}? Esta acción no puede deshacerse.` : 
           ""}
         onConfirm={handleSuspendConfirm}
+      />
+
+      {/* Diálogo de acción (Rechazar o Devolver) */}
+      <ActionDialog 
+        open={actionDialog.isOpen}
+        onOpenChange={(open) => setActionDialog(prev => ({ ...prev, isOpen: open }))}
+        title={actionDialog.action === 'reject' ? "Rechazar Solicitud" : "Devolver para Corrección"}
+        description={actionDialog.requestData ? 
+          `${actionDialog.action === 'reject' 
+            ? '¿Está seguro que desea rechazar la solicitud de' 
+            : '¿Está seguro que desea devolver para corrección la solicitud de'} ${actionDialog.requestData.employee.first_name} ${actionDialog.requestData.employee.last_name}?` : 
+          ""}
+        reasonLabel={actionDialog.action === 'reject' ? "Motivo del rechazo" : "Motivo para devolver"}
+        reasonPlaceholder={actionDialog.action === 'reject' ? "Ingrese el motivo del rechazo" : "Ingrese el motivo para devolver"}
+        confirmButtonLabel={actionDialog.action === 'reject' ? "Rechazar" : "Devolver"}
+        confirmButtonClass={actionDialog.action === 'reject' ? "bg-destructive hover:bg-destructive/90" : "bg-amber-500 hover:bg-amber-600"}
+        isReasonRequired={true}
+        onConfirm={handleActionConfirm}
       />
       
       <BaseIndexPage<AccreditationRequest> 

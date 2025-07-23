@@ -324,7 +324,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('accreditation-requests.reject');
             
         // Devolver a borrador para corrección
-        Route::post('accreditation-requests/{request:uuid}/return-to-draft', 'returnToDraft')
+        Route::post('accreditation-requests/{accreditation_request:uuid}/return-to-draft', 'returnToDraft')
             ->middleware('permission:accreditation_request.return')
             ->name('accreditation-requests.return-to-draft');
             

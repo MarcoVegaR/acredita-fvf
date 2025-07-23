@@ -47,7 +47,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
     roles?: RoleInfo[];
   }
 
-  const { roles = [] } = usePage().props as PageProps;
+  const pageProps = usePage().props as PageProps;
 
   // Estados para la UI
   const [availableRoles, setAvailableRoles] = useState<RoleInfo[]>([]);
@@ -59,17 +59,32 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
   // Determinar si es formulario de edición o creación
   const isEditing = options.isEdit;
   
-  // Cargar roles disponibles desde las props de Inertia
+  // Crear una referencia estable para los roles usando JSON.stringify
+  const [rolesRef, setRolesRef] = useState<string>('');
+  
+  // Cargar roles disponibles cuando cambien realmente (pero de forma estable)
   useEffect(() => {
-    if (roles) {
-      setAvailableRoles(roles);
-      setLoadingRoles(false);
-    } else {
-      console.error("No se encontraron roles en las props de Inertia");
-      toast.error("No se pudieron cargar los roles disponibles");
-      setLoadingRoles(false);
+    const roles = pageProps.roles || [];
+    const rolesString = JSON.stringify(roles);
+    
+    console.log('[UserForm] Checking roles. Current:', roles.length, 'Previous ref length:', rolesRef.length);
+    
+    // Solo actualizar si los roles realmente cambiaron
+    if (rolesString !== rolesRef) {
+      console.log('[UserForm] Roles changed, updating...', roles);
+      setRolesRef(rolesString);
+      
+      if (roles && roles.length > 0) {
+        setAvailableRoles(roles);
+        setLoadingRoles(false);
+        console.log('[UserForm] Roles loaded successfully:', roles.length);
+      } else {
+        console.warn('[UserForm] No roles found in Inertia props');
+        setAvailableRoles([]);
+        setLoadingRoles(false);
+      }
     }
-  }, [roles]);
+  }, [pageProps.roles, rolesRef]);
   
   // Obtener la descripción del rol
   const getRoleDescription = (role: RoleInfo): string => {
@@ -117,7 +132,8 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
   };
 
   return (
-    <div className="user-form-container">
+    <TooltipProvider>
+      <div className="user-form-container">
       <div className="mb-5">
         <Badge className={isEditing 
           ? "px-2 py-1 bg-blue-100 text-blue-800 hover:bg-blue-100" 
@@ -145,16 +161,14 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                   <FormItem className="space-y-2">
                     <div className="flex items-center gap-1">
                       <FormLabel className="text-base font-medium">Nombre completo</FormLabel>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent sideOffset={5}>
-                            <p className="w-[200px] text-sm">Nombre completo del usuario como aparecerá en el sistema</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={5}>
+                          <p className="w-[200px] text-sm">Nombre completo del usuario como aparecerá en el sistema</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     <FormControl>
                       <div className="relative">
@@ -179,16 +193,14 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                   <FormItem className="space-y-2">
                     <div className="flex items-center gap-1">
                       <FormLabel className="text-base font-medium">Correo electrónico</FormLabel>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Mail className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent sideOffset={5}>
-                            <p className="w-[220px] text-sm leading-relaxed">Debe ser único en el sistema y será usado para iniciar sesión</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Mail className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={5}>
+                          <p className="w-[220px] text-sm leading-relaxed">Debe ser único en el sistema y será usado para iniciar sesión</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     <FormControl>
                       <div className="relative">
@@ -365,24 +377,23 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                 <FormItem className="space-y-2">
                   <div className="flex items-center gap-1">
                     <FormLabel className="text-base font-medium">Contraseña</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <div className="w-[250px] text-sm space-y-2">
-                            <p>La contraseña debe cumplir estos requisitos:</p>
-                            <ul className="list-disc pl-4 space-y-1">
-                              <li>Al menos 8 caracteres</li>
-                              <li>Al menos una letra mayúscula</li>
-                              <li>Al menos una letra minúscula</li>
-                              <li>Al menos un número</li>
-                            </ul>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <AlertCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        <div className="w-[280px] space-y-2">
+                          <p className="font-semibold text-sm">Requisitos de contraseña:</p>
+                          <ul className="text-xs space-y-1 text-muted-foreground">
+                            <li>• Mínimo 8 caracteres</li>
+                            <li>• Al menos una letra mayúscula</li>
+                            <li>• Al menos una letra minúscula</li>
+                            <li>• Al menos un número</li>
+                            <li>• Al menos un carácter especial (!@#$%^&*)</li>
+                          </ul>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <FormControl>
                     <div className="relative">
@@ -468,16 +479,14 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
                 <div className="mb-4">
                   <div className="flex items-center gap-1.5">
                     <FormLabel className="text-base font-medium">Roles del usuario</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Shield className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent sideOffset={5}>
-                          <p className="w-[220px] text-sm leading-relaxed">Seleccione uno o más roles para determinar los permisos del usuario</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Shield className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent sideOffset={5}>
+                        <p className="w-[220px] text-sm leading-relaxed">Seleccione uno o más roles para determinar los permisos del usuario</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
                   <FormDescription>
                     Los roles determinan qué permisos tendrá el usuario en el sistema
@@ -557,6 +566,7 @@ export function UserForm({ options }: { options: BaseFormOptions<User> }) {
         </FormSection>
       </FormTab>
     </FormTabContainer>
-  </div>
+      </div>
+    </TooltipProvider>
   );
 }
