@@ -90,19 +90,22 @@ RUN composer run-script post-autoload-dump \
 # Cambiar de vuelta a root
 USER root
 
-# Crear directorios necesarios y configurar permisos
+# Crear TODOS los directorios necesarios y configurar permisos para EC2
 RUN mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache public/build public/fonts \
     && mkdir -p /var/log/supervisor \
-    && mkdir -p storage/app/public/templates \
-    && mkdir -p storage/app/public/credentials \
-    && mkdir -p storage/app/public/qr-codes \
+    # Directorios para credenciales (según config/credentials.php)
+    && mkdir -p storage/app/public/credentials/{qr,images,pdf} \
+    # Directorios para templates
+    && mkdir -p storage/app/public/templates/events \
+    # Directorios para lotes de impresión
+    && mkdir -p storage/app/public/print-batches \
+    # Directorios legacy para compatibilidad
+    && mkdir -p storage/app/public/qr-codes storage/app/public/pdfs \
+    # Configurar ownership inicial (será sobrescrito en entrypoint para EC2)
     && chown -R appuser:www-data storage bootstrap/cache public/build public/fonts \
-    && chown -R appuser:www-data storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes \
-    # Configurar permisos 777 para directorios que necesitan ser escritos por el servidor web
+    # Configurar permisos 777 para todos los directorios críticos
     && chmod -R 777 storage \
-    && chmod -R 777 bootstrap/cache \
-    # Específicamente asegurar permisos para directorios críticos de la aplicación
-    && chmod -R 777 storage/app/public/templates storage/app/public/credentials storage/app/public/qr-codes
+    && chmod -R 777 bootstrap/cache
 
 # Cambiar a appuser para compilar assets
 USER appuser

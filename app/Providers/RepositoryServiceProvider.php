@@ -47,6 +47,10 @@ use App\Repositories\AccreditationRequest\AccreditationRequestRepository;
 use App\Repositories\AccreditationRequest\AccreditationRequestRepositoryInterface;
 use App\Services\AccreditationRequest\AccreditationRequestService;
 use App\Services\AccreditationRequest\AccreditationRequestServiceInterface;
+use App\Repositories\PrintBatch\PrintBatchRepository;
+use App\Repositories\PrintBatch\PrintBatchRepositoryInterface;
+use App\Services\PrintBatch\PrintBatchService;
+use App\Services\PrintBatch\PrintBatchServiceInterface;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -68,6 +72,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(ProviderRepositoryInterface::class, EloquentProviderRepository::class);
         $this->app->bind(AccreditationRequestRepositoryInterface::class, AccreditationRequestRepository::class);
         $this->app->bind(\App\Repositories\Credential\CredentialRepositoryInterface::class, \App\Repositories\Credential\CredentialRepository::class);
+        $this->app->bind(PrintBatchRepositoryInterface::class, PrintBatchRepository::class);
         $this->app->bind(EmployeeRepositoryInterface::class, EmployeeRepository::class);
         
         // Register services
@@ -83,6 +88,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(EmployeeServiceInterface::class, EmployeeService::class);
         $this->app->bind(AccreditationRequestServiceInterface::class, AccreditationRequestService::class);
         $this->app->bind(\App\Services\Credential\CredentialServiceInterface::class, \App\Services\Credential\CredentialService::class);
+        $this->app->bind(PrintBatchServiceInterface::class, PrintBatchService::class);
     }
 
     /**

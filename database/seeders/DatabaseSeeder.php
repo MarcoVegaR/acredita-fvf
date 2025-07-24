@@ -43,5 +43,8 @@ class DatabaseSeeder extends Seeder
         
         // Call employees seeder (después de proveedores)
         $this->call(EmployeesSeeder::class);
+        
+        // Call print batch permissions seeder (después de empleados)
+        $this->call(PrintBatchPermissionsSeeder::class);
     }
 }

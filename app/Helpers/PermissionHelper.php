@@ -67,7 +67,8 @@ class PermissionHelper
                 'templates' => 'plantillas',
                 'events' => 'eventos',
                 'zones' => 'zonas',
-                'employees' => 'empleados'
+                'employees' => 'empleados',
+                'print_batch' => 'lotes de impresión'
                 // Añadir más recursos según sea necesario
             ];
             

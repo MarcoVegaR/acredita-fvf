@@ -11,7 +11,7 @@ import { useInitials } from '@/hooks/use-initials';
 import { usePermissions } from '@/hooks/use-permissions';
 import { type BreadcrumbItem, type NavItem, type SharedData } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck, UserRound, TicketCheck } from 'lucide-react';
+import { LayoutGrid, Menu, Settings, Users, FileImage, Building, Truck, UserRound, TicketCheck, PrinterIcon } from 'lucide-react';
 import AppLogo from './app-logo';
 import AppLogoIcon from './app-logo-icon';
 
@@ -89,6 +89,18 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
                 href: '/templates',
                 icon: FileImage,
                 permission: 'templates.index',
+            },
+        ],
+    },
+    {
+        title: 'Impresión',
+        icon: PrinterIcon,
+        items: [
+            {
+                title: 'Lotes de Impresión',
+                href: '/print-batches',
+                icon: PrinterIcon,
+                permission: 'print_batch.manage',
             },
         ],
     },

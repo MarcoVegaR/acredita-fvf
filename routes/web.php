@@ -4,6 +4,7 @@ use App\Http\Controllers\AccreditationRequestController;
 use App\Http\Controllers\AccreditationRequestBulkController;
 use App\Http\Controllers\AccreditationRequestDraftController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\PrintBatchController;
 use Illuminate\Http\Request;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EmployeeController;
@@ -406,6 +407,52 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('accreditation-requests/bulk/step-4', 'store')
             ->middleware('permission:accreditation_request.create')
             ->name('accreditation-requests.bulk.store');
+    });
+
+    // Print Batch management routes
+    Route::controller(PrintBatchController::class)->group(function () {
+        // Listar lotes de impresión
+        Route::get('print-batches', 'index')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.index');
+            
+        // Crear nuevo lote
+        Route::get('print-batches/create', 'create')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.create');
+            
+        // Vista previa de lote
+        Route::post('print-batches/preview', 'preview')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.preview');
+            
+        Route::post('print-batches', 'store')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.store');
+            
+        // Ver detalles del lote
+        Route::get('print-batches/{printBatch:uuid}', 'show')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.show');
+            
+        // Descargar PDF del lote
+        Route::get('print-batches/{printBatch:uuid}/download', 'download')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.download');
+            
+        // Reintentar lote fallido
+        Route::post('print-batches/{printBatch:uuid}/retry', 'retry')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.retry');
+            
+        // API endpoints para frontend
+        Route::get('api/print-batches/processing', 'processing')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.processing');
+            
+        Route::post('api/print-batches/preview', 'preview')
+            ->middleware('permission:print_batch.manage')
+            ->name('print-batches.preview');
     });
 }); // Close auth middleware group
 

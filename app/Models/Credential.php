@@ -26,6 +26,8 @@ class Credential extends Model
         'generated_at',
         'expires_at',
         'is_active',
+        'printed_at',
+        'print_batch_id',
         'error_message',
         'retry_count'
     ];
@@ -37,6 +39,7 @@ class Credential extends Model
         'zones_snapshot' => 'array',
         'generated_at' => 'datetime',
         'expires_at' => 'datetime',
+        'printed_at' => 'datetime',
         'is_active' => 'boolean'
     ];
 
@@ -170,5 +173,48 @@ class Credential extends Model
         } catch (\Exception $e) {
             return $this->error_message;
         }
+    }
+
+    /**
+     * Get the print batch that this credential belongs to
+     */
+    public function printBatch(): BelongsTo
+    {
+        return $this->belongsTo(PrintBatch::class);
+    }
+
+    /**
+     * Check if credential has been printed
+     */
+    public function getIsPrintedAttribute(): bool
+    {
+        return !is_null($this->printed_at);
+    }
+
+    /**
+     * Scope for unprinted credentials
+     */
+    public function scopeUnprinted($query)
+    {
+        return $query->whereNull('printed_at');
+    }
+
+    /**
+     * Scope for printed credentials
+     */
+    public function scopePrinted($query)
+    {
+        return $query->whereNotNull('printed_at');
+    }
+
+    /**
+     * Mark credential as printed
+     */
+    public function markAsPrinted(PrintBatch $printBatch): void
+    {
+        $this->update([
+            'printed_at' => now(),
+            'print_batch_id' => $printBatch->id
+        ]);
     }
 }

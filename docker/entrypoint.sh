@@ -50,10 +50,38 @@ mkdir -p /var/www/html/storage/framework/sessions
 mkdir -p /var/www/html/storage/framework/views
 mkdir -p /var/www/html/bootstrap/cache
 
-# Configurar permisos
-log "🔐 Configurando permisos..."
-chown -R appuser:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+# Crear directorios de logs de supervisor para queue workers
+mkdir -p /var/log/supervisor
+touch /var/log/supervisor/laravel-queue.log
+touch /var/log/supervisor/laravel-queue-credentials.log
+touch /var/log/supervisor/laravel-queue-print-batches.log
+
+# 🎯 CREAR TODOS LOS DIRECTORIOS DE APLICACIÓN (EC2 Compatible)
+log "📁 Creando directorios de aplicación..."
+# Directorios para credenciales (según config/credentials.php)
+mkdir -p /var/www/html/storage/app/public/credentials/qr
+mkdir -p /var/www/html/storage/app/public/credentials/images
+mkdir -p /var/www/html/storage/app/public/credentials/pdf
+
+# Directorios para templates
+mkdir -p /var/www/html/storage/app/public/templates/events
+
+# Directorios para lotes de impresión
+mkdir -p /var/www/html/storage/app/public/print-batches
+
+# Otros directorios necesarios
+mkdir -p /var/www/html/storage/app/public/qr-codes  # Legacy compatibility
+mkdir -p /var/www/html/storage/app/public/pdfs      # Legacy compatibility
+
+# 🔐 CONFIGURAR PERMISOS PARA EC2 (777 + www-data:www-data)
+log "🔐 Configurando permisos para EC2..."
+# Permisos básicos de Laravel
+chmod -R 777 /var/www/html/storage
+chmod -R 777 /var/www/html/bootstrap/cache
+
+# Owner correcto para servidor web (crítico en EC2)
+chown -R www-data:www-data /var/www/html/storage
+chown -R www-data:www-data /var/www/html/bootstrap/cache
 
 # Generar APP_KEY si no existe o está vacío
 if ! grep -q "^APP_KEY=." /var/www/html/.env 2>/dev/null || [ -z "$(grep '^APP_KEY=' /var/www/html/.env | cut -d'=' -f2)" ]; then
