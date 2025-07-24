@@ -452,7 +452,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             
         Route::post('api/print-batches/preview', 'preview')
             ->middleware('permission:print_batch.manage')
-            ->name('print-batches.preview');
+            ->name('print-batches.api.preview');
     });
 }); // Close auth middleware group
 
