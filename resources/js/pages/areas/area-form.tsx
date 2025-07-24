@@ -10,7 +10,8 @@ import {
   Info,
   Hash,
   ClipboardEdit,
-  Building
+  Building,
+  Palette
 } from "lucide-react";
 import { BaseFormOptions, useFormContext } from "@/components/base-form/base-form";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -140,6 +141,58 @@ export function AreaForm({ options }: { options: BaseFormOptions<Area> }) {
                 </FormControl>
                 <FormDescription>
                   Este campo es opcional. Puede incluir detalles sobre el propósito, funciones y alcance del área.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </FormSection>
+        
+        <FormSection 
+          title="Color de credenciales" 
+          description="Define el color que usarán las credenciales para esta área"
+          columns={1}
+          className="relative"
+        >
+          <div className="absolute top-3 right-4">
+            <Palette className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <FormField
+            control={form.control}
+            name="color"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-base font-medium">Color identificativo</FormLabel>
+                <div className="flex items-center gap-4">
+                  <FormControl>
+                    <div className="relative flex items-center">
+                      <Input
+                        type="color"
+                        {...field}
+                        value={field.value as string}
+                        className="h-10 w-24 cursor-pointer p-1"
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                      <Input
+                        type="text"
+                        value={field.value as string}
+                        className="ml-3 w-32 transition-all focus-within:ring-2 focus-within:ring-primary/20 hover:border-input"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value.startsWith('#') && value.length <= 7) {
+                            field.onChange(value);
+                          }
+                        }}
+                      />
+                    </div>
+                  </FormControl>
+                  <div 
+                    className="h-10 w-24 rounded-md border" 
+                    style={{ backgroundColor: field.value as string }}
+                  ></div>
+                </div>
+                <FormDescription>
+                  Este color se usará como fondo del rol en las credenciales generadas para empleados de esta área.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

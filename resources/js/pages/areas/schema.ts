@@ -7,6 +7,7 @@ export interface AreaFormData {
   name: string;
   description?: string;
   active: boolean;
+  color: string;
 }
 
 // Interfaz para guardar en el esquema Zod
@@ -28,6 +29,10 @@ export const createAreaSchema = z.object({
     .max(100, "El nombre no debe exceder los 100 caracteres"),
   description: z.string().optional(),
   active: z.boolean().default(true),
+  color: z.string()
+    .min(4, "El color es obligatorio")
+    .max(7, "El formato de color debe ser válido")
+    .default("#3B82F6"),
   // Campos opcionales que podrían estar presentes en la edición
   id: z.number().optional(),
   uuid: z.string().optional(),

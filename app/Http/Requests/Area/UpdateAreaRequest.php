@@ -32,6 +32,7 @@ class UpdateAreaRequest extends FormRequest
             'name' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string'],
             'active' => ['nullable', 'boolean'],
+            'color' => ['nullable', 'string', 'max:10'], // Campo para el color del área
         ];
     }
 

@@ -46,6 +46,7 @@ export default function CreateArea() {
     name: "",
     description: "",
     active: true,
+    color: "#3B82F6",
   };
 
   return (

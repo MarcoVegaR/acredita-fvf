@@ -23,6 +23,7 @@ class Area extends Model
         'description',
         'active',
         'manager_user_id',
+        'color',
     ];
 
     /**

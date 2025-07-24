@@ -96,6 +96,15 @@ class TemplatesTableSeeder extends Seeder
                             'alignment' => 'left'
                         ],
                         [
+                            'id' => 'federacion',
+                            'x' => 1042,
+                            'y' => 318,
+                            'width' => 464,
+                            'height' => 22,
+                            'font_size' => 20,
+                            'alignment' => 'left'
+                        ],
+                        [
                             'id' => 'rol',
                             'x' => 1042,
                             'y' => 368,
@@ -111,6 +120,15 @@ class TemplatesTableSeeder extends Seeder
                             'width' => 473,
                             'height' => 20,
                             'font_size' => 30,
+                            'alignment' => 'left'
+                        ],
+                        [
+                            'id' => 'credential_uuid',
+                            'x' => 928,
+                            'y' => 109,
+                            'width' => 473,
+                            'height' => 15,
+                            'font_size' => 12,
                             'alignment' => 'left'
                         ],
                         // Zonas individuales (1-9) - Ajustadas según servidor EC2

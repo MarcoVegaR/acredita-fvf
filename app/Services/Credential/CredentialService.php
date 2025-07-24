@@ -17,6 +17,7 @@ class CredentialService implements CredentialServiceInterface
 {
     protected $credentialRepository;
     protected $imageManager;
+    protected $currentCredentialUuid;
 
     public function __construct(CredentialRepositoryInterface $credentialRepository)
     {
@@ -50,7 +51,7 @@ class CredentialService implements CredentialServiceInterface
         ]);
 
         $request = $credential->accreditationRequest->load([
-            'employee.provider', 
+            'employee.provider.area', 
             'event.templates',
             'zones'
         ]);
@@ -76,7 +77,12 @@ class CredentialService implements CredentialServiceInterface
                 'id' => $request->employee->provider->id,
                 'name' => $request->employee->provider->name,
                 'rif' => $request->employee->provider->rif,
-                'type' => $request->employee->provider->type
+                'type' => $request->employee->provider->type,
+                'area' => [
+                    'id' => $request->employee->provider->area->id ?? null,
+                    'name' => $request->employee->provider->area->name ?? null,
+                    'color' => $request->employee->provider->area->color ?? '#000000'
+                ]
             ],
             'captured_at' => now()->toISOString()
         ];
@@ -189,8 +195,12 @@ class CredentialService implements CredentialServiceInterface
      */
     public function generateCredentialImage(Credential $credential): string
     {
+        // Establecer el UUID actual para uso en getTextForBlock
+        $this->currentCredentialUuid = $credential->uuid;
+        
         Log::info('[CREDENTIAL SERVICE] Generando imagen de credencial', [
-            'credential_id' => $credential->id
+            'credential_id' => $credential->id,
+            'credential_uuid' => $credential->uuid
         ]);
 
         // Detectar orientación y dimensiones del template
@@ -531,13 +541,41 @@ class CredentialService implements CredentialServiceInterface
                 // Font size: usar directamente el valor del editor (sin escalado)
                 $fontSize = $block['font_size'] ?? 12;
                 
-                // Aplicar texto con coordenadas directas (WYSIWYG 1:1)
-                $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
-                    $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
-                    $font->size($fontSize);
-                    $font->color('#000000');
-                    $font->align($block['alignment'] ?? 'left');
-                });
+                // Si es el bloque 'rol', aplicar fondo con el color del área
+                if ($block['id'] === 'rol' || $block['id'] === 'position' || $block['id'] === 'function') {
+                    // Obtener el color del área del proveedor del empleado
+                    $areaColor = isset($employee['provider']['area']['color']) 
+                        ? $employee['provider']['area']['color'] 
+                        : '#000000';
+                    
+                    // Calcular dimensiones y posición del rectángulo de fondo
+                    $width = intval($block['width'] ?? 100);
+                    $height = intval($block['height'] ?? 30);
+                    $rectX = $x;
+                    $rectY = $y - $height + 5;
+                    
+                    // Crear una imagen de color sólido como fondo
+                    $backgroundRect = $this->imageManager->create($width, $height)->fill($areaColor);
+                    
+                    // Colocar el rectángulo de fondo
+                    $canvas->place($backgroundRect, 'top-left', $rectX, $rectY);
+                    
+                    // Para el texto del rol, usar color blanco para mejor contraste
+                    $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
+                        $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
+                        $font->size($fontSize);
+                        $font->color('#FFFFFF'); // Texto blanco para contraste
+                        $font->align($block['alignment'] ?? 'left');
+                    });
+                } else {
+                    // Para otros bloques, usar configuración normal
+                    $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
+                        $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
+                        $font->size($fontSize);
+                        $font->color('#000000');
+                        $font->align($block['alignment'] ?? 'left');
+                    });
+                }
                 
                 Log::info('[CREDENTIAL SERVICE] Texto aplicado con coordenadas directas', [
                     'block_id' => $block['id'],
@@ -677,70 +715,85 @@ class CredentialService implements CredentialServiceInterface
     {
         switch ($blockId) {
             case 'nombre':
-                return trim($employee['first_name'] . ' ' . $employee['last_name']);
+                return mb_strtoupper(trim($employee['first_name'] . ' ' . $employee['last_name']));
+                
+            case 'federacion':
+                // Solo mostrar para proveedores internos
+                if (isset($employee['provider']) && 
+                    isset($employee['provider']['type']) && 
+                    strtolower($employee['provider']['type']) === 'internal') {
+                    return mb_strtoupper('FEDERACION VENEZOLANA DE FUTBOL');
+                }
+                return '';
             
             case 'rol':
             case 'position':
             case 'function':
-                return $employee['function'] ?? '';
+                return mb_strtoupper($employee['function'] ?? '');
             
             case 'company':
             case 'empresa':
-                return $employee['company'] ?? '';
+                return mb_strtoupper($employee['company'] ?? '');
             
             case 'identification':
             case 'document':
-                return trim(($employee['document_type'] ?? '') . ' ' . ($employee['document_number'] ?? ''));
+                return mb_strtoupper(trim(($employee['document_type'] ?? '') . ' ' . ($employee['document_number'] ?? '')));
             
             case 'event':
             case 'evento':
-                return $event['name'] ?? '';
+                return mb_strtoupper($event['name'] ?? '');
             
             case 'location':
             case 'lugar':
-                return $event['location'] ?? '';
+                return mb_strtoupper($event['location'] ?? '');
             
             case 'zona':
             case 'zonas':
             case 'zones':
                 if (!$zones || empty($zones)) {
-                    return 'Todas las zonas';
+                    return mb_strtoupper('Todas las zonas');
                 }
                 
                 // Obtener solo los nombres de las zonas
-                $zoneNames = array_column($zones, 'name');
+                $zoneNames = array_map(function($name) {
+                    return mb_strtoupper($name);
+                }, array_column($zones, 'name'));
                 
                 // Limitar a 3 zonas para no saturar la credencial
                 if (count($zoneNames) > 3) {
                     $zoneNames = array_slice($zoneNames, 0, 3);
-                    return implode(", ", $zoneNames) . " y " . (count($zones) - 3) . " más";
+                    return implode(", ", $zoneNames) . " Y " . (count($zones) - 3) . " MÁS";
                 }
                 
                 return implode(", ", $zoneNames);
             
             // Zonas individuales (zona1-zona9)
             case 'zona1':
-                return $this->getZoneNumber(1, $zones);
+                return mb_strtoupper($this->getZoneNumber(1, $zones));
             case 'zona2':
-                return $this->getZoneNumber(2, $zones);
+                return mb_strtoupper($this->getZoneNumber(2, $zones));
             case 'zona3':
-                return $this->getZoneNumber(3, $zones);
+                return mb_strtoupper($this->getZoneNumber(3, $zones));
             case 'zona4':
-                return $this->getZoneNumber(4, $zones);
+                return mb_strtoupper($this->getZoneNumber(4, $zones));
             case 'zona5':
-                return $this->getZoneNumber(5, $zones);
+                return mb_strtoupper($this->getZoneNumber(5, $zones));
             case 'zona6':
-                return $this->getZoneNumber(6, $zones);
+                return mb_strtoupper($this->getZoneNumber(6, $zones));
             case 'zona7':
-                return $this->getZoneNumber(7, $zones);
+                return mb_strtoupper($this->getZoneNumber(7, $zones));
             case 'zona8':
-                return $this->getZoneNumber(8, $zones);
+                return mb_strtoupper($this->getZoneNumber(8, $zones));
             case 'zona9':
-                return $this->getZoneNumber(9, $zones);
+                return mb_strtoupper($this->getZoneNumber(9, $zones));
             
             case 'proveedor':
             case 'provider':
-                return $employee['provider']['name'] ?? '';
+                return mb_strtoupper($employee['provider']['name'] ?? '');
+            
+            case 'credential_uuid':
+                // El UUID se pasa como parámetro adicional desde embedEmployeeData
+                return isset($this->currentCredentialUuid) ? mb_strtoupper($this->currentCredentialUuid) : '';
             
             default:
                 Log::warning('[CREDENTIAL SERVICE] Block ID no reconocido', [
@@ -762,7 +815,7 @@ class CredentialService implements CredentialServiceInterface
         // Verificar si la zona está en la lista de zonas autorizadas
         foreach ($zones as $zone) {
             if (isset($zone['id']) && intval($zone['id']) === $zoneNumber) {
-                return strval($zoneNumber); // Devolver el número como string
+                return strval($zoneNumber); // Devolver el número como string (será convertido a mayúsculas en getTextForBlock)
             }
         }
         

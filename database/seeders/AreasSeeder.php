@@ -20,48 +20,56 @@ class AreasSeeder extends Seeder
                 'name' => 'Gerencia de Tecnologia',
                 'description' => 'Responsable de la infraestructura tecnologica y sistemas de la FVF',
                 'active' => true,
+                'color' => '#3B82F6', // Azul
             ],
             [
                 'code' => 'SEG',
                 'name' => 'Gerencia de Seguridad',
                 'description' => 'Responsable de la seguridad fisica y logica de las instalaciones',
                 'active' => true,
+                'color' => '#EF4444', // Rojo
             ],
             [
                 'code' => 'PREN',
                 'name' => 'Gerencia de Prensa',
                 'description' => 'Responsable de la comunicación y relaciones públicas',
                 'active' => true,
+                'color' => '#F59E0B', // Naranja
             ],
             [
                 'code' => 'RRHH',
                 'name' => 'Gerencia de Recursos Humanos',
                 'description' => 'Responsable de la gestión del personal',
                 'active' => true,
+                'color' => '#10B981', // Verde
             ],
             [
                 'code' => 'LOG',
                 'name' => 'Gerencia de Logistica',
                 'description' => 'Responsable de la logistica y operaciones',
                 'active' => true,
+                'color' => '#6366F1', // Índigo
             ],
             [
                 'code' => 'MKT',
                 'name' => 'Gerencia de Marketing',
                 'description' => 'Responsable de la promoción y marketing',
                 'active' => true,
+                'color' => '#8B5CF6', // Violeta
             ],
             [
                 'code' => 'JUR',
                 'name' => 'Gerencia Juridica',
                 'description' => 'Responsable de aspectos legales y regulatorios',
                 'active' => true,
+                'color' => '#EC4899', // Rosa
             ],
             [
                 'code' => 'FIN',
                 'name' => 'Gerencia Financiera',
                 'description' => 'Responsable de la gestión financiera y contable',
                 'active' => true,
+                'color' => '#14B8A6', // Verde azulado
             ],
         ];
 
@@ -73,6 +81,7 @@ class AreasSeeder extends Seeder
                 'name' => $areaData['name'],
                 'description' => $areaData['description'],
                 'active' => $areaData['active'],
+                'color' => $areaData['color'],
             ]);
         }
         
