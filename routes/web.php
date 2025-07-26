@@ -3,6 +3,7 @@
 use App\Http\Controllers\AccreditationRequestController;
 use App\Http\Controllers\AccreditationRequestBulkController;
 use App\Http\Controllers\AccreditationRequestDraftController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\PrintBatchController;
 use Illuminate\Http\Request;
@@ -26,9 +27,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('dashboard', function () {
-        return Inertia::render('dashboard');
-    })->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Users routes grouped by controller and permissions
     Route::controller(UserController::class)->group(function () {
