@@ -17,6 +17,9 @@ services:
       # Para certificados SSL en producción
       # - ./ssl:/etc/ssl/certs:ro
       
+      # Archivo .env para configuraciones (especialmente mail)
+      - ./.env:/var/www/html/.env
+      
       # Volúmenes persistentes para producción
       - app_storage:/var/www/html/storage/app
       - app_logs:/var/www/html/storage/logs
