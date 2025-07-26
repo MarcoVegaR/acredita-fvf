@@ -16,6 +16,11 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+// Incluir rutas de diagnóstico solo en entorno de desarrollo
+if (app()->environment('local')) {
+    require __DIR__ . '/debug.php';
+}
+
 Route::get('/', function () {
     return Inertia::render('welcome');
 })->name('home');

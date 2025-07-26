@@ -77,6 +77,30 @@ class AccreditationRequestPolicy
         if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return $user->can('accreditation_request.update');
         }
+        
+        // Area manager puede dar visto bueno o devolver para corrección
+        if ($user->hasRole('area_manager')) {
+            // Si tiene el permiso de revisión y la solicitud está enviada
+            if ($user->can('accreditation_request.review') && $accreditationRequest->status->value === 'submitted') {
+                return $user->managedArea && 
+                       $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
+            }
+            
+            // Si tiene el permiso de devolución y la solicitud está enviada o en revisión
+            if ($user->can('accreditation_request.return') && 
+                in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+                return $user->managedArea && 
+                       $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
+            }
+            
+            // Para otras operaciones de actualización, solo en borrador
+            if ($user->can('accreditation_request.update') && $accreditationRequest->isDraft()) {
+                return $user->managedArea && 
+                       $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
+            }
+            
+            return false;
+        }
 
         // Solo se pueden actualizar borradores para otros roles
         if (!$accreditationRequest->isDraft()) {

@@ -164,19 +164,42 @@ export function BaseIndexPage<T extends Entity>({
   // Ya no necesitamos usar el hook useToast aquí porque usamos el sistema centralizado de FlashMessages
   const { auth } = usePage<SharedData>().props;
   
+  // Log completo del objeto auth para diagnosticar problemas de permisos
+  console.log('[BASE-INDEX] Título de la página:', options.title);
+  console.log('[BASE-INDEX] Objeto auth completo:', JSON.stringify(auth));
+  console.log('[BASE-INDEX] Permisos configurados:', options.permissions);
+  console.log('[BASE-INDEX] Permisos del botón nuevo:', options.newButton?.permission);
+  
   // Función para verificar si el usuario tiene un permiso específico
   const hasPermission = React.useCallback((permission?: string): boolean => {
-    if (!permission) return true; // Si no se requiere permiso, permitir
-    if (!auth?.user?.permissions) return false; // Si no hay permisos disponibles, denegar
+    console.log(`[PERMISSION CHECK] Verificando permiso: ${permission}`);
+    console.log(`[PERMISSION CHECK] Usuario:`, auth?.user?.name);
+    console.log(`[PERMISSION CHECK] Roles:`, auth?.user?.roles);
     
-    // Verificar si el usuario tiene el permiso específico (siguiendo el patrón del hook usePermissions)
+    if (!permission) {
+      console.log('[PERMISSION CHECK] ✅ No se requiere permiso específico');
+      return true; // Si no se requiere permiso, permitir
+    }
+    
+    if (!auth?.user?.permissions) {
+      console.log('[PERMISSION CHECK] ❌ Usuario sin permisos definidos');
+      return false; // Si no hay permisos disponibles, denegar
+    }
+    
+    // Verificar si el usuario tiene el permiso específico
     const permissions = auth.user.permissions;
+    console.log(`[PERMISSION CHECK] Permisos del usuario:`, permissions);
+    
     if (Array.isArray(permissions)) {
-      return permissions.includes(permission);
+      const hasPermission = permissions.includes(permission);
+      console.log(`[PERMISSION CHECK] ${hasPermission ? '✅' : '❌'} Permiso ${permission} ${hasPermission ? 'encontrado' : 'no encontrado'} en array`);
+      return hasPermission;
     }
     
     // Si permissions no es un array, verificar si es exactamente igual al permiso solicitado
-    return permissions === permission;
+    const exactMatch = permissions === permission;
+    console.log(`[PERMISSION CHECK] ${exactMatch ? '✅' : '❌'} Permiso exacto ${permission} ${exactMatch ? 'coincide' : 'no coincide'}`);
+    return exactMatch;
   }, [auth?.user?.permissions]);
   
   // Manejador genérico para cambios de paginación

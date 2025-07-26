@@ -41,27 +41,29 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
   // Cargar proveedores disponibles desde la API si no se proporcionaron
   useEffect(() => {
     const fetchProviders = async () => {
+      console.log('[EMPLOYEE FORM] Iniciando carga de proveedores');
+      console.log('[EMPLOYEE FORM] Proveedores proporcionados:', availableProviders);
+      
       if (availableProviders.length > 0) {
+        console.log('[EMPLOYEE FORM] Usando proveedores proporcionados:', availableProviders);
+        console.log('[EMPLOYEE FORM] Total de proveedores:', availableProviders.length);
+        console.log('[EMPLOYEE FORM] IDs de proveedores disponibles:', availableProviders.map(p => p.id));
         setProviders(availableProviders);
         setLoadingProviders(false);
         return;
       }
 
       try {
+        console.log('[EMPLOYEE FORM] No se proporcionaron proveedores, intentando cargar desde el backend...');
         setLoadingProviders(true);
-        // En un entorno real, esto sería una llamada a la API
-        // Simulamos la carga
-        setTimeout(() => {
-          const mockProviders: Provider[] = [
-            { id: 1, name: "Proveedor Ejemplo 1" },
-            { id: 2, name: "Proveedor Ejemplo 2" },
-            { id: 3, name: "Proveedor Ejemplo 3" }
-          ];
-          setProviders(mockProviders);
-          setLoadingProviders(false);
-        }, 500);
+        
+        // Esta es una simulación - en un caso real haríamos la llamada fetch aquí
+        // En este caso, solo mostramos que no hay proveedores disponibles
+        console.error('[EMPLOYEE FORM] ERROR: No hay proveedores disponibles y no se pueden cargar del backend');
+        toast.error("No se pudieron cargar los proveedores disponibles");
+        setLoadingProviders(false);
       } catch (error) {
-        console.error("Error al cargar los proveedores:", error);
+        console.error("[EMPLOYEE FORM] Error al cargar los proveedores:", error);
         toast.error("No se pudieron cargar los proveedores disponibles");
         setLoadingProviders(false);
       }

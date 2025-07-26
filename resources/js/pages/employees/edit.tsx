@@ -39,8 +39,8 @@ export default function EditEmployee({ employee, providers = [], errors = {} }: 
       { value: "photo", label: "Fotografía", icon: <ClipboardList className="h-4 w-4" /> },
     ],
     permissions: {
-      // Siguiendo la estructura de permisos similar a proveedores (ver memory)
-      edit: "employee.manage", // Permiso general para administrar empleados
+      // Siguiendo la estructura de permisos similar a proveedores
+      edit: "employee.manage_own_provider", // Permiso para administrar empleados del área
       view: "employee.view", // Permiso para ver empleados
     },
     beforeSubmit: (data: Partial<Employee>) => {

@@ -39,7 +39,7 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
       { value: "photo", label: "Fotografía", icon: <ClipboardList className="h-4 w-4" /> },
     ],
     permissions: {
-      create: "employee.manage", // Permiso para administrar empleados (similar a provider.manage)
+      create: "employee.manage_own_provider", // Permiso para administrar empleados del área
     },
     beforeSubmit: (data: Record<string, unknown>) => {
       // Convertir la foto en base64 al campo correcto para el backend

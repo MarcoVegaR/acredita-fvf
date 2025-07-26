@@ -75,9 +75,48 @@ class EmployeeController extends BaseController
     public function create()
     {
         try {
-            // Verificar permisos manualmente (permitiendo ambos permisos)
-            if (!auth()->user()->can('employee.manage') && !auth()->user()->can('employee.manage_own_provider')) {
-                abort(403, 'No tiene permisos para crear empleados.');
+            $user = auth()->user();
+            $hasPermission = false;
+            
+            // Log de inicio del método y usuario
+            \Log::info('EmployeeController@create - Inicio', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'roles' => $user->getRoleNames()->toArray()
+            ]);
+            
+            // Verificar permisos por rol o por permisos específicos
+            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+            \Log::info('EmployeeController@create - Permisos del usuario', [
+                'permisos' => $userPermissions,
+                'tiene_employee.manage' => $user->hasPermissionTo('employee.manage'),
+                'tiene_employee.manage_own_provider' => $user->hasPermissionTo('employee.manage_own_provider'),
+            ]);
+            
+            if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@create - Permiso concedido: admin/security_manager');
+            } elseif ($user->hasRole('area_manager')) {
+                \Log::info('EmployeeController@create - Usuario es area_manager');
+                if ($user->can('employee.manage_own_provider')) {
+                    $hasPermission = true;
+                    \Log::info('EmployeeController@create - Permiso concedido: area_manager con employee.manage_own_provider');
+                } else {
+                    \Log::error('EmployeeController@create - Permiso denegado: area_manager SIN employee.manage_own_provider');
+                }
+            } elseif ($user->hasRole('provider') && $user->can('employee.manage_own_provider')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@create - Permiso concedido: provider con employee.manage_own_provider');
+            } elseif ($user->can('employee.manage')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@create - Permiso concedido: tiene employee.manage');
+            } else {
+                \Log::error('EmployeeController@create - No cumple ninguna condición de permisos');
+            }
+            
+            if (!$hasPermission) {
+                \Log::error('EmployeeController@create - Acceso denegado');
+                abort(403, 'No tienes permisos para registrar empleados');
             }
             
             $providers = $this->providerService->getAccessibleProviders();
@@ -99,9 +138,94 @@ class EmployeeController extends BaseController
     public function store(StoreEmployeeRequest $request)
     {
         try {
-            // Verificar permisos manualmente (permitiendo ambos permisos)
-            if (!auth()->user()->can('employee.manage') && !auth()->user()->can('employee.manage_own_provider')) {
-                abort(403, 'No tiene permisos para crear empleados.');
+            $user = auth()->user();
+            $hasPermission = false;
+            
+            // Log de inicio del método store y datos del usuario
+            \Log::info('EmployeeController@store - Inicio', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'roles' => $user->getRoleNames()->toArray(),
+                'provider_id_request' => $request->input('provider_id')
+            ]);
+            
+            // Verificar permisos por rol o por permisos específicos
+            $userPermissions = $user->getAllPermissions()->pluck('name')->toArray();
+            \Log::info('EmployeeController@store - Permisos del usuario', [
+                'permisos' => $userPermissions,
+                'tiene_employee.manage' => $user->hasPermissionTo('employee.manage'),
+                'tiene_employee.manage_own_provider' => $user->hasPermissionTo('employee.manage_own_provider'),
+            ]);
+            
+            if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@store - Permiso concedido: admin/security_manager');
+            } elseif ($user->hasRole('area_manager')) {
+                \Log::info('EmployeeController@store - Usuario es area_manager');
+                if ($user->can('employee.manage_own_provider')) {
+                    $hasPermission = true;
+                    \Log::info('EmployeeController@store - Tiene permiso employee.manage_own_provider');
+                    
+                    // Verificar que el proveedor pertenezca al área del area_manager
+                    $providerId = $request->input('provider_id');
+                    $accessibleProviderIds = $this->employeeService->getAccessibleProviderIds();
+                    
+                    \Log::info('EmployeeController@store - Verificando acceso a proveedor', [
+                        'provider_id' => $providerId,
+                        'accessible_provider_ids' => $accessibleProviderIds,
+                        'has_access' => in_array($providerId, $accessibleProviderIds)
+                    ]);
+                    
+                    if (!in_array($providerId, $accessibleProviderIds)) {
+                        \Log::error('EmployeeController@store - Proveedor fuera del área del gerente');
+                        abort(403, 'No puedes crear empleados para proveedores fuera de tu área');
+                    }
+                } else {
+                    \Log::error('EmployeeController@store - area_manager sin permiso employee.manage_own_provider');
+                }
+            } elseif ($user->hasRole('provider') && $user->can('employee.manage_own_provider')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@store - Permiso concedido: provider con employee.manage_own_provider');
+                
+                // Verificar que el proveedor sea el mismo del usuario
+                \Log::info('EmployeeController@store - Verificando proveedor del usuario', [
+                    'user_provider_id' => $user->provider_id,
+                    'request_provider_id' => $request->input('provider_id'),
+                    'user_id' => $user->id,
+                    'user_name' => $user->name
+                ]);
+                
+                // Si el usuario tiene provider_id asignado, verificar que sea el mismo
+                if ($user->provider_id !== null && $user->provider_id != $request->input('provider_id')) {
+                    \Log::error('EmployeeController@store - Intento de crear empleado para otro proveedor');
+                    abort(403, 'Solo puedes crear empleados para tu propio proveedor');
+                }
+                
+                // Si el usuario no tiene provider_id asignado, buscar su proveedor por usuario
+                if ($user->provider_id === null) {
+                    // Buscar el proveedor relacionado con este usuario
+                    $provider = \App\Models\Provider::where('user_id', $user->id)->first();
+                    \Log::info('EmployeeController@store - Buscando proveedor por user_id', [
+                        'user_id' => $user->id,
+                        'provider_encontrado' => $provider ? true : false,
+                        'provider_id' => $provider ? $provider->id : null
+                    ]);
+                    
+                    if ($provider && $provider->id != $request->input('provider_id')) {
+                        \Log::error('EmployeeController@store - Intento de crear empleado para otro proveedor (por user_id)');
+                        abort(403, 'Solo puedes crear empleados para tu propio proveedor');
+                    }
+                }
+            } elseif ($user->can('employee.manage')) {
+                $hasPermission = true;
+                \Log::info('EmployeeController@store - Permiso concedido: tiene employee.manage');
+            } else {
+                \Log::error('EmployeeController@store - No cumple ninguna condición de permisos');
+            }
+            
+            if (!$hasPermission) {
+                \Log::error('EmployeeController@store - Acceso denegado');
+                abort(403, 'No tienes permisos para registrar empleados');
             }
             
             $data = $request->validated();
@@ -110,8 +234,8 @@ class EmployeeController extends BaseController
             $this->logAction('crear', 'empleado', $employee->id);
             
             return $this->redirectWithSuccess(
-                'employees.show', 
-                ['employee' => $employee->uuid], 
+                'employees.index', 
+                [], 
                 'Empleado creado correctamente'
             );
         } catch (\Throwable $e) {

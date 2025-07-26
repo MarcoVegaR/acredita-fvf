@@ -31,6 +31,11 @@ interface EmployeesIndexProps {
 }
 
 export default function Index({ employees, stats, filters = {}, currentUserRole, isProvider }: EmployeesIndexProps) {
+  // Añadimos logs para diagnosticar el problema
+  console.log('[EMPLOYEES INDEX] Inicializando componente index');
+  console.log('[EMPLOYEES INDEX] currentUserRole:', currentUserRole);
+  console.log('[EMPLOYEES INDEX] isProvider:', isProvider);
+  
   // Configuración centralizada para el índice de empleados
   const indexOptions = {
     // Información principal
