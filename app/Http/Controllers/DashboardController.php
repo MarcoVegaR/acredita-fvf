@@ -68,8 +68,8 @@ class DashboardController extends Controller
             
         } elseif ($user->hasRole('provider')) {
             // Providers ven solo sus estadísticas
-            if ($user->provider_id) {
-                $stats = $this->getProviderStats($user->provider_id);
+            if ($user->provider) {
+                $stats = $this->getProviderStats($user->provider->id);
             }
         }
         

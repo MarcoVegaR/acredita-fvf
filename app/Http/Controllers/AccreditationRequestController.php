@@ -60,14 +60,20 @@ class AccreditationRequestController extends BaseController
                     });
                 }
             } elseif ($user->hasRole('provider')) {
-                // Provider solo ve sus propias solicitudes
-                $providerId = $user->provider_id;
-                
-                // Siempre aplicar filtro de proveedor para asegurar que solo vea sus propias solicitudes
-                // Si el provider_id es null, no verá ninguna solicitud (comportamiento correcto)
-                $query->whereHas('employee', function ($q) use ($providerId) {
-                    $q->where('provider_id', $providerId);
-                });
+                // Provider solo ve sus propias solicitudes - usando la relación provider()
+                // Verificar si el usuario tiene un proveedor asociado
+                if ($user->provider) {
+                    $providerId = $user->provider->id;
+                    
+                    // Aplicar filtro de proveedor para asegurar que solo vea sus propias solicitudes
+                    $query->whereHas('employee', function ($q) use ($providerId) {
+                        $q->where('provider_id', $providerId);
+                    });
+                } else {
+                    // Si no tiene proveedor asociado, no mostrar ninguna solicitud
+                    // hasta que se le asigne un proveedor válido
+                    $query->where('id', 0);
+                }
             }
             
             // Contar solicitudes filtradas según los permisos del usuario
