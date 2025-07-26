@@ -13,21 +13,20 @@ class ProvidersInternalSeeder extends Seeder
 {
     /**
      * Seed the internal providers.
-     * This will create area manager users and internal providers for them.
+     * Solo proveedores internos de Gerencia de Tecnologia y Gerencia de Seguridad sin usuarios asociados.
      */
     public function run(): void
     {
-        // Obtener todas las áreas
-        $areas = Area::all();
+        // Obtener solo las áreas de Tecnología y Seguridad
+        $areas = Area::whereIn('name', ['Gerencia de Tecnologia', 'Gerencia de Seguridad'])->get();
         $this->command->info("Encontradas {$areas->count()} áreas disponibles");
         
-        // Para cada área, crear un usuario gerente y su proveedor interno
+        // Para cada área, crear solo el proveedor interno sin usuario asociado
         foreach ($areas as $area) {
-            // Crear un usuario con rol de gerente de área
+            /* Comentado según requerimiento - No crear usuarios gerentes
             $managerName = "Gerente {$area->name}";
             $managerEmail = "gerente." . strtolower(str_replace(' ', '.', $area->name)) . "@acredita.test";
             
-            // Verificar si ya existe un usuario con este email
             $existingUser = User::where('email', $managerEmail)->first();
             
             if ($existingUser) {
@@ -41,31 +40,25 @@ class ProvidersInternalSeeder extends Seeder
                 $managerUser->assignRole('area_manager');
                 $this->command->info("Creado usuario gerente para el área {$area->name}");
             }
+            */
             
-            // Verificar si ya tiene un proveedor
-            if (Provider::where('user_id', $managerUser->id)->exists()) {
-                $this->command->info("El usuario {$managerUser->name} ya tiene un proveedor asociado");
+            // Verificar si ya existe un proveedor para esta área
+            if (Provider::where('area_id', $area->id)->where('type', 'internal')->exists()) {
+                $this->command->info("Ya existe un proveedor interno para el área {$area->name}");
                 continue;
             }
             
-            // Create internal provider for this area manager and set the user as area manager
-            DB::transaction(function () use ($area, $managerUser) {
-                // Create internal provider
-                Provider::create([
-                    'area_id' => $area->id,
-                    'user_id' => $managerUser->id,
-                    'name' => 'Gerencia ' . $area->name,
-                    'rif' => 'INTERNAL-' . $area->id,
-                    'type' => 'internal',
-                    'active' => true,
-                ]);
-                
-                // Set this user as the manager of the area
-                $area->manager_user_id = $managerUser->id;
-                $area->save();
-                
-                $this->command->info("Proveedor interno creado para el área {$area->name} con gerente {$managerUser->name}");
-            });
+            // Crear proveedor interno sin usuario asociado
+            Provider::create([
+                'area_id' => $area->id,
+                'user_id' => null, // Sin usuario asociado
+                'name' => 'Gerencia ' . $area->name,
+                'rif' => 'INTERNAL-' . $area->id,
+                'type' => 'internal',
+                'active' => true,
+            ]);
+            
+            $this->command->info("Proveedor interno creado para el área {$area->name} sin usuario asociado");
         }
     }
 }

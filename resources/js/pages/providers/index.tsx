@@ -78,7 +78,7 @@ export default function Index({ providers, stats, areas, filters = {} }: Provide
     // Configuración de permisos Spatie
     permissions: {
       view: "provider.view",
-      create: "provider.manage",
+      create: "provider.manage_own_area", // Cambiado para permitir a area_manager crear proveedores
       edit: "provider.manage_own_area",
       delete: "provider.manage"
     },
@@ -136,7 +136,7 @@ export default function Index({ providers, stats, areas, filters = {} }: Provide
     newButton: {
       show: true,
       label: "Nuevo Proveedor",
-      permission: "provider.manage",
+      permission: "provider.manage_own_area", // Cambiado para permitir a area_manager crear proveedores
     },
     rowActions: {
       view: {

@@ -37,6 +37,7 @@ class ProviderService implements ProviderServiceInterface
     public function getPaginatedProviders(Request $request): LengthAwarePaginator
     {
         $perPage = (int) $request->input('per_page', 10);
+        $user = auth()->user();
         
         $filters = [];
         
@@ -48,11 +49,32 @@ class ProviderService implements ProviderServiceInterface
         // Add area filter if provided
         if ($request->has('area_id')) {
             $filters['area_id'] = $request->input('area_id');
+            \Illuminate\Support\Facades\Log::info('Filtro por área específica', [
+                'area_id' => $request->input('area_id')
+            ]);
+        }
+        
+        // Si el usuario es area_manager y no se ha especificado un filtro de área,
+        // filtrar automáticamente por las áreas que gestiona
+        else if ($user && $user->hasRole('area_manager')) {
+            $managedAreas = $user->managedAreas()->pluck('id')->toArray();
+            if (!empty($managedAreas)) {
+                $filters['area_ids'] = $managedAreas;
+                \Illuminate\Support\Facades\Log::info('Filtro por áreas gestionadas', [
+                    'area_ids' => $managedAreas,
+                    'role' => $user->getRoleNames()->first(),
+                    'user_id' => $user->id,
+                    'user_name' => $user->name
+                ]);
+            }
         }
         
         // Add type filter if provided
         if ($request->has('type')) {
             $filters['type'] = $request->input('type');
+            \Illuminate\Support\Facades\Log::info('Filtro por tipo', [
+                'type' => $request->input('type')
+            ]);
         }
         
         // Add active status filter if provided
@@ -223,8 +245,8 @@ class ProviderService implements ProviderServiceInterface
             return collect();
         }
         
-        // Admin can access all providers
-        if ($user->hasRole('admin')) {
+        // Admin and security_manager can access all providers
+        if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return $this->providerRepository->all();
         }
         

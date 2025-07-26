@@ -165,10 +165,15 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
         
         // Los gestores de área pueden ver solicitudes de su área
         if ($user->hasRole('area_manager')) {
-            $areaId = $user->area_id;
-            return $query->whereHas('employee.provider', function($q) use ($areaId) {
-                $q->where('area_id', $areaId);
-            });
+            if ($user->managedArea) {
+                $areaId = $user->managedArea->id;
+                return $query->whereHas('employee.provider', function($q) use ($areaId) {
+                    $q->where('area_id', $areaId);
+                });
+            } else {
+                // Si no tiene área asignada, no debe ver nada
+                return $query->whereRaw('1 = 0');
+            }
         }
         
         // Los proveedores solo ven sus propias solicitudes

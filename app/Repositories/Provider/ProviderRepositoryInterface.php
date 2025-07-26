@@ -72,4 +72,12 @@ interface ProviderRepositoryInterface extends RepositoryInterface
      * @return void
      */
     public function toggleActive(string $uuid, bool $active): void;
+    
+    /**
+     * Find providers by area IDs
+     *
+     * @param array $areaIds Array of area IDs
+     * @return \Illuminate\Database\Eloquent\Collection Collection of providers
+     */
+    public function findByAreaIds(array $areaIds): \Illuminate\Database\Eloquent\Collection;
 }

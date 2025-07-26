@@ -47,7 +47,7 @@ export default function CreateProvider({ areas = [] }: CreateProviderProps) {
       { value: "admin", label: "Administrador", icon: <UserIcon className="h-4 w-4" /> },
     ],
     permissions: {
-      create: "provider.manage",
+      create: "provider.manage_own_area", // Cambiado para permitir a area_manager crear proveedores
     },
     actions: {
       save: {

@@ -12,8 +12,8 @@ class CredentialPolicy
      */
     public function view(User $user, AccreditationRequest $request): bool
     {
-        // Admin puede ver cualquier credencial
-        if ($user->hasPermissionTo('accreditation_request.view_any')) {
+        // Admin y security_manager pueden ver cualquier credencial
+        if ($user->hasPermissionTo('accreditation_request.view_any') || $user->hasRole('security_manager')) {
             return true;
         }
 

@@ -22,8 +22,9 @@ class EmployeesSeeder extends Seeder
 
         $this->command->info("Encontrados {$providers->count()} proveedores disponibles");
 
-        // Datos base para empleados
+        // Comentado datos base para empleados - no se crean empleados según solicitud
         $employeeTemplates = [
+            /*
             [
                 'first_name' => 'Juan',
                 'last_name' => 'Pérez',
@@ -52,10 +53,12 @@ class EmployeesSeeder extends Seeder
                 'document_number' => '45678901',
                 'function' => 'Especialista'
             ]
+            */
         ];
 
         $employeeCounter = 0;
 
+        /* Comentado bucle de creación de empleados según solicitud
         foreach ($providers as $provider) {
             // Crear 2-4 empleados por proveedor
             $numEmployees = rand(2, 4);
@@ -80,7 +83,8 @@ class EmployeesSeeder extends Seeder
                 $this->command->info("Empleado creado: {$employee->first_name} {$employee->last_name} para {$provider->name} ({$provider->type})");
             }
         }
+        */
 
-        $this->command->info("Total de empleados creados: {$employeeCounter}");
+        $this->command->info("Total de empleados creados: 0 (Creación de empleados comentada)");
     }
 }

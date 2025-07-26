@@ -28,9 +28,13 @@ class ProviderPolicy
             return true;
         }
 
-        // Gerente de área puede ver proveedores en su área
-        if ($user->can('provider.view_own_area') && $user->area && $provider->area_id === $user->area->id) {
-            return true;
+        // Gerente de área puede ver proveedores en sus áreas gestionadas
+        if ($user->can('provider.manage_own_area')) {
+            // Obtener todas las áreas gestionadas
+            $managedAreaIds = $user->managedAreas()->pluck('id')->toArray();
+            if (in_array($provider->area_id, $managedAreaIds)) {
+                return true;
+            }
         }
 
         // Proveedor puede ver su propio perfil
@@ -46,7 +50,7 @@ class ProviderPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('provider.manage');
+        return $user->can('provider.manage') || $user->can('provider.manage_own_area');
     }
 
     /**
@@ -59,9 +63,13 @@ class ProviderPolicy
             return true;
         }
 
-        // Gerente de área puede actualizar proveedores en su área
-        if ($user->can('provider.manage_own_area') && $user->area && $provider->area_id === $user->area->id) {
-            return true;
+        // Gerente de área puede actualizar proveedores en sus áreas gestionadas
+        if ($user->can('provider.manage_own_area')) {
+            // Obtener todas las áreas gestionadas
+            $managedAreaIds = $user->managedAreas()->pluck('id')->toArray();
+            if (in_array($provider->area_id, $managedAreaIds)) {
+                return true;
+            }
         }
 
         // Proveedor puede actualizar su propio perfil (datos limitados)
@@ -82,9 +90,13 @@ class ProviderPolicy
             return true;
         }
 
-        // Gerente de área puede activar/desactivar proveedores en su área
-        if ($user->can('provider.manage_own_area') && $user->area && $provider->area_id === $user->area->id) {
-            return true;
+        // Gerente de área puede activar/desactivar proveedores en sus áreas gestionadas
+        if ($user->can('provider.manage_own_area')) {
+            // Obtener todas las áreas gestionadas
+            $managedAreaIds = $user->managedAreas()->pluck('id')->toArray();
+            if (in_array($provider->area_id, $managedAreaIds)) {
+                return true;
+            }
         }
 
         return false;
@@ -106,9 +118,13 @@ class ProviderPolicy
             return true;
         }
 
-        // Gerente de área puede resetear contraseñas de proveedores en su área
-        if ($user->can('provider.manage_own_area') && $user->area && $provider->area_id === $user->area->id) {
-            return true;
+        // Gerente de área puede resetear contraseñas de proveedores en sus áreas gestionadas
+        if ($user->can('provider.manage_own_area')) {
+            // Obtener todas las áreas gestionadas
+            $managedAreaIds = $user->managedAreas()->pluck('id')->toArray();
+            if (in_array($provider->area_id, $managedAreaIds)) {
+                return true;
+            }
         }
 
         return false;

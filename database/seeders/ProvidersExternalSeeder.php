@@ -24,8 +24,9 @@ class ProvidersExternalSeeder extends Seeder
 
         $this->command->info("Encontradas {$areas->count()} áreas disponibles");
 
-        // Crear proveedores externos para diferentes áreas
+        // Proveedores externos comentados según solicitud
         $externalProviders = [
+            /*
             [
                 'name' => 'Seguridad Total S.A.',
                 'rif' => 'J-40123456-7',
@@ -66,6 +67,7 @@ class ProvidersExternalSeeder extends Seeder
                 'contact_name' => 'Roberto Prensa',
                 'contact_email' => 'roberto.prensa@comunicacionesmedia.com'
             ]
+            */
         ];
 
         foreach ($externalProviders as $providerData) {

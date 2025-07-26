@@ -15,10 +15,10 @@ class EventsTableSeeder extends Seeder
     public function run(): void
     {
         Event::create([
-            'name' => 'Venezuela vs Colombia  7 de Septiembre del 2025',
+            'name' => 'Venezuela vs Colombia  9 de Septiembre del 2025',
             'description' => 'Jornada 18 Venezuela vs Colombia Eliminatorias al mundial 2026',
-            'start_date' => Carbon::createFromFormat('d/m/Y', '07/09/2025'),
-            'end_date' => Carbon::createFromFormat('d/m/Y', '08/09/2025'),
+            'start_date' => Carbon::createFromFormat('d/m/Y', '09/09/2025'),
+            'end_date' => Carbon::createFromFormat('d/m/Y', '09/09/2025'),
             'active' => true,
         ]);
     }

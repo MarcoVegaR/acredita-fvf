@@ -65,9 +65,9 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
     // Configuración de permisos Spatie
     permissions: {
       view: "employee.view",
-      create: isProvider ? "employee.manage_own_provider" : "employee.manage",
-      edit: isProvider ? "employee.manage_own_provider" : "employee.manage",
-      delete: isProvider ? "employee.manage_own_provider" : "employee.manage"
+      create: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
+      edit: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
+      delete: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage"
     },
     
     // Estadísticas para mostrar en las tarjetas
@@ -117,7 +117,7 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
     newButton: {
       show: true,
       label: "Nuevo Empleado",
-      permission: isProvider ? "employee.manage_own_provider" : "employee.manage",
+      permission: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
     },
     rowActions: {
       view: {
@@ -133,7 +133,7 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
       edit: {
         enabled: true,
         label: "Editar",
-        permission: isProvider ? "employee.manage_own_provider" : "employee.manage",
+        permission: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
         handler: (employee: Employee) => {
           import("@inertiajs/react").then(({ router }) => {
             router.get(`/employees/${employee.uuid}/edit`);
@@ -143,7 +143,7 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
       delete: {
         enabled: false,  // Usar toggle active en lugar de eliminar
         label: "Eliminar",  // Required by TypeScript even when disabled
-        permission: isProvider ? "employee.manage_own_provider" : "employee.manage",
+        permission: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
       },
       // Acción personalizada para activar/desactivar empleado
       custom: [
@@ -160,7 +160,7 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
               });
             });
           },
-          permission: isProvider ? "employee.manage_own_provider" : "employee.manage",
+          permission: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
           // Usamos showCondition para determinar qué mostrar en lugar de funciones dinámicas para label/icon
           showCondition: () => true, // Siempre visible
         },

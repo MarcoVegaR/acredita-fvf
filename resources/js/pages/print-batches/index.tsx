@@ -19,6 +19,20 @@ interface Props {
 
 export default function PrintBatchesIndex({ batches, stats }: Props) {
   const [, setProcessingBatches] = useState<ProcessingBatch[]>([]);
+  
+  // Logs para depuración
+  useEffect(() => {
+    console.log('[DEBUG PRINT BATCHES FRONTEND] Props recibidas:', { batches, stats });
+    
+    if (batches.data && batches.data.length > 0) {
+      const firstBatch = batches.data[0];
+      console.log('[DEBUG PRINT BATCHES FRONTEND] Primer lote:', firstBatch);
+      console.log('[DEBUG PRINT BATCHES FRONTEND] Áreas del primer lote:', firstBatch.areas);
+      console.log('[DEBUG PRINT BATCHES FRONTEND] Proveedores del primer lote:', firstBatch.providers);
+      console.log('[DEBUG PRINT BATCHES FRONTEND] Tipo de áreas:', typeof firstBatch.areas, Array.isArray(firstBatch.areas));
+      console.log('[DEBUG PRINT BATCHES FRONTEND] Tipo de proveedores:', typeof firstBatch.providers, Array.isArray(firstBatch.providers));
+    }
+  }, [batches, stats]);
 
   // Polling para lotes en procesamiento
   useEffect(() => {

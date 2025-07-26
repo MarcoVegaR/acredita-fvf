@@ -19,12 +19,18 @@ class PrintBatchPermissionsSeeder extends Seeder
             'guard_name' => 'web'
         ]);
 
-        // Asignar permiso al rol administrator
+        // Asignar permiso al rol admin
         $adminRole = Role::findByName('admin');
         if ($adminRole && !$adminRole->hasPermissionTo($permission)) {
             $adminRole->givePermissionTo($permission);
         }
 
-        $this->command->info('✅ Permiso print_batch.manage creado y asignado al rol admin');
+        // Asignar permiso al rol security_manager
+        $securityManagerRole = Role::findByName('security_manager');
+        if ($securityManagerRole && !$securityManagerRole->hasPermissionTo($permission)) {
+            $securityManagerRole->givePermissionTo($permission);
+        }
+
+        $this->command->info('✅ Permiso print_batch.manage creado y asignado a los roles admin y security_manager');
     }
 }

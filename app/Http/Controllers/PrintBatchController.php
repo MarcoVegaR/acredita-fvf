@@ -8,6 +8,7 @@ use App\Models\PrintBatch;
 use App\Services\PrintBatch\PrintBatchServiceInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -25,38 +26,64 @@ class PrintBatchController extends BaseController
     public function index(Request $request)
     {
         try {
+            // Habilitar registro de consultas SQL para depuración
+            DB::enableQueryLog();
+            
+            // Registrar que estamos cargando el índice de lotes
             Log::info('[PRINT BATCH CONTROLLER] Cargando índice de lotes', [
                 'user_id' => auth()->id(),
                 'filters' => $request->all()
             ]);
+            
+            // Establecer filtros predeterminados
+            $filters = [
+                'search' => $request->input('search'),
+                'page' => $request->input('page', 1),
+                'per_page' => $request->input('per_page', 15),
+            ];
 
-            $filters = $request->only([
-                'search', 'status', 'event_id', 'area_id', 'provider_id', 
-                'include_archived', 'sort', 'order', 'page', 'per_page'
-            ]);
-
-            // Establecer valores por defecto
-            $filters['include_archived'] = $filters['include_archived'] ?? false;
-            $filters['per_page'] = $filters['per_page'] ?? 15;
-
+            // Obtener los lotes paginados desde el servicio
             $batches = $this->printBatchService->getPaginatedBatches($filters, $filters['per_page']);
+            
+            // Log simplificado
+            Log::debug('[PRINT BATCH CONTROLLER] Lotes obtenidos', [
+                'total' => $batches->total(),
+                'current_page' => $batches->currentPage(),
+                'items_count' => count($batches->items())
+            ]);
+            
+            // Obtener datos adicionales para la vista
             $filtersData = $this->printBatchService->getFiltersData();
             $stats = $this->printBatchService->getBatchStats();
 
+            // Los accessors del modelo ya manejan correctamente los valores null
+            // convirtiendo null en etiquetas descriptivas como "Todas las áreas"
+
+            // Renderizar la vista con los datos procesados
             return Inertia::render('print-batches/index', [
                 'batches' => $batches,
                 'filters' => $filters,
                 'filtersData' => $filtersData,
                 'stats' => $stats
             ]);
-
         } catch (\Exception $e) {
+            // Registrar el error
             Log::error('[PRINT BATCH CONTROLLER] Error en índice', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'user_id' => auth()->id()
             ]);
-
-            return $this->handleException($e, 'Error al cargar los lotes de impresión.');
+            
+            // Registrar la última consulta SQL ejecutada (si está disponible)
+            try {
+                $lastQuery = DB::getQueryLog();
+                $lastQueryString = !empty($lastQuery) ? end($lastQuery)['query'] : 'No hay consultas registradas';
+                Log::debug('[PRINT BATCH DEBUG] Última consulta SQL', ['query' => $lastQueryString]);
+            } catch (\Exception $queryError) {
+                Log::debug('[PRINT BATCH DEBUG] Error al obtener consulta SQL', ['error' => $queryError->getMessage()]);
+            }
+            
+            throw $e;
         }
     }
 

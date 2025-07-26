@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -74,21 +76,26 @@ class User extends Authenticatable
     
     /**
      * Get the provider associated with the user.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function provider()
+    public function provider(): HasOne
     {
         return $this->hasOne(Provider::class);
     }
     
     /**
      * Get the area that this user manages (if the user is an area manager).
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function managedArea()
+    public function managedArea(): HasOne
     {
         return $this->hasOne(Area::class, 'manager_user_id');
+    }
+    
+    /**
+     * Get the areas that this user manages (for compatibility with existing services).
+     * Returns the single managed area as a HasMany relation for consistency.
+     */
+    public function managedAreas(): HasMany
+    {
+        return $this->hasMany(Area::class, 'manager_user_id');
     }
 }

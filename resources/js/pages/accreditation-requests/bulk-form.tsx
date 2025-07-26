@@ -104,6 +104,8 @@ export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
   const { control, setValue } = useFormContext();
   const getInitials = useInitials();
   
+  // Debug logs removed for production
+  
   const [filters, setFilters] = useState<EmployeeFilters>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 

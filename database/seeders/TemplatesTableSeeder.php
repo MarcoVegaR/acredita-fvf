@@ -124,11 +124,11 @@ class TemplatesTableSeeder extends Seeder
                         ],
                         [
                             'id' => 'credential_uuid',
-                            'x' => 928,
-                            'y' => 109,
+                            'x' => 916,
+                            'y' => 1006,
                             'width' => 473,
                             'height' => 15,
-                            'font_size' => 12,
+                            'font_size' => 20,
                             'alignment' => 'left'
                         ],
                         // Zonas individuales (1-9) - Ajustadas según servidor EC2

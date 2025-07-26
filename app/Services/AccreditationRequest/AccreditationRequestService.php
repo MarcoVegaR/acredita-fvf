@@ -16,6 +16,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Notifications\AccreditationRequestReturned;
+use App\Notifications\AccreditationRequestSuspended;
+use App\Notifications\AccreditationRequestRejected;
+use App\Notifications\AccreditationRequestApproved;
 
 class AccreditationRequestService implements AccreditationRequestServiceInterface
 {
@@ -352,6 +356,46 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
             // La credencial se puede generar manualmente después
         }
         
+        // Enviar notificación por correo al creador de la solicitud
+        try {
+            // Cargar el usuario que aprobó la solicitud y el creador si no están cargados
+            if (!$freshRequest->relationLoaded('creator')) {
+                $freshRequest->load('creator');
+            }
+            
+            if ($freshRequest->creator) {
+                $approvedByUser = \App\Models\User::find($freshRequest->approved_by);
+                
+                if ($approvedByUser) {
+                    Log::info('[APPROVE SERVICE] Enviando notificación por correo', [
+                        'to_user' => $freshRequest->creator->email,
+                        'approved_by' => $approvedByUser->name
+                    ]);
+                    
+                    $freshRequest->creator->notify(new AccreditationRequestApproved(
+                        $freshRequest,
+                        $approvedByUser
+                    ));
+                    
+                    Log::info('[APPROVE SERVICE] Notificación enviada exitosamente');
+                } else {
+                    Log::error('[APPROVE SERVICE] No se encontró el usuario que aprobó la solicitud', [
+                        'approved_by_id' => $freshRequest->approved_by
+                    ]);
+                }
+            } else {
+                Log::error('[APPROVE SERVICE] No se encontró el creador de la solicitud', [
+                    'created_by' => $freshRequest->created_by
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[APPROVE SERVICE] Error al enviar la notificación por correo', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // No interrumpimos el flujo por un error en la notificación
+        }
+        
         return $freshRequest;
     }
 
@@ -412,6 +456,47 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
             'suspended_by' => $freshRequest->suspended_by
         ]);
         
+        // Enviar notificación por correo al creador de la solicitud
+        try {
+            // Cargar el usuario que suspendió la solicitud y el creador si no están cargados
+            if (!$freshRequest->relationLoaded('creator')) {
+                $freshRequest->load('creator');
+            }
+            
+            if ($freshRequest->creator) {
+                $suspendedByUser = \App\Models\User::find($freshRequest->suspended_by);
+                
+                if ($suspendedByUser) {
+                    Log::info('[SUSPEND SERVICE] Enviando notificación por correo', [
+                        'to_user' => $freshRequest->creator->email,
+                        'suspended_by' => $suspendedByUser->name
+                    ]);
+                    
+                    $freshRequest->creator->notify(new AccreditationRequestSuspended(
+                        $freshRequest,
+                        $suspendedByUser,
+                        $reason
+                    ));
+                    
+                    Log::info('[SUSPEND SERVICE] Notificación enviada exitosamente');
+                } else {
+                    Log::error('[SUSPEND SERVICE] No se encontró el usuario que suspendió la solicitud', [
+                        'suspended_by_id' => $freshRequest->suspended_by
+                    ]);
+                }
+            } else {
+                Log::error('[SUSPEND SERVICE] No se encontró el creador de la solicitud', [
+                    'created_by' => $freshRequest->created_by
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[SUSPEND SERVICE] Error al enviar la notificación por correo', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // No interrumpimos el flujo por un error en la notificación
+        }
+        
         // Marcar la credencial como suspendida si existe
         if ($request->credential) {
             try {
@@ -447,18 +532,93 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
      */
     public function rejectRequest(AccreditationRequest $request, ?string $reason = null): AccreditationRequest
     {
+        Log::info('[REJECT SERVICE] Iniciando rechazo de solicitud', [
+            'uuid' => $request->uuid,
+            'current_status' => $request->status->value,
+            'reason' => $reason,
+            'user_id' => auth()->id()
+        ]);
+        
+        // Verificar que la solicitud esté en estado válido
         if (!in_array($request->status, [AccreditationStatus::Submitted, AccreditationStatus::UnderReview])) {
+            Log::error('[REJECT SERVICE] Estado no válido para rechazo', [
+                'current_status' => $request->status->value,
+                'allowed_statuses' => ['submitted', 'under_review']
+            ]);
             throw new Exception('Solo se pueden rechazar solicitudes enviadas o en revisión.');
         }
-
-        $request->update([
+        
+        // Validar que exista un motivo
+        if (empty($reason)) {
+            Log::error('[REJECT SERVICE] Motivo de rechazo requerido');
+            throw new Exception('Se requiere un motivo para rechazar la solicitud.');
+        }
+        
+        Log::info('[REJECT SERVICE] Estado válido, procediendo con el rechazo...');
+        
+        $updateData = [
             'status' => AccreditationStatus::Rejected,
             'rejected_at' => now(),
             'rejected_by' => auth()->id(),
             'rejection_reason' => $reason
+        ];
+        
+        Log::info('[REJECT SERVICE] Actualizando solicitud con datos:', $updateData);
+        
+        $request->update($updateData);
+        
+        Log::info('[REJECT SERVICE] Solicitud actualizada, recargando modelo...');
+        $freshRequest = $request->fresh();
+        
+        Log::info('[REJECT SERVICE] Rechazo completado exitosamente', [
+            'uuid' => $freshRequest->uuid,
+            'new_status' => $freshRequest->status->value,
+            'rejected_at' => $freshRequest->rejected_at?->toISOString(),
+            'rejected_by' => $freshRequest->rejected_by
         ]);
         
-        return $request->fresh();
+        // Enviar notificación por correo al creador de la solicitud
+        try {
+            // Cargar el usuario que rechazó la solicitud y el creador si no están cargados
+            if (!$freshRequest->relationLoaded('creator')) {
+                $freshRequest->load('creator');
+            }
+            
+            if ($freshRequest->creator) {
+                $rejectedByUser = \App\Models\User::find($freshRequest->rejected_by);
+                
+                if ($rejectedByUser) {
+                    Log::info('[REJECT SERVICE] Enviando notificación por correo', [
+                        'to_user' => $freshRequest->creator->email,
+                        'rejected_by' => $rejectedByUser->name
+                    ]);
+                    
+                    $freshRequest->creator->notify(new AccreditationRequestRejected(
+                        $freshRequest,
+                        $rejectedByUser,
+                        $reason
+                    ));
+                    
+                    Log::info('[REJECT SERVICE] Notificación enviada exitosamente');
+                } else {
+                    Log::error('[REJECT SERVICE] No se encontró el usuario que rechazó la solicitud', [
+                        'rejected_by_id' => $freshRequest->rejected_by
+                    ]);
+                }
+            } else {
+                Log::error('[REJECT SERVICE] No se encontró el creador de la solicitud', [
+                    'created_by' => $freshRequest->created_by
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[REJECT SERVICE] Error al enviar la notificación por correo', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // No interrumpimos el flujo por un error en la notificación
+        }
+        
+        return $freshRequest;
     }
 
     /**
@@ -515,6 +675,47 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
             'returned_at' => $freshRequest->returned_at?->toISOString(),
             'returned_by' => $freshRequest->returned_by
         ]);
+
+        // Enviar notificación por correo al creador de la solicitud
+        try {
+            // Cargar el usuario que devolvió la solicitud y el creador si no están cargados
+            if (!$freshRequest->relationLoaded('creator')) {
+                $freshRequest->load('creator');
+            }
+            
+            if ($freshRequest->creator) {
+                $returnedByUser = \App\Models\User::find($freshRequest->returned_by);
+                
+                if ($returnedByUser) {
+                    Log::info('[RETURN SERVICE] Enviando notificación por correo', [
+                        'to_user' => $freshRequest->creator->email,
+                        'returned_by' => $returnedByUser->name
+                    ]);
+                    
+                    $freshRequest->creator->notify(new AccreditationRequestReturned(
+                        $freshRequest,
+                        $returnedByUser,
+                        $reason
+                    ));
+                    
+                    Log::info('[RETURN SERVICE] Notificación enviada exitosamente');
+                } else {
+                    Log::error('[RETURN SERVICE] No se encontró el usuario que devolvió la solicitud', [
+                        'returned_by_id' => $freshRequest->returned_by
+                    ]);
+                }
+            } else {
+                Log::error('[RETURN SERVICE] No se encontró el creador de la solicitud', [
+                    'created_by' => $freshRequest->created_by
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[RETURN SERVICE] Error enviando notificación', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            // No fallar el proceso si hay error en el envío de la notificación
+        }
         
         return $freshRequest;
     }

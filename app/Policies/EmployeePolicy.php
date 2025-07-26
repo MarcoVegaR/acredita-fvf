@@ -30,6 +30,7 @@ class EmployeePolicy
     public function viewAny(User $user): bool
     {
         return $user->hasRole('admin')
+            || $user->hasRole('security_manager')
             || $user->hasRole('area_manager')
             || $user->hasRole('provider');
     }
@@ -56,6 +57,7 @@ class EmployeePolicy
     public function create(User $user): bool
     {
         return $user->hasRole('admin')
+            || $user->hasRole('security_manager')
             || $user->hasRole('area_manager')
             || $user->hasRole('provider');
     }
@@ -95,8 +97,8 @@ class EmployeePolicy
      */
     public function delete(User $user, Employee $employee): bool
     {
-        // Only admin can permanently delete employees
-        if ($user->hasRole('admin')) {
+        // Only admin and security_manager can permanently delete employees
+        if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return true;
         }
 

@@ -60,7 +60,7 @@ export default function EditProvider({ provider, areas = [], errors = {} }: Edit
     defaultTab: "general",
     tabs: tabs,
     permissions: {
-      edit: "provider.manage",
+      edit: "provider.manage_own_area", // Cambiado para permitir a area_manager editar proveedores
     },
     // Proceso previo al envío del formulario
     beforeSubmit: (data: ProviderFormValues) => {

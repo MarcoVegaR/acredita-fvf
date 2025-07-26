@@ -180,11 +180,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('providers.index');
             
         Route::get('providers/create', 'create')
-            ->middleware('permission:provider.manage')
+            ->middleware('permission:provider.manage|provider.manage_own_area')
             ->name('providers.create');
             
         Route::post('providers', 'store')
-            ->middleware('permission:provider.manage')
+            ->middleware('permission:provider.manage|provider.manage_own_area')
             ->name('providers.store');
             
         Route::get('providers/{provider:uuid}', 'show')

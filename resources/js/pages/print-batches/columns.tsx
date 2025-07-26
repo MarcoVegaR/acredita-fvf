@@ -2,7 +2,7 @@ import React from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Calendar, FileText, Users, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Copy, Calendar, FileText, Users, AlertCircle, CheckCircle, Clock, User } from "lucide-react";
 import { TablePrintBatch } from "./types";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
@@ -68,34 +68,123 @@ export const columns: ColumnDef<TablePrintBatch>[] = [
     header: "Evento",
     cell: ({ row }) => {
       const event = row.getValue("event") as { name: string };
+      const fullName = event?.name || 'Sin evento';
+      
+      // Truncar nombre si es muy largo (más de 25 caracteres)
+      const truncatedName = fullName.length > 25 
+        ? fullName.substring(0, 22) + '...'
+        : fullName;
+      
       return (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2" title={fullName}>
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{event.name}</span>
+          <span className="font-medium">{truncatedName}</span>
         </div>
       );
     },
   },
   {
-    accessorKey: "area",
+    accessorKey: "areas",
     header: "Área",
     cell: ({ row }) => {
-      const area = row.getValue("area") as { name: string } | null;
-      if (!area) {
+      // Debug logs
+      console.log('[DEBUG AREAS] Row original:', row.original);
+      console.log('[DEBUG AREAS] Areas raw:', row.original.areas);
+      console.log('[DEBUG AREAS] Areas value:', row.getValue("areas"));
+      
+      // Intenta obtener áreas de diferentes formas para diagnosticar
+      const areasFromOriginal = row.original.areas;
+      const areasFromValue = row.getValue("areas");
+      
+      // Log detallado
+      console.log('[DEBUG AREAS] Areas from original:', {
+        value: areasFromOriginal,
+        type: typeof areasFromOriginal,
+        isArray: Array.isArray(areasFromOriginal),
+        length: areasFromOriginal ? (Array.isArray(areasFromOriginal) ? areasFromOriginal.length : 'not array') : 'undefined'
+      });
+      
+      // Usar el valor que esté disponible, con preferencia por original.areas
+      const areas = areasFromOriginal || areasFromValue as Array<{ name: string }> | undefined;
+      
+      if (!areas || areas.length === 0) {
+        console.log('[DEBUG AREAS] No areas found, returning placeholder');
         return <span className="text-muted-foreground">—</span>;
       }
-      return <span>{area.name}</span>;
+      
+      // Todas las áreas para el tooltip
+      const allAreas = areas.map(area => area.name).join(', ');
+      
+      // Si hay más de 2 áreas, mostrar contador
+      if (areas.length > 2) {
+        return (
+          <div className="flex flex-col" title={allAreas}>
+            <span className="text-sm">{areas[0].name}</span>
+            <span className="text-xs text-muted-foreground">+{areas.length - 1} más</span>
+          </div>
+        );
+      }
+      
+      // Si son pocas áreas, mostrarlas todas
+      return (
+        <div className="flex flex-col" title={allAreas}>
+          {areas.map((area, i) => (
+            <span key={i} className="text-sm">{area.name}</span>
+          ))}
+        </div>
+      );
     },
   },
   {
-    accessorKey: "provider",
+    accessorKey: "providers",
     header: "Proveedor",
     cell: ({ row }) => {
-      const provider = row.getValue("provider") as { name: string } | null;
-      if (!provider) {
+      // Debug logs
+      console.log('[DEBUG PROVIDERS] Row original:', row.original);
+      console.log('[DEBUG PROVIDERS] Providers raw:', row.original.providers);
+      console.log('[DEBUG PROVIDERS] Providers value:', row.getValue("providers"));
+      
+      // Intenta obtener proveedores de diferentes formas para diagnosticar
+      const providersFromOriginal = row.original.providers;
+      const providersFromValue = row.getValue("providers");
+      
+      // Log detallado
+      console.log('[DEBUG PROVIDERS] Providers from original:', {
+        value: providersFromOriginal,
+        type: typeof providersFromOriginal,
+        isArray: Array.isArray(providersFromOriginal),
+        length: providersFromOriginal ? (Array.isArray(providersFromOriginal) ? providersFromOriginal.length : 'not array') : 'undefined'
+      });
+      
+      // Usar el valor que esté disponible, con preferencia por original.providers
+      const providers = providersFromOriginal || providersFromValue as Array<{ name: string }> | undefined;
+      
+      if (!providers || providers.length === 0) {
+        console.log('[DEBUG PROVIDERS] No providers found, returning placeholder');
         return <span className="text-muted-foreground">—</span>;
       }
-      return <span>{provider.name}</span>;
+      
+      // Todos los proveedores para el tooltip
+      const allProviders = providers.map(provider => provider.name).join(', ');
+      
+      // Si hay más de 2 proveedores, mostrar contador
+      if (providers.length > 2) {
+        return (
+          <div className="flex flex-col" title={allProviders}>
+            <span className="text-sm">{providers[0].name}</span>
+            <span className="text-xs text-muted-foreground">+{providers.length - 1} más</span>
+          </div>
+        );
+      }
+      
+      // Si son pocos proveedores, mostrarlos todos
+      return (
+        <div className="flex flex-col" title={allProviders}>
+          {providers.map((provider, i) => (
+            <span key={i} className="text-sm">{provider.name}</span>
+          ))}
+        </div>
+      );
     },
   },
   {
@@ -175,14 +264,30 @@ export const columns: ColumnDef<TablePrintBatch>[] = [
     },
   },
   {
-    accessorKey: "generatedBy",
+    accessorKey: "generated_by_user",
     header: "Generado por",
     cell: ({ row }) => {
-      const user = row.original.generatedBy as { name: string } | undefined;
+      // Debug logs
+      console.log('[DEBUG GENERATED_BY] Row original:', row.original);
+      console.log('[DEBUG GENERATED_BY] User data:', row.original.generated_by_user);
+      
+      const user = row.original.generated_by_user as { id: number | null; name: string } | undefined;
+      
+      // Log detallado
+      console.log('[DEBUG GENERATED_BY] User info:', {
+        value: user,
+        type: typeof user,
+        name: user?.name || 'no name',
+        id: user?.id || 'no id'
+      });
+      
       return (
-        <span className="text-sm">
-          {user?.name || 'No disponible'}
-        </span>
+        <div className="flex items-center space-x-2">
+          <User className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">
+            {user?.name || 'Sistema'}
+          </span>
+        </div>
       );
     },
   },
@@ -198,22 +303,7 @@ export const columns: ColumnDef<TablePrintBatch>[] = [
       );
     },
   },
-  {
-    accessorKey: "finished_at",
-    header: "Finalizado",
-    cell: ({ row }) => {
-      const finishedAt = row.getValue("finished_at") as string | null;
-      if (!finishedAt) {
-        return <span className="text-muted-foreground">—</span>;
-      }
-      
-      return (
-        <span className="text-sm text-muted-foreground">
-          {formatRelativeDate(finishedAt)}
-        </span>
-      );
-    },
-  },
+  // Columna de finalizado eliminada por no ser necesaria
 ];
 
 // Tipos exportados para uso en otras partes

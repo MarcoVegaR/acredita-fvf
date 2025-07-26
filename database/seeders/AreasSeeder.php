@@ -29,6 +29,7 @@ class AreasSeeder extends Seeder
                 'active' => true,
                 'color' => '#EF4444', // Rojo
             ],
+            /* Áreas comentadas según requerimiento
             [
                 'code' => 'PREN',
                 'name' => 'Gerencia de Prensa',
@@ -71,6 +72,7 @@ class AreasSeeder extends Seeder
                 'active' => true,
                 'color' => '#14B8A6', // Verde azulado
             ],
+            */
         ];
 
         // Crear las áreas en la base de datos

@@ -12,7 +12,8 @@ class StoreProviderRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->can('provider.manage');
+        // Permitir tanto provider.manage como provider.manage_own_area
+        return $this->user()->can('provider.manage') || $this->user()->can('provider.manage_own_area');
     }
 
     /**

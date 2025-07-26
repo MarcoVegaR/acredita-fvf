@@ -396,6 +396,30 @@ sudo dpkg-reconfigure -plow unattended-upgrades
 
 ### 🚨 Troubleshooting
 
+**Problema: Error de permisos entre www-data y appuser**
+
+Si experimentas errores 500 en el servidor web o problemas con los workers de cola que fallan silenciosamente, es probable que sea un problema de permisos. El servidor web (Nginx/PHP-FPM) corre como `www-data` mientras que los workers de cola corren como `appuser`, y ambos necesitan acceso de escritura a ciertos directorios.
+
+```bash
+# Solución: aplicar permisos correctos después de cada despliegue
+docker exec -it acredita_app bash -c "
+# Establecer permisos de grupo adecuados
+chown -R appuser:www-data /var/www/html/storage
+chown -R appuser:www-data /var/www/html/bootstrap/cache
+chmod -R 775 /var/www/html/storage
+chmod -R 775 /var/www/html/bootstrap/cache
+chmod g+s /var/www/html/storage
+"
+```
+
+> ⚠️ **IMPORTANTE**: Ejecuta este comando CADA VEZ que hagas un `docker compose up -d --build` para evitar errores 500 o problemas con los jobs.
+
+**Explicación técnica**:
+- `appuser`: Usuario que ejecuta los workers de cola (necesita escribir logs y generar archivos)
+- `www-data`: Usuario del servidor web (necesita escribir en vistas compiladas y caché)
+- La solución establece `appuser` como propietario pero da permisos de escritura al grupo `www-data`
+- El flag `chmod g+s` asegura que nuevos archivos hereden automáticamente el grupo `www-data`
+
 **Problema: Contenedor no inicia**
 ```bash
 docker logs acredita_app

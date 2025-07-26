@@ -24,7 +24,8 @@ class ProviderController extends Controller
     public function __construct(ProviderServiceInterface $providerService)
     {
         $this->providerService = $providerService;
-        $this->authorizeResource(Provider::class, 'provider');
+        // No usamos authorizeResource para permitir más flexibilidad en los permisos
+        // $this->authorizeResource(Provider::class, 'provider');
     }
 
     /**
@@ -38,11 +39,22 @@ class ProviderController extends Controller
         $areas = \App\Models\Area::select('id', 'name')->orderBy('name')->get();
         
         // Obtener estadísticas de proveedores
+        $user = auth()->user();
+        $query = \App\Models\Provider::query();
+        
+        // Filtrar por área si el usuario es area_manager
+        if ($user && $user->hasRole('area_manager')) {
+            $managedAreas = $user->managedAreas()->pluck('id')->toArray();
+            if (!empty($managedAreas)) {
+                $query->whereIn('area_id', $managedAreas);
+            }
+        }
+        
         $stats = [
-            'total' => \App\Models\Provider::count(),
-            'active' => \App\Models\Provider::where('active', true)->count(),
-            'internal' => \App\Models\Provider::where('type', 'internal')->count(),
-            'external' => \App\Models\Provider::where('type', 'external')->count(),
+            'total' => $query->count(),
+            'active' => (clone $query)->where('active', true)->count(),
+            'internal' => (clone $query)->where('type', 'internal')->count(),
+            'external' => (clone $query)->where('type', 'external')->count(),
         ];
 
         // Procesar los filtros para manejar el valor 'all'
@@ -70,6 +82,11 @@ class ProviderController extends Controller
      */
     public function create()
     {
+        // Verificar permisos manualmente (permitiendo ambos permisos)
+        if (!auth()->user()->can('provider.manage') && !auth()->user()->can('provider.manage_own_area')) {
+            abort(403, 'No tiene permisos para crear proveedores.');
+        }
+        
         // Obtener todas las áreas activas y sus gerentes asignados
         $areas = \App\Models\Area::select('id', 'name', 'description', 'manager_user_id')
             ->with(['manager:id,name,email'])
@@ -98,8 +115,55 @@ class ProviderController extends Controller
      */
     public function store(StoreProviderRequest $request)
     {
+        // Verificar permisos manualmente (permitiendo ambos permisos)
+        $user = auth()->user();
+        if (!$user->can('provider.manage') && !$user->can('provider.manage_own_area')) {
+            abort(403, 'No tiene permisos para crear proveedores.');
+        }
+        
         try {
             $data = $request->validated();
+            
+            // Si es area_manager, aplicar validaciones especiales
+            if ($user->hasRole('area_manager') && !$user->can('provider.manage')) {
+                // 1. Validar que el área seleccionada sea una que gestiona
+                $managedAreaIds = $user->managedAreas()->pluck('id')->toArray();
+                
+                if (empty($managedAreaIds)) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'No tiene áreas asignadas para gestionar.');
+                }
+                
+                if (!in_array($data['area_id'], $managedAreaIds)) {
+                    // Registrar intento de acceso no autorizado
+                    \Illuminate\Support\Facades\Log::warning('Intento de crear proveedor en área no autorizada', [
+                        'user_id' => $user->id,
+                        'user_name' => $user->name,
+                        'role' => 'area_manager',
+                        'attempted_area_id' => $data['area_id'],
+                        'managed_areas' => $managedAreaIds
+                    ]);
+                    
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Solo puede crear proveedores en las áreas que usted gestiona.');
+                }
+                
+                // 2. Validar que solo cree proveedores externos (no internos)
+                if ($data['type'] !== 'external') {
+                    // Registrar intento de crear proveedor interno
+                    \Illuminate\Support\Facades\Log::warning('Intento de crear proveedor interno por area_manager', [
+                        'user_id' => $user->id,
+                        'user_name' => $user->name,
+                        'attempted_type' => $data['type']
+                    ]);
+                    
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Como gerente de área, solo puede crear proveedores externos.');
+                }
+            }
             
             // Determinar si es un proveedor interno o externo
             if ($data['type'] === 'internal') {

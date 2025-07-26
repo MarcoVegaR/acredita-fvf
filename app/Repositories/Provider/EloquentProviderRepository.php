@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Repositories\BaseRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Collection;
 
 class EloquentProviderRepository extends BaseRepository implements ProviderRepositoryInterface
 {
@@ -81,6 +82,45 @@ class EloquentProviderRepository extends BaseRepository implements ProviderRepos
         if (isset($filters['area_id'])) {
             $query->byArea($filters['area_id']);
         }
+        
+        if (isset($filters['area_ids']) && is_array($filters['area_ids'])) {
+            // Registrar cuántos proveedores hay por tipo antes de aplicar filtro
+            $beforeFilter = [
+                'total' => $this->model->count(),
+                'internal' => $this->model->where('type', 'internal')->count(),
+                'external' => $this->model->where('type', 'external')->count(),
+            ];
+
+            // Contar proveedores por área antes del filtro
+            $areaCountsBefore = [];
+            foreach ($filters['area_ids'] as $areaId) {
+                $areaCountsBefore[$areaId] = [
+                    'total' => $this->model->where('area_id', $areaId)->count(),
+                    'internal' => $this->model->where('area_id', $areaId)->where('type', 'internal')->count(),
+                    'external' => $this->model->where('area_id', $areaId)->where('type', 'external')->count(),
+                ];
+            }
+            
+            // Aplicar filtro
+            $query->whereIn('area_id', $filters['area_ids']);
+            
+            // Registrar cuántos proveedores hay después de aplicar filtro
+            $filterQuery = clone $query;
+            $afterFilter = [
+                'total' => $filterQuery->count(),
+                'internal' => (clone $filterQuery)->where('type', 'internal')->count(),
+                'external' => (clone $filterQuery)->where('type', 'external')->count(),
+            ];
+            
+            \Illuminate\Support\Facades\Log::info('Filtrado por áreas IDs', [
+                'area_ids' => $filters['area_ids'],
+                'before_filter' => $beforeFilter,
+                'area_counts_before' => $areaCountsBefore,
+                'after_filter' => $afterFilter,
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+        }
 
         if (isset($filters['type'])) {
             $query->ofType($filters['type']);
@@ -115,10 +155,10 @@ class EloquentProviderRepository extends BaseRepository implements ProviderRepos
     public function createExternal(array $data): Provider
     {
         return DB::transaction(function () use ($data) {
-            // Create user with editor role (permiso base para acceder)
+            // Create user with provider role (permiso base para acceder)
             $userData = $data['user'];
             $user = User::create($userData);
-            $user->assignRole('editor');
+            $user->assignRole('provider');
             
             // Create provider and link to user
             $providerData = [
@@ -255,5 +295,30 @@ class EloquentProviderRepository extends BaseRepository implements ProviderRepos
                 $provider->restore();
             }
         });
+    }
+    
+    /**
+     * Find providers by area IDs
+     *
+     * @param array $areaIds Array of area IDs
+     * @return Collection Collection of providers
+     */
+    public function findByAreaIds(array $areaIds): Collection
+    {
+        // Creamos una consulta separada para cada tipo para verificar cuántos tenemos de cada uno
+        $internalCount = $this->model->whereIn('area_id', $areaIds)->where('type', 'internal')->count();
+        $externalCount = $this->model->whereIn('area_id', $areaIds)->where('type', 'external')->count();
+        
+        // Log para depuración
+        \Illuminate\Support\Facades\Log::info('findByAreaIds', [
+            'area_ids' => $areaIds,
+            'internal_count' => $internalCount,
+            'external_count' => $externalCount
+        ]);
+        
+        // Aseguramos que estamos incluyendo proveedores tanto internos como externos
+        return $this->model
+            ->whereIn('area_id', $areaIds)
+            ->get();
     }
 }

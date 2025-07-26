@@ -113,36 +113,72 @@ class RolesAndPermissionsSeeder extends Seeder
         $this->createPermission('credential.regenerate', 'Regenerar credenciales fallidas');
         $this->createPermission('credentials.regenerate', 'Regenerar credenciales con nueva plantilla');
         $this->createPermission('credential.preview', 'Previsualizar credenciales');
+        
+        // Print batch management permissions
+        $this->createPermission('print_batch.manage', 'Gestionar lotes de impresión');
 
         // Update cache to know about the newly created permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Create roles
+        // Create or update roles
         
         // ADMIN ROLE - Acceso completo al sistema
-        $adminRole = Role::create(['name' => 'admin']);
-        $adminRole->givePermissionTo(Permission::all());
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $adminRole->syncPermissions(Permission::all());
+        
+        // SECURITY_MANAGER ROLE - Gestión de empleados, proveedores, acreditaciones e impresiones
+        // Actúa como administrador en estos módulos específicos
+        $securityManagerRole = Role::firstOrCreate(['name' => 'security_manager']);
+        $securityManagerRole->syncPermissions([
+            // Dashboard básico
+            'dashboard.view',
+            
+            // Gestión de proveedores (CRUD completo como admin)
+            'provider.view', 'provider.manage', 'provider.manage_own_area',
+            
+            // Gestión de empleados (CRUD completo como admin)
+            'employee.view', 'employee.manage', 'employee.manage_own_provider',
+            
+            // Gestión de eventos y zonas (solo lectura)
+            'events.index', 'events.show',
+            'zones.index', 'zones.show',
+            
+            // Solicitudes de acreditación (gestión completa como admin)
+            'accreditation_request.index', 'accreditation_request.view',
+            'accreditation_request.create', 'accreditation_request.update',
+            'accreditation_request.delete', 'accreditation_request.submit',
+            'accreditation_request.review', 'accreditation_request.return',
+            'accreditation_request.approve', 'accreditation_request.reject',
+            
+            // Credenciales (gestión completa como admin)
+            'credential.view', 'credential.download', 'credential.regenerate',
+            'credentials.regenerate', 'credential.preview',
+            
+            // Lotes de impresión (gestión completa como admin)
+            'print_batch.manage'
+            // Nota: A diferencia del admin, no tiene permisos sobre usuarios, roles, áreas, etc.
+        ]);
         
         // AREA_MANAGER ROLE - Gestión de su área y visto bueno de solicitudes
         // Puede dar visto bueno, devolver solicitudes, ver todas las de su área
-        $areaManagerRole = Role::create(['name' => 'area_manager']);
-        $areaManagerRole->givePermissionTo([
-            // Gestión de proveedores (solo su área)
+        $areaManagerRole = Role::firstOrCreate(['name' => 'area_manager']);
+        $areaManagerRole->syncPermissions([
+            // Dashboard básico
+            'dashboard.view',
+            
+            // Gestión de proveedores (CRUD completo para su área)
             'provider.view', 'provider.manage_own_area',
             
-            // Gestión de empleados (solo su área)
-            'employee.view', 'employee.manage',
+            // Gestión de empleados (CRUD completo para proveedores de su área)
+            'employee.view', 'employee.manage_own_provider',
             
             // Gestión de eventos y zonas (lectura)
             'events.index', 'events.show',
             'zones.index', 'zones.show',
             
-            // Plantillas (lectura)
-            'templates.index', 'templates.show',
-            
-            // Solicitudes de acreditación (gestión completa de su área)
+            // Solicitudes de acreditación (gestión de proveedores de su área)
             'accreditation_request.index', 'accreditation_request.view',
-            'accreditation_request.create', 'accreditation_request.update', 
+            'accreditation_request.create', 'accreditation_request.update',
             'accreditation_request.delete', 'accreditation_request.submit',
             'accreditation_request.review', 'accreditation_request.return',
             
@@ -153,10 +189,10 @@ class RolesAndPermissionsSeeder extends Seeder
         
         // PROVIDER ROLE - Gestión de empleados y solicitudes del proveedor
         // Solo puede crear borradores, editarlos, eliminarlos y enviarlos
-        $providerRole = Role::create(['name' => 'provider']);
-        $providerRole->givePermissionTo([
-            // Gestión de empleados de su propio proveedor - INCLUYENDO REGISTRO
-            'employee.view', 'employee.manage_own_provider', 'employee.manage',
+        $providerRole = Role::firstOrCreate(['name' => 'provider']);
+        $providerRole->syncPermissions([
+            // Gestión de empleados de su propio proveedor
+            'employee.view', 'employee.manage_own_provider',
             
             // Gestión de eventos y zonas (solo lectura necesaria)
             'events.index', 'events.show',

@@ -75,7 +75,10 @@ class EmployeeController extends BaseController
     public function create()
     {
         try {
-            Gate::authorize('create', Employee::class);
+            // Verificar permisos manualmente (permitiendo ambos permisos)
+            if (!auth()->user()->can('employee.manage') && !auth()->user()->can('employee.manage_own_provider')) {
+                abort(403, 'No tiene permisos para crear empleados.');
+            }
             
             $providers = $this->providerService->getAccessibleProviders();
             
@@ -96,7 +99,10 @@ class EmployeeController extends BaseController
     public function store(StoreEmployeeRequest $request)
     {
         try {
-            Gate::authorize('create', Employee::class);
+            // Verificar permisos manualmente (permitiendo ambos permisos)
+            if (!auth()->user()->can('employee.manage') && !auth()->user()->can('employee.manage_own_provider')) {
+                abort(403, 'No tiene permisos para crear empleados.');
+            }
             
             $data = $request->validated();
             $employee = $this->employeeService->createEmployee($data);

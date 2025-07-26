@@ -16,7 +16,6 @@ interface PageProps {
 
 export function FlashMessages() {
   const props = usePage<PageProps>().props;
-  console.log('[FlashMessages] Component RENDERED. Props:', props);
   
   // Handle flash messages from Laravel session via Inertia
   useEffect(() => {
@@ -24,7 +23,7 @@ export function FlashMessages() {
     const flash = props.flash || {};
     const errors = props.errors || {};
 
-    console.log('[FlashMessages] useEffect triggered. Flash:', flash, 'Errors:', errors);
+    // Debug logs removed for production
 
     // Process success message
     if (flash.success) {

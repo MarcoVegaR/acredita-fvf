@@ -80,14 +80,14 @@ export interface TablePrintBatch {
     id: number;
     name: string;
   };
-  area?: {
+  areas?: Array<{
     id: number;
     name: string;
-  } | null;
-  provider?: {
+  }> | null;
+  providers?: Array<{
     id: number;
     name: string;
-  } | null;
+  }> | null;
   generated_by_user: {
     id: number;
     name: string;

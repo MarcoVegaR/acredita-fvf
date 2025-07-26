@@ -35,14 +35,14 @@ class AccreditationRequestPolicy
             return false;
         }
 
-        // Administrador puede ver todas
-        if ($user->hasRole('admin')) {
+        // Administrador y security_manager pueden ver todas
+        if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return true;
         }
 
         // Gestor de área puede ver las de su área
         if ($user->hasRole('area_manager')) {
-            return $accreditationRequest->employee->provider->area_id === $user->area_id;
+            return $user->managedArea && $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
         }
 
         // Proveedor solo puede ver sus propias solicitudes
@@ -73,8 +73,8 @@ class AccreditationRequestPolicy
      */
     public function update(User $user, AccreditationRequest $accreditationRequest)
     {
-        // Administrador puede actualizar cualquiera en cualquier estado
-        if ($user->hasRole('admin')) {
+        // Administrador y security_manager pueden actualizar cualquiera en cualquier estado
+        if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return $user->can('accreditation_request.update');
         }
 
@@ -102,8 +102,8 @@ class AccreditationRequestPolicy
      */
     public function delete(User $user, AccreditationRequest $accreditationRequest)
     {
-        // Administrador puede eliminar cualquiera en cualquier estado
-        if ($user->hasRole('admin')) {
+        // Administrador y security_manager pueden eliminar cualquiera en cualquier estado
+        if ($user->hasRole('admin') || $user->hasRole('security_manager')) {
             return $user->can('accreditation_request.delete');
         }
 
