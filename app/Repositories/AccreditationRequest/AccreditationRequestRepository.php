@@ -158,8 +158,8 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
     {
         // El filtrado de solicitudes por rol de usuario está activo
         
-        // Los administradores pueden ver todo
-        if ($user->hasRole('admin')) {
+        // Los administradores y security_manager pueden ver todo
+        if ($user->hasRole(['admin', 'security_manager']) || $user->can('accreditation_request.approve')) {
             return $query;
         }
         

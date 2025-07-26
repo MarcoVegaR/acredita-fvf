@@ -43,10 +43,35 @@ class AccreditationRequestController extends BaseController
             $requests = $this->accreditationRequestService->getPaginatedRequests($request);
             $events = $this->eventService->getAllActive();
             
-            // Obtener estadísticas de solicitudes
-            $totalRequests = AccreditationRequest::count();
-            $draftRequests = AccreditationRequest::where('status', 'draft')->count();
-            $submittedRequests = AccreditationRequest::where('status', 'submitted')->count();
+            // Obtener estadísticas de solicitudes filtradas por rol
+            $query = AccreditationRequest::query();
+            $user = auth()->user();
+            
+            // Filtrado según el rol del usuario
+            if ($user->hasRole(['admin', 'security_manager']) || $user->can('accreditation_request.approve')) {
+                // Admin y security_manager ven todas las solicitudes
+                // No aplicar filtro adicional al query
+            } elseif ($user->hasRole('area_manager')) {
+                // Area manager solo ve solicitudes de proveedores de su área
+                if ($user->managedArea) {
+                    $areaId = $user->managedArea->id;
+                    $query->whereHas('employee.provider', function ($q) use ($areaId) {
+                        $q->where('area_id', $areaId);
+                    });
+                }
+            } elseif ($user->hasRole('provider')) {
+                // Provider solo ve sus propias solicitudes
+                if ($user->provider_id) {
+                    $query->whereHas('employee', function ($q) use ($user) {
+                        $q->where('provider_id', $user->provider_id);
+                    });
+                }
+            }
+            
+            // Contar solicitudes filtradas según los permisos del usuario
+            $totalRequests = (clone $query)->count();
+            $draftRequests = (clone $query)->where('status', 'draft')->count();
+            $submittedRequests = (clone $query)->where('status', 'submitted')->count();
             
             $stats = [
                 'total' => $totalRequests,
