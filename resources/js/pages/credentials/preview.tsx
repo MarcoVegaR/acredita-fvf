@@ -71,6 +71,15 @@ export default function PreviewCredential({
         setRotation(0);
     };
     const handleRotate = () => setRotation(prev => (prev + 90) % 360);
+    
+    // Download handlers
+    const handleDownloadPDF = () => {
+        window.open(`/accreditation-requests/${request.uuid}/credential/download/pdf`, '_blank');
+    };
+    
+    const handleDownloadPNG = () => {
+        window.open(`/accreditation-requests/${request.uuid}/credential/download/image`, '_blank');
+    };
 
     return (
         <AppLayout>
@@ -78,38 +87,36 @@ export default function PreviewCredential({
             
             <div className="container mx-auto py-6">
                 {/* Header */}
+                {/* Back button positioned above content */}
+                <div className="mb-4">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={`/accreditation-requests/${request.uuid}`}>
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Volver
+                        </Link>
+                    </Button>
+                </div>
+                
                 <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={`/accreditation-requests/${request.uuid}`}>
-                                <ArrowLeft className="h-4 w-4 mr-2" />
-                                Volver
-                            </Link>
-                        </Button>
-                        <div>
-                            <h1 className="text-2xl font-bold">
-                                Vista Previa de Credencial
-                            </h1>
-                            <p className="text-muted-foreground">
-                                {request.employee.first_name} {request.employee.last_name} - {request.event.name}
-                            </p>
-                        </div>
+                    <div>
+                        <h1 className="text-2xl font-bold">
+                            Vista Previa de Credencial
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {request.employee.first_name} {request.employee.last_name} - {request.event.name}
+                        </p>
                     </div>
 
                     {canDownload && credential.status === 'ready' && (
                         <div className="flex gap-2">
-                            <Button asChild variant="outline">
-                                <Link href={`/accreditation-requests/${request.uuid}/credential/download/image`}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Descargar PNG
-                                </Link>
-                            </Button>
-                            <Button asChild>
-                                <Link href={`/accreditation-requests/${request.uuid}/credential/download/pdf`}>
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Descargar PDF
-                                </Link>
-                            </Button>
+                            <Button variant="outline" onClick={handleDownloadPNG}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Descargar PNG
+                        </Button>
+                        <Button onClick={handleDownloadPDF}>
+                            <Download className="h-4 w-4 mr-2" />
+                            Descargar PDF
+                        </Button>
                         </div>
                     )}
                 </div>

@@ -281,24 +281,103 @@ class CredentialService implements CredentialServiceInterface
             'credential_id' => $credential->id
         ]);
 
-        // Por ahora, copiamos el PNG como PDF (se puede mejorar con DOMPDF)
+        // Obtenemos la ruta de la imagen PNG
         $pngPath = $credential->credential_image_path;
-        $filename = 'credential_' . $credential->uuid . '.pdf';
-        $pdfPath = config('credentials.paths.images') . '/' . $filename;
         
-        // Aquí se implementaría la generación real del PDF
-        // Por ahora, copiamos el PNG
-        if ($pngPath && Storage::disk('public')->exists($pngPath)) {
-            Storage::disk('public')->copy($pngPath, $pdfPath);
+        // Definimos el nombre del archivo PDF resultante
+        $filename = 'credential_' . $credential->uuid . '.pdf';
+        
+        // Ruta relativa donde se guardará el PDF (dentro del disco 'public')
+        $relativePdfPath = config('credentials.paths.images') . '/' . $filename;
+        
+        // Verificar que existe la imagen PNG original
+        if (!$pngPath || !Storage::disk('public')->exists($pngPath)) {
+            Log::error('[CREDENTIAL SERVICE] No se encontró imagen para generar PDF', [
+                'credential_id' => $credential->id,
+                'png_path' => $pngPath
+            ]);
+            return '';  // Devolvemos string vacío en lugar de null para cumplir con la interfaz
         }
-
-        $credential->update(['credential_pdf_path' => $pdfPath]);
-
-        Log::info('[CREDENTIAL SERVICE] PDF generado', [
-            'pdf_path' => $pdfPath
-        ]);
-
-        return $pdfPath;
+        
+        try {
+            // Obtenemos la ruta absoluta de la imagen PNG
+            $imagePath = Storage::disk('public')->path($pngPath);
+            
+            // Obtenemos las dimensiones de la imagen
+            list($width, $height) = getimagesize($imagePath);
+            
+            // Constantes de conversión según documentación FPDF (igual que en PrintBatchJob)
+            $defaultDpi = 96; // DPI por defecto que usa FPDF para imágenes
+            $mmPerInch = 25.4; // 1 pulgada = 25.4 milímetros
+            
+            // Conversión píxel → milímetro: mm = px * 25.4 / dpi
+            $credentialMmWidth = $width * $mmPerInch / $defaultDpi;
+            $credentialMmHeight = $height * $mmPerInch / $defaultDpi;
+            
+            // Determinar la orientación del PDF basándonos en las dimensiones
+            $orientation = ($width > $height) ? 'L' : 'P';
+            
+            // Inicializar FPDF con dimensiones calculadas correctamente
+            $pdf = new \FPDF(
+                $orientation, 
+                'mm', 
+                [round($credentialMmWidth, 2), round($credentialMmHeight, 2)]
+            );
+            
+            // Configuración de página
+            $pdf->AddPage();
+            $pdf->SetAutoPageBreak(false);
+            $pdf->SetMargins(0, 0, 0); // Sin márgenes para fidelidad 1:1
+            
+            // Verificar dimensiones reales del PDF
+            $actualPageWidth = $pdf->GetPageWidth();
+            $actualPageHeight = $pdf->GetPageHeight();
+            
+            Log::info('[CREDENTIAL SERVICE] Dimensiones de PDF', [
+                'credential_id' => $credential->id,
+                'pixel_dimensions' => "{$width}x{$height}",
+                'expected_mm' => round($credentialMmWidth, 2) . 'x' . round($credentialMmHeight, 2),
+                'actual_mm' => $actualPageWidth . 'x' . $actualPageHeight,
+                'dimensions_match' => (abs($actualPageWidth - $credentialMmWidth) < 0.1 && 
+                                     abs($actualPageHeight - $credentialMmHeight) < 0.1)
+            ]);
+            
+            // Agregar la imagen al PDF con tamaño completo de la página
+            $pdf->Image(
+                $imagePath, 
+                0, 
+                0, 
+                $actualPageWidth, 
+                $actualPageHeight
+            );
+            
+            // Ruta absoluta donde guardar el PDF
+            $absolutePdfPath = Storage::disk('public')->path($relativePdfPath);
+            
+            // Guardamos el PDF en disco
+            $pdf->Output('F', $absolutePdfPath);
+            
+            // Actualizamos el modelo con la ruta relativa (para acceso via URL)
+            $credential->update(['credential_pdf_path' => $relativePdfPath]);
+            
+            Log::info('[CREDENTIAL SERVICE] PDF generado correctamente', [
+                'pdf_path' => $relativePdfPath,
+                'absolute_path' => $absolutePdfPath,
+                'orientation' => $orientation,
+                'width_mm' => $actualPageWidth,
+                'height_mm' => $actualPageHeight
+            ]);
+            
+            return $relativePdfPath;
+            
+        } catch (\Exception $e) {
+            Log::error('[CREDENTIAL SERVICE] Error al generar PDF', [
+                'credential_id' => $credential->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return '';  // Devolvemos string vacío en lugar de null para cumplir con la interfaz
+        }
     }
 
     /**
@@ -530,6 +609,7 @@ class CredentialService implements CredentialServiceInterface
 
         $textBlocks = $template['layout_meta']['text_blocks'];
         
+        $backgroundBlocks = ['provider', 'proveedor'];
         foreach ($textBlocks as $block) {
             $text = $this->getTextForBlock($block['id'], $employee, $event, $zones);
             
@@ -541,27 +621,50 @@ class CredentialService implements CredentialServiceInterface
                 // Font size: usar directamente el valor del editor (sin escalado)
                 $fontSize = $block['font_size'] ?? 12;
                 
-                // Si es el bloque 'rol', aplicar fondo con el color del área
-                if ($block['id'] === 'rol' || $block['id'] === 'position' || $block['id'] === 'function') {
+                // Verificar si este bloque debe tener fondo de color
+
+                // Si el bloque está en la lista de fondos, aplicar fondo con el color del área
+                if (in_array($block['id'], $backgroundBlocks, true)) {
                     // Obtener el color del área del proveedor del empleado
-                    $areaColor = isset($employee['provider']['area']['color']) 
-                        ? $employee['provider']['area']['color'] 
+                    $areaColor = isset($employee['provider']['area']['color'])
+                        ? $employee['provider']['area']['color']
                         : '#000000';
+
+                    // Preparando background para el bloque de proveedor
+
+                    // Calcular el tamaño real del texto para ajustar el fondo exactamente
+                    $fontPath = public_path('fonts/arial.ttf');
+                    $bbox = imagettfbbox($fontSize, 0, $fontPath, $text);
+                    $textWidth  = abs($bbox[4] - $bbox[0]);
+                    $textHeight = abs($bbox[5] - $bbox[1]);
                     
-                    // Calcular dimensiones y posición del rectángulo de fondo
-                    $width = intval($block['width'] ?? 100);
-                    $height = intval($block['height'] ?? 30);
-                    $rectX = $x;
-                    $rectY = $y - $height + 5;
-                    
+                    // Padding extra para que el texto no quede pegado al borde
+                    $paddingX = 10;
+                    $paddingY = 6;
+
+                    $width  = $textWidth + $paddingX * 2;
+                    $height = $textHeight + $paddingY * 2;
+
+                    // Ajustar X e Y para que el texto quede centrado dentro del rectángulo
+                    $rectX = $x - $paddingX;
+                    $rectY = $y - $textHeight - $paddingY + 2; // +2 para compensar baseline
+
+                    // Sobrescribir la coordenada X de texto dentro del rectángulo para respetar padding
+                    $textX = $x;
+                    $textY = $y;
+
+                    // Dimensiones calculadas para el fondo
+
                     // Crear una imagen de color sólido como fondo
                     $backgroundRect = $this->imageManager->create($width, $height)->fill($areaColor);
-                    
+
                     // Colocar el rectángulo de fondo
                     $canvas->place($backgroundRect, 'top-left', $rectX, $rectY);
-                    
-                    // Para el texto del rol, usar color blanco para mejor contraste
-                    $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
+
+                    // Rectángulo de fondo colocado
+
+                    // Para el texto del bloque con fondo, usar color blanco y coordenadas ajustadas
+                    $canvas->text($text, $textX, $textY, function ($font) use ($fontSize, $block) {
                         $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
                         $font->size($fontSize);
                         $font->color('#FFFFFF'); // Texto blanco para contraste
@@ -577,14 +680,7 @@ class CredentialService implements CredentialServiceInterface
                     });
                 }
                 
-                Log::info('[CREDENTIAL SERVICE] Texto aplicado con coordenadas directas', [
-                    'block_id' => $block['id'],
-                    'text' => $text,
-                    'coords' => ['x' => $x, 'y' => $y],
-                    'font_size' => $fontSize,
-                    'alignment' => $block['alignment'] ?? 'left',
-                    'approach' => 'Direct 1:1 mapping'
-                ]);
+                // Texto aplicado
             }
         }
         
