@@ -64,6 +64,9 @@ interface AccreditationRequestsIndexProps {
 }
 
 export default function Index(props: AccreditationRequestsIndexProps) {
+  // Obtener datos de autenticación para verificar roles
+  const { auth } = usePage<SharedData>().props;
+  
   // Estado para controlar el diálogo de suspensión
   const [suspensionDialog, setSuspensionDialog] = useState<SuspensionDialogState>({
     isOpen: false,
@@ -279,12 +282,19 @@ export default function Index(props: AccreditationRequestsIndexProps) {
         label: "Editar",
         permission: "accreditation_request.update",
         showCondition: (row: AccreditationRequest) => {
+          // Admin y security_manager pueden editar en cualquier estado
+          const isPrivilegedUser = auth.user?.roles?.includes('admin') || auth.user?.roles?.includes('security_manager');
+          const canEdit = isPrivilegedUser || row.status === 'draft';
+          
           console.log('[EDIT CONDITION] Verificando condición para editar:', {
             uuid: row.uuid,
             status: row.status,
-            canEdit: row.status === 'draft'
+            userRoles: auth.user?.roles,
+            isPrivilegedUser,
+            canEdit
           });
-          return row.status === 'draft';
+          
+          return canEdit;
         },
         handler: (row: AccreditationRequest) => {
           console.log('[EDIT ACTION] Navegando a edición:', {
@@ -553,8 +563,7 @@ export default function Index(props: AccreditationRequestsIndexProps) {
     }
   };
 
-  // Obtener información del usuario para verificar permisos
-  const { auth } = usePage<SharedData>().props;
+  // Verificar permisos usando la información de auth ya declarada
   const canCreate = Array.isArray(auth.user?.permissions) && auth.user.permissions.includes('accreditation_request.create');
 
   return (

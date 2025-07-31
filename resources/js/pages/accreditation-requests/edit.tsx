@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm, Head } from '@inertiajs/react';
+import { useForm, Head, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { router } from '@inertiajs/react';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AccreditationRequest } from './columns';
+import { SharedData } from '@/types';
 
 interface Event {
   id: number;
@@ -36,6 +37,9 @@ interface EditProps {
 }
 
 export default function Edit({ request, events = [], employees = [], zones = [] }: EditProps) {
+  // Obtener información del usuario autenticado
+  const { auth } = usePage<SharedData>().props;
+  
   const { data, setData, put, processing, errors } = useForm({
     employee_id: request.employee_id,
     event_id: request.event_id,
@@ -53,8 +57,11 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
     });
   };
 
-  // Si no es borrador, mostrar mensaje informativo
-  if (request.status !== 'draft') {
+  // Verificar si el usuario tiene permisos privilegiados
+  const isPrivilegedUser = auth.user?.roles?.includes('admin') || auth.user?.roles?.includes('security_manager');
+  
+  // Solo mostrar mensaje restrictivo si no es borrador Y no es usuario privilegiado
+  if (request.status !== 'draft' && !isPrivilegedUser) {
     const statusMessages = {
       'submitted': 'La solicitud ha sido enviada y está pendiente de revisión por el área correspondiente.',
       'under_review': 'La solicitud está siendo revisada por el administrador del sistema.',
@@ -139,9 +146,18 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
         </div>
 
         {request.status !== 'draft' && (
-          <Alert>
-            <AlertDescription>
-              Solo se pueden editar solicitudes en estado borrador. Esta solicitud está en estado: {request.status}
+          <Alert className={isPrivilegedUser ? "border-blue-200 bg-blue-50" : "border-yellow-200 bg-yellow-50"}>
+            <AlertDescription className={isPrivilegedUser ? "text-blue-800" : "text-yellow-800"}>
+              {isPrivilegedUser ? (
+                <>
+                  <strong>Modo de edición privilegiada:</strong> Usted tiene permisos para editar solicitudes en cualquier estado. 
+                  Esta solicitud está en estado: <strong>{request.status}</strong>
+                </>
+              ) : (
+                <>
+                  Solo se pueden editar solicitudes en estado borrador. Esta solicitud está en estado: <strong>{request.status}</strong>
+                </>
+              )}
             </AlertDescription>
           </Alert>
         )}
@@ -161,7 +177,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                     <Select 
                       value={data.employee_id?.toString()} 
                       onValueChange={(value) => setData('employee_id', parseInt(value))}
-                      disabled={processing || request.status !== 'draft'}
+                      disabled={processing || (request.status !== 'draft' && !isPrivilegedUser)}
                     >
                       <SelectTrigger className={errors.employee_id ? 'border-red-500' : ''}>
                         <SelectValue placeholder="Seleccione un empleado" />
@@ -191,7 +207,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                     <Select 
                       value={data.event_id?.toString()} 
                       onValueChange={(value) => setData('event_id', parseInt(value))}
-                      disabled={processing || request.status !== 'draft'}
+                      disabled={processing || (request.status !== 'draft' && !isPrivilegedUser)}
                     >
                       <SelectTrigger className={errors.event_id ? 'border-red-500' : ''}>
                         <SelectValue placeholder="Seleccione un evento" />
@@ -247,7 +263,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                                 setData('zones', data.zones.filter((id: number) => id !== zone.id));
                               }
                             }}
-                            disabled={processing || request.status !== 'draft'}
+                            disabled={processing || (request.status !== 'draft' && !isPrivilegedUser)}
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />
                           <Label 
@@ -274,7 +290,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                   placeholder="Agregue comentarios adicionales sobre la solicitud..."
                   value={data.comments}
                   onChange={(e) => setData('comments', e.target.value)}
-                  disabled={processing || request.status !== 'draft'}
+                  disabled={processing || (request.status !== 'draft' && !isPrivilegedUser)}
                   rows={4}
                   className={errors.comments ? 'border-red-500' : ''}
                 />
@@ -295,7 +311,7 @@ export default function Edit({ request, events = [], employees = [], zones = [] 
                 </Button>
                 <Button
                   type="submit"
-                  disabled={processing || request.status !== 'draft'}
+                  disabled={processing || (request.status !== 'draft' && !isPrivilegedUser)}
                 >
                   {processing ? (
                     <>

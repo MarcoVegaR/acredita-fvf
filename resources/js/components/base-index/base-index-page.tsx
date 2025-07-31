@@ -200,7 +200,7 @@ export function BaseIndexPage<T extends Entity>({
     const exactMatch = permissions === permission;
     console.log(`[PERMISSION CHECK] ${exactMatch ? '✅' : '❌'} Permiso exacto ${permission} ${exactMatch ? 'coincide' : 'no coincide'}`);
     return exactMatch;
-  }, [auth?.user?.permissions]);
+  }, [auth?.user?.permissions, auth?.user?.name, auth?.user?.roles]);
   
   // Manejador genérico para cambios de paginación
   const handlePaginationChange = React.useCallback(({ pageIndex, pageSize }: { pageIndex: number; pageSize: number }) => {

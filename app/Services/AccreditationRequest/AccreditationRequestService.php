@@ -108,9 +108,23 @@ class AccreditationRequestService implements AccreditationRequestServiceInterfac
      */
     public function updateRequest(AccreditationRequest $request, array $data): AccreditationRequest
     {
-        // Solo se pueden actualizar borradores
-        if (!$request->isDraft()) {
+        // Verificar si el usuario tiene permisos privilegiados (admin o security_manager)
+        $user = auth()->user();
+        $isPrivilegedUser = $user && ($user->hasRole('admin') || $user->hasRole('security_manager'));
+        
+        // Solo se pueden actualizar borradores, a menos que sea un usuario privilegiado
+        if (!$request->isDraft() && !$isPrivilegedUser) {
             throw new Exception('Solo se pueden actualizar solicitudes en borrador.');
+        }
+        
+        // Registrar en log el tipo de actualización
+        if (!$request->isDraft() && $isPrivilegedUser) {
+            Log::info('[SERVICE] Actualizando solicitud en estado no-borrador por usuario privilegiado', [
+                'user_id' => $user->id,
+                'user_role' => $user->getRoleNames()->first(),
+                'request_id' => $request->id,
+                'request_status' => $request->status->value
+            ]);
         }
 
         DB::beginTransaction();

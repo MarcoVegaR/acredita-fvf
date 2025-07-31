@@ -172,21 +172,32 @@ class AccreditationRequestController extends BaseController
             Gate::authorize('update', $accreditationRequest);
             Log::info('[EDIT] Autorización exitosa');
             
-            // Verificar que la solicitud esté en estado borrador
-            if ($accreditationRequest->status->value !== 'draft') {
-                Log::warning('[EDIT] Intento de editar solicitud no borrador', [
-                    'status' => $accreditationRequest->status->value
+            // Verificar restricciones de estado según el rol del usuario
+            $user = auth()->user();
+            $isPrivilegedUser = $user->hasRole('admin') || $user->hasRole('security_manager');
+            
+            // Solo admin y security_manager pueden editar solicitudes en cualquier estado
+            if (!$isPrivilegedUser && $accreditationRequest->status->value !== 'draft') {
+                Log::warning('[EDIT] Intento de editar solicitud no borrador sin permisos privilegiados', [
+                    'status' => $accreditationRequest->status->value,
+                    'user_role' => $user->getRoleNames()->first(),
+                    'is_privileged' => $isPrivilegedUser
                 ]);
                 return redirect()
                     ->route('accreditation-requests.index')
                     ->with('warning', 'No se puede editar esta solicitud porque ya fue enviada para revisión. Solo se pueden editar solicitudes en estado borrador.');
             }
             
+            Log::info('[EDIT] Validación de estado aprobada', [
+                'status' => $accreditationRequest->status->value,
+                'user_role' => $user->getRoleNames()->first(),
+                'is_privileged' => $isPrivilegedUser
+            ]);
+            
             // Obtener los eventos activos para el selector
             $events = $this->eventService->getAllActive();
             
             // Obtener empleados del mismo proveedor (si es proveedor) o todos (si es admin)
-            $user = auth()->user();
             if ($user->hasRole('provider')) {
                 $employees = $user->provider->employees()->active()->get();
             } else {
@@ -238,13 +249,28 @@ class AccreditationRequestController extends BaseController
             Gate::authorize('update', $accreditationRequest);
             Log::info('[UPDATE] Autorización exitosa');
 
-            // Validar que solo se puedan actualizar borradores
-            if ($accreditationRequest->status !== AccreditationStatus::Draft) {
+            // Verificar restricciones de estado según el rol del usuario
+            $user = auth()->user();
+            $isPrivilegedUser = $user->hasRole('admin') || $user->hasRole('security_manager');
+            
+            // Solo admin y security_manager pueden actualizar solicitudes en cualquier estado
+            if (!$isPrivilegedUser && $accreditationRequest->status !== AccreditationStatus::Draft) {
+                Log::warning('[UPDATE] Intento de actualizar solicitud no borrador sin permisos privilegiados', [
+                    'status' => $accreditationRequest->status->value,
+                    'user_role' => $user->getRoleNames()->first(),
+                    'is_privileged' => $isPrivilegedUser
+                ]);
                 return redirect()
                     ->route('accreditation-requests.index')
                     ->with('flash.banner', 'Solo se pueden actualizar solicitudes en estado borrador.')
                     ->with('flash.bannerStyle', 'warning');
             }
+            
+            Log::info('[UPDATE] Validación de estado aprobada', [
+                'status' => $accreditationRequest->status->value,
+                'user_role' => $user->getRoleNames()->first(),
+                'is_privileged' => $isPrivilegedUser
+            ]);
 
             // Validar los datos de entrada
             $validated = $request->validate([
