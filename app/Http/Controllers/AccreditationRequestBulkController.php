@@ -135,17 +135,17 @@ class AccreditationRequestBulkController extends BaseController
     public function step3(Request $request)
     {
         $this->authorize('accreditation_request.create');
-
+        
         $request->validate([
-            'event_id' => 'required|integer|exists:events,id',
-            'employee_ids' => 'required|array|min:1',
-            'employee_ids.*' => 'integer|exists:employees,id'
+            'event_id' => 'required|exists:events,id',
+            'employee_ids' => 'required|array',
+            'employee_ids.*' => 'exists:employees,id'
         ]);
 
-        $eventId = (int) $request->event_id;
-        $employeeIds = array_map('intval', $request->employee_ids);
+        $eventId = $request->input('event_id');
+        $employeeIds = $request->input('employee_ids');
 
-        // Guardar en sesión
+        // Guardar selecciones en la sesión
         session([
             'bulk_wizard.event_id' => $eventId,
             'bulk_wizard.employee_ids' => $employeeIds
@@ -154,7 +154,7 @@ class AccreditationRequestBulkController extends BaseController
         $event = $this->accreditationService->getActiveEvents()->find($eventId);
         $zones = $this->accreditationService->getZonesForEvent($eventId);
         $selectedEmployees = $this->employeeService->getEmployeesByIds($employeeIds);
-
+        
         return Inertia::render('accreditation-requests/bulk/step-3', [
             'event' => $event,
             'selectedEmployees' => $selectedEmployees,

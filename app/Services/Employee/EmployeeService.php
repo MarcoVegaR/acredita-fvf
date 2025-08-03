@@ -477,16 +477,19 @@ class EmployeeService implements EmployeeServiceInterface
      */
     public function getEmployeesByIds(array $employeeIds): Collection
     {
+        if (empty($employeeIds)) {
+            return Employee::query()->whereRaw('1 = 0')->get();
+        }
+        
         $user = Auth::user();
         
         $query = $this->employeeRepository->query()
             ->with('provider')
             ->whereIn('id', $employeeIds);
         
-        // Aplicar filtros de acceso basados en el rol del usuario (orden de prioridad)
+        // Aplicar filtros de seguridad según el rol (mismo patrón que en otros métodos)
         if ($user->hasRole('admin') || $user->hasPermissionTo('employee.manage')) {
-            // Admin puede ver todos los empleados
-            // No aplicar filtros adicionales
+            // Admin puede ver todos los empleados seleccionados
         } elseif ($user->hasRole('area_manager')) {
             // Area manager solo puede ver empleados de proveedores de su área
             if ($user->managedArea) {
@@ -495,19 +498,22 @@ class EmployeeService implements EmployeeServiceInterface
                     $q->where('area_id', $userAreaId);
                 });
             } else {
-                // Si no tiene área asignada, no puede ver ningún empleado
-                $query->where('id', -1); // Condition that returns no results
+                return Employee::query()->whereRaw('1 = 0')->get();
             }
         } elseif ($user->hasRole('provider')) {
-            // Provider solo puede ver empleados de su propio proveedor
-            if ($user->provider_id) {
-                $query->where('provider_id', $user->provider_id);
+            // Provider: verificar que los empleados sean de su proveedor
+            // Cargar el proveedor asociado al usuario mediante la relación
+            $userProvider = $user->provider;
+            
+            if ($userProvider) {
+                $query->where('provider_id', $userProvider->id);
             } else {
-                $query->where('id', -1); // Condition that returns no results
+                // Sin proveedor asociado, retornar colección vacía
+                return Employee::query()->whereRaw('1 = 0')->get();
             }
         } else {
-            // Otros usuarios no pueden ver empleados
-            $query->where('id', -1); // Condition that returns no results
+            // Otros usuarios no tienen acceso a empleados
+            return Employee::query()->whereRaw('1 = 0')->get();
         }
         
         return $query->get();
