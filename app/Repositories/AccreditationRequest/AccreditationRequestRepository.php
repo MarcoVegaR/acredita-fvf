@@ -33,7 +33,7 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
      */
     public function getPaginatedRequests(Request $request, User $user): LengthAwarePaginator
     {
-        $query = $this->model->with(['employee.provider', 'event', 'zones']);
+        $query = $this->model->with(['employee.provider.area', 'event', 'zones']);
         
         // Aplicar filtros por evento
         if ($request->has('event_id') && $request->event_id) {
@@ -43,6 +43,27 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
         // Aplicar filtros por estado
         if ($request->has('status') && $request->status) {
             $query->where('status', $request->status);
+        }
+        
+        // Aplicar filtro por área (a través de la relación employee -> provider -> area)
+        if ($request->has('area_id') && $request->area_id) {
+            $query->whereHas('employee.provider', function($q) use ($request) {
+                $q->where('area_id', $request->area_id);
+            });
+        }
+        
+        // Aplicar filtro por proveedor (a través de la relación employee -> provider)
+        if ($request->has('provider_id') && $request->provider_id) {
+            $query->whereHas('employee', function($q) use ($request) {
+                $q->where('provider_id', $request->provider_id);
+            });
+        }
+        
+        // Aplicar filtro por zona
+        if ($request->has('zone_id') && $request->zone_id) {
+            $query->whereHas('zones', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
         }
         
         // Aplicar scope para filtrar por permisos del usuario

@@ -51,6 +51,11 @@ interface AccreditationRequestsIndexProps {
     total: number;
     draft: number;
     submitted: number;
+    under_review: number;
+    approved: number;
+    rejected: number;
+    cancelled: number;
+    suspended: number;
   };
   filters?: {
     search?: string;
@@ -59,13 +64,66 @@ interface AccreditationRequestsIndexProps {
     page?: number;
     per_page?: number;
     event_id?: number;
+    area_id?: number;
+    provider_id?: number;
+    zone_id?: number;
     status?: string;
   };
+  // Datos para los selectores de filtros
+  areas: Array<{ id: number; name: string }>;
+  providers: Array<{ id: number; name: string }>;
+  zones: Array<{ id: number; name: string }>;
+  events: Array<{ id: number; name: string }>;
 }
 
 export default function Index(props: AccreditationRequestsIndexProps) {
   // Obtener datos de autenticación para verificar roles
   const { auth } = usePage<SharedData>().props;
+  
+  // Estado para manejar opciones de proveedores dinámicamente
+  // Inicia vacío hasta que se seleccione un área (comportamiento dependiente)
+  const [providerOptions, setProviderOptions] = useState<Array<{ value: string; label: string }>>([]);
+  
+  // Función para cargar proveedores por área
+  const loadProvidersByArea = React.useCallback(async (areaId: string) => {
+    try {
+      const response = await fetch(`/accreditation-requests?area_id=${areaId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        if (data.providers) {
+          const newProviderOptions = data.providers.map((provider: { id: number; name: string }) => ({
+            value: String(provider.id),
+            label: provider.name
+          }));
+          
+          setProviderOptions(newProviderOptions);
+        }
+      }
+    } catch {
+      // Error silencioso - solo limpiar las opciones
+      setProviderOptions([]);
+    }
+  }, []);
+  
+  // useEffect para cargar proveedores cuando cambia el área seleccionada
+  React.useEffect(() => {
+    const areaId = props.filters?.area_id;
+    
+    if (areaId && String(areaId) !== '' && String(areaId) !== 'all') {
+      loadProvidersByArea(String(areaId));
+    } else {
+      setProviderOptions([]);
+    }
+  }, [props.filters?.area_id, loadProvidersByArea]);
   
   // Estado para controlar el diálogo de suspensión
   const [suspensionDialog, setSuspensionDialog] = useState<SuspensionDialogState>({
@@ -188,16 +246,42 @@ export default function Index(props: AccreditationRequestsIndexProps) {
           label: "Estado",
           options: [
             { value: "draft", label: "Borrador" },
-            { value: "submitted", label: "Enviada" }
+            { value: "submitted", label: "Enviada" },
+            { value: "under_review", label: "En revisión" },
+            { value: "approved", label: "Aprobada" },
+            { value: "rejected", label: "Rechazada" },
+            { value: "cancelled", label: "Cancelada" },
+            { value: "suspended", label: "Suspendida" }
           ]
+        },
+        {
+          id: "area_id",
+          label: "Área",
+          options: props.areas.map(area => ({
+            value: String(area.id),
+            label: area.name
+          }))
+        },
+        {
+          id: "provider_id",
+          label: "Proveedor",
+          options: providerOptions // Usar estado dinámico en lugar de props estáticas
+        },
+        {
+          id: "zone_id",
+          label: "Zona",
+          options: props.zones.map(zone => ({
+            value: String(zone.id),
+            label: zone.name
+          }))
         },
         {
           id: "event_id",
           label: "Evento",
-          options: [
-            // Estos serán cargados dinámicamente desde el backend
-            { value: "1", label: "Venezuela vs Colombia" }
-          ]
+          options: props.events.map(event => ({
+            value: String(event.id),
+            label: event.name
+          }))
         }
       ]
     },
@@ -228,8 +312,38 @@ export default function Index(props: AccreditationRequestsIndexProps) {
       { 
         value: props.stats?.submitted || 0, 
         label: "Enviadas",
+        icon: "send",
+        color: "text-indigo-500"
+      },
+      { 
+        value: props.stats?.under_review || 0, 
+        label: "En revisión",
+        icon: "search",
+        color: "text-purple-500"
+      },
+      { 
+        value: props.stats?.approved || 0, 
+        label: "Aprobadas",
         icon: "check-circle",
         color: "text-green-500"
+      },
+      { 
+        value: props.stats?.rejected || 0, 
+        label: "Rechazadas",
+        icon: "x-circle",
+        color: "text-red-500"
+      },
+      { 
+        value: props.stats?.cancelled || 0, 
+        label: "Canceladas",
+        icon: "ban",
+        color: "text-gray-500"
+      },
+      { 
+        value: props.stats?.suspended || 0, 
+        label: "Suspendidas",
+        icon: "pause-circle",
+        color: "text-orange-500"
       }
     ],
     

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\AccreditationStatus;
 use App\Models\AccreditationRequest;
+use App\Models\Area;
+use App\Models\Provider;
+use App\Models\Zone;
 use App\Services\AccreditationRequest\AccreditationRequestServiceInterface;
 use App\Services\Event\EventServiceInterface;
 use Illuminate\Http\Request;
@@ -40,8 +43,33 @@ class AccreditationRequestController extends BaseController
         try {
             Gate::authorize('index', AccreditationRequest::class);
 
-            $requests = $this->accreditationRequestService->getPaginatedRequests($request);
+            // Obtener datos de áreas para el filtro
+            $areas = Area::select('id', 'name')->orderBy('name')->get();
+            
+            // Obtener datos de proveedores para el filtro, dependiendo del área si se ha seleccionado
+            $providers = [];
+            $areaId = $request->input('area_id');
+            if ($areaId) {
+                $providers = Provider::where('area_id', $areaId)
+                    ->select('id', 'name')
+                    ->orderBy('name')
+                    ->get();
+            } else {
+                // Si no hay área seleccionada, cargar todos los proveedores (con límite para performance)
+                $providers = Provider::select('id', 'name')
+                    ->orderBy('name')
+                    ->limit(100)
+                    ->get();
+            }
+            
+            // Obtener zonas para el filtro
+            $zones = Zone::select('id', 'name')->orderBy('name')->get();
+            
+            // Obtener eventos activos
             $events = $this->eventService->getAllActive();
+            
+            // Obtener solicitudes paginadas con filtros aplicados
+            $requests = $this->accreditationRequestService->getPaginatedRequests($request);
             
             // Obtener estadísticas de solicitudes filtradas por rol
             $query = AccreditationRequest::query();
@@ -76,16 +104,33 @@ class AccreditationRequestController extends BaseController
                 }
             }
             
-            // Contar solicitudes filtradas según los permisos del usuario
+            // Contar solicitudes por cada estado posible
             $totalRequests = (clone $query)->count();
             $draftRequests = (clone $query)->where('status', 'draft')->count();
             $submittedRequests = (clone $query)->where('status', 'submitted')->count();
+            $underReviewRequests = (clone $query)->where('status', 'under_review')->count();
+            $approvedRequests = (clone $query)->where('status', 'approved')->count();
+            $rejectedRequests = (clone $query)->where('status', 'rejected')->count();
+            $cancelledRequests = (clone $query)->where('status', 'cancelled')->count();
+            $suspendedRequests = (clone $query)->where('status', 'suspended')->count();
             
             $stats = [
                 'total' => $totalRequests,
                 'draft' => $draftRequests,
-                'submitted' => $submittedRequests
+                'submitted' => $submittedRequests,
+                'under_review' => $underReviewRequests,
+                'approved' => $approvedRequests,
+                'rejected' => $rejectedRequests,
+                'cancelled' => $cancelledRequests,
+                'suspended' => $suspendedRequests
             ];
+            
+            // Si se solicitan solo los proveedores para el filtro (desde el frontend)
+            if ($request->has('area_id') && $request->expectsJson()) {
+                return response()->json([
+                    'providers' => $providers
+                ]);
+            }
             
             $this->logAction('listar', 'solicitudes de acreditación', null, [
                 'filters' => $request->all()
@@ -94,7 +139,10 @@ class AccreditationRequestController extends BaseController
             return $this->respondWithSuccess('accreditation-requests/index', [
                 'accreditation_requests' => $requests,
                 'events' => $events,
-                'filters' => $request->only(['event_id', 'status', 'sort', 'direction', 'per_page']),
+                'areas' => $areas,
+                'providers' => $providers,
+                'zones' => $zones,
+                'filters' => $request->only(['event_id', 'area_id', 'provider_id', 'zone_id', 'status', 'sort', 'direction', 'per_page']),
                 'stats' => $stats
             ]);
         } catch (\Throwable $e) {
