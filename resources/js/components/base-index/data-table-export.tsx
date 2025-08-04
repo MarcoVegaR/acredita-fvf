@@ -2,6 +2,7 @@ import * as React from "react";
 import { Table } from "@tanstack/react-table";
 import { Download, Copy, Printer } from "lucide-react";
 import { getColumnLabel, formatExportValue } from "@/utils/translations/column-labels";
+import { usePermissions } from "@/hooks/usePermissions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface CustomExportAction {
+  label: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+  permission?: string;
+  showCondition?: () => boolean;
+}
+
 interface DataTableExportProps<TData> {
   table: Table<TData>;
   exportTypes?: ("excel" | "csv" | "print" | "copy")[];
@@ -22,6 +31,10 @@ interface DataTableExportProps<TData> {
    * Se utiliza para obtener las traducciones de columnas adecuadas
    */
   moduleName?: string;
+  /**
+   * Acciones de exportación personalizadas
+   */
+  customExportActions?: CustomExportAction[];
 }
 
 export function DataTableExport<TData>({
@@ -29,7 +42,9 @@ export function DataTableExport<TData>({
   exportTypes = ["excel", "csv", "print", "copy"],
   fileName = "exported-data",
   moduleName = "",
+  customExportActions = [],
 }: DataTableExportProps<TData>) {
+  const { can } = usePermissions();
   // Helper function to get visible data for export
   const getExportData = () => {
     const headers = table.getHeaderGroups().flatMap(headerGroup =>
@@ -209,6 +224,31 @@ export function DataTableExport<TData>({
             <Copy className="mr-2 h-4 w-4" />
             <span>Copiar al portapapeles</span>
           </DropdownMenuItem>
+        )}
+        
+        {/* Acciones personalizadas */}
+        {customExportActions.length > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            {customExportActions.map((action, index) => {
+              // Verificar permisos si están definidos
+              if (action.permission && !can(action.permission)) {
+                return null;
+              }
+              
+              // Verificar condición de visibilidad si está definida
+              if (action.showCondition && !action.showCondition()) {
+                return null;
+              }
+              
+              return (
+                <DropdownMenuItem key={index} onClick={action.onClick}>
+                  {action.icon && <span className="mr-2">{action.icon}</span>}
+                  <span>{action.label}</span>
+                </DropdownMenuItem>
+              );
+            })}
+          </>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

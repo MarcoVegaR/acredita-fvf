@@ -751,5 +751,109 @@ class AccreditationRequestController extends BaseController
         }
     }
 
+    /**
+     * Exportar reporte detallado completo con zonas expandidas
+     * Solo para admin y security_manager - exporta TODA la base de datos
+     */
+    public function detailedExport(Request $request)
+    {
+        // REPORTE COMPLETO: Solo admin y security_manager pueden acceder
+        $user = auth()->user();
+        if (!($user->hasRole('admin') || $user->hasRole('security_manager'))) {
+            abort(403, 'No tiene permisos para acceder al reporte completo.');
+        }
+
+        // OBTENER TODAS LAS SOLICITUDES - NO SE APLICAN FILTROS
+        $requests = AccreditationRequest::with(['employee.provider.area', 'event', 'zones'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Prepare CSV content with BOM for Excel compatibility
+        $csvContent = "\xEF\xBB\xBF";
+        
+        // CSV Headers
+        $headers = [
+            'ID',
+            'Área',
+            'Proveedor', 
+            'Empleado',
+            'Zona 1',
+            'Zona 2',
+            'Zona 3',
+            'Zona 4',
+            'Zona 5',
+            'Zona 6',
+            'Zona 7',
+            'Zona 8',
+            'Zona 9',
+            'Estado'
+        ];
+        $csvContent .= implode(';', $headers) . "\n";
+        
+        // Status translations
+        $statusTranslations = [
+            'draft' => 'Borrador',
+            'submitted' => 'Enviada',
+            'under_review' => 'En revisión',
+            'approved' => 'Aprobada',
+            'rejected' => 'Rechazada',
+            'returned' => 'Devuelta',
+            'suspended' => 'Suspendida'
+        ];
+        
+        // Generate CSV rows
+        foreach ($requests as $request) {
+            $row = [];
+            
+            // Basic data
+            $row[] = $request->id;
+            $row[] = $request->employee->provider->area->name ?? '';
+            $row[] = $request->employee->provider->name ?? '';
+            $row[] = $request->employee->first_name . ' ' . $request->employee->last_name;
+            
+            // Initialize zone columns (1-9)
+            $zoneColumns = [];
+            for ($i = 1; $i <= 9; $i++) {
+                $zoneColumns[$i] = '';
+            }
+            
+            // Fill zones according to their code
+            foreach ($request->zones as $zone) {
+                if ($zone->code >= 1 && $zone->code <= 9) {
+                    $zoneColumns[$zone->code] = $zone->name;
+                }
+            }
+            
+            // Add zone columns to row
+            for ($i = 1; $i <= 9; $i++) {
+                $row[] = $zoneColumns[$i];
+            }
+            
+            // Status (translated)
+            $statusValue = $request->status->value ?? 'draft';
+            $row[] = $statusTranslations[$statusValue] ?? $statusValue;
+            
+            // Escape CSV values
+            $escapedRow = array_map(function($value) {
+                // Remove line breaks and escape quotes
+                $value = str_replace(["\r\n", "\r", "\n"], ' ', $value);
+                $value = str_replace('"', '""', $value);
+                return '"' . $value . '"';
+            }, $row);
+            
+            $csvContent .= implode(';', $escapedRow) . "\n";
+        }
+        
+        // Generate filename with timestamp
+        $timestamp = now()->format('Y-m-d_H-i-s');
+        $filename = "reporte-acreditaciones-completo_{$timestamp}.csv";
+        
+        return response($csvContent)
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
+            ->header('Content-Disposition', "attachment; filename={$filename}")
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
+    }
 
 }

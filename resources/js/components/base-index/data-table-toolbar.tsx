@@ -25,6 +25,13 @@ interface DataTableToolbarProps<TData> {
     enabled: boolean;
     fileName?: string;
     exportTypes?: ("excel" | "csv" | "print" | "copy")[];
+    customActions?: Array<{
+      label: string;
+      icon?: React.ReactNode;
+      onClick: () => void;
+      permission?: string;
+      showCondition?: () => boolean;
+    }>;
   };
   showNewButton?: boolean;
   newButtonProps?: {
@@ -133,7 +140,8 @@ export function DataTableToolbar<TData>({
             table={table} 
             exportTypes={exportOptions.exportTypes} 
             fileName={exportOptions.fileName}
-            moduleName={moduleName} 
+            moduleName={moduleName}
+            customExportActions={exportOptions.customActions} 
           />
         )}
         <DataTableViewOptions 

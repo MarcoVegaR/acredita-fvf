@@ -11,13 +11,15 @@ import {
   TicketCheck,
   RefreshCw,
   Users,
-  ChevronDown
+  ChevronDown,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { SuspensionDialog } from "@/components/suspension-dialog";
 import { ActionDialog } from "@/components/action-dialog";
 import { usePage, router } from "@inertiajs/react";
 import { SharedData } from "@/types";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -350,8 +352,8 @@ export default function Index(props: AccreditationRequestsIndexProps) {
     // Configuración de traducciones y búsqueda
     moduleName: "accreditation_requests",
     routeKeyName: "uuid", // Usar UUID en lugar de ID para las rutas
-    searchableColumns: ["employee.first_name", "employee.last_name", "event.name"],
-    searchPlaceholder: "Buscar por empleado o evento...",
+    searchableColumns: ["employee.first_name", "employee.last_name", "employee.document_number", "event.name"],
+    searchPlaceholder: "Buscar por nombre, apellido, cédula o evento...",
     breadcrumbs: [
       {
         title: "Dashboard",
@@ -363,12 +365,27 @@ export default function Index(props: AccreditationRequestsIndexProps) {
       },
     ],
     columns: columns,
-    filterableColumns: ["employee.first_name", "event.name", "status"],
+    filterableColumns: ["employee.first_name", "employee.last_name", "employee.document_number", "event.name", "status"],
     defaultSorting: [{ id: "id", desc: true }],
     exportOptions: {
       enabled: true,
       fileName: "solicitudes-acreditacion",
       exportTypes: ["excel", "csv", "print", "copy"] as ("excel" | "csv" | "print" | "copy")[],
+      customActions: [
+        {
+          label: "Reporte Completo (Admin)",
+          icon: <FileSpreadsheet className="h-4 w-4" />,
+          onClick: () => {
+            // Descargar reporte detallado completo - sin filtros
+            window.open('/accreditation-requests/detailed-export', '_blank');
+          },
+          showCondition: () => {
+            // Solo mostrar para admin y security_manager
+            const { hasRole } = usePermissions();
+            return hasRole('admin') || hasRole('security_manager');
+          }
+        }
+      ],
     },
     newButton: {
       show: false, // Deshabilitamos el botón automático para usar nuestro dropdown personalizado

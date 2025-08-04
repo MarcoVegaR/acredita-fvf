@@ -348,6 +348,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.delete')
             ->name('accreditation-requests.destroy');
 
+        // Exportar reporte detallado completo (Solo admin/security_manager)
+        Route::get('accreditation-requests/detailed-export', 'detailedExport')
+            ->name('accreditation-requests.detailed-export');
+            
         // Ver detalles de una solicitud específica (SIEMPRE AL FINAL)
         Route::get('accreditation-requests/{accreditation_request:uuid}', 'show')
             ->middleware('permission:accreditation_request.view')

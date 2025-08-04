@@ -66,6 +66,18 @@ class AccreditationRequestRepository extends BaseRepository implements Accredita
             });
         }
         
+        // Aplicar filtro de búsqueda global
+        if ($request->has('search') && !empty($request->search)) {
+            $search = $request->search;
+            $query->whereHas('employee', function($q) use ($search) {
+                $q->where(function($subQ) use ($search) {
+                    $subQ->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('document_number', 'like', "%{$search}%");
+                });
+            });
+        }
+        
         // Aplicar scope para filtrar por permisos del usuario
         $query = $this->scopeForUser($query, $user);
         
