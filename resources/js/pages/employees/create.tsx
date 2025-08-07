@@ -14,8 +14,8 @@ interface CreateEmployeeProps {
 
 export default function CreateEmployee({ providers = [], errors = {} }: CreateEmployeeProps) {
   const formOptions = {
-    title: "Registrar Empleado",
-    subtitle: "Complete el formulario para registrar un nuevo empleado en el sistema",
+    title: "Registrar Colaborador",
+    subtitle: "Complete el formulario para registrar un nuevo colaborador en el sistema",
     endpoint: "/employees",
     moduleName: "employees",
     isEdit: false,
@@ -25,11 +25,11 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
         href: "/dashboard",
       },
       {
-        title: "Empleados",
+        title: "Colaboradores",
         href: "/employees",
       },
       {
-        title: "Registrar Empleado",
+        title: "Registrar Colaborador",
         href: "/employees/create",
       }
     ],
@@ -39,7 +39,7 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
       { value: "photo", label: "Fotografía", icon: <ClipboardList className="h-4 w-4" /> },
     ],
     permissions: {
-      create: "employee.manage_own_provider", // Permiso para administrar empleados del área
+      create: "employee.manage_own_provider", // Permiso para administrar colaboradores del área
     },
     beforeSubmit: (data: Record<string, unknown>) => {
       // Convertir la foto en base64 al campo correcto para el backend
@@ -54,8 +54,8 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
     },
     actions: {
       save: {
-        label: "Registrar Empleado",
-        disabledText: "No tienes permisos para registrar empleados",
+        label: "Registrar Colaborador",
+        disabledText: "No tienes permisos para registrar colaboradores",
       },
       cancel: {
         label: "Cancelar",
@@ -66,7 +66,7 @@ export default function CreateEmployee({ providers = [], errors = {} }: CreateEm
 
   return (
     <>
-      <Head title="Registrar Empleado" />
+      <Head title="Registrar Colaborador" />
       <BaseFormPage
         options={formOptions}
         schema={createEmployeeSchema}

@@ -7,7 +7,7 @@ export const DOCUMENT_TYPES = [
   { value: "P", label: "Pasaporte" }
 ] as const;
 
-// Interfaz TypeScript para el empleado
+// Interfaz TypeScript para el colaborador
 export interface Employee {
   id?: number;
   uuid?: string;
@@ -31,7 +31,7 @@ export interface Provider {
   name: string;
 }
 
-// Esquema de validación Zod para crear empleado
+// Esquema de validación Zod para crear colaborador
 export const createEmployeeSchema = z.object({
   provider_id: z.coerce.number().min(1, "El proveedor es requerido"),
   document_type: z.string().min(1, "El tipo de documento es requerido"),
@@ -46,7 +46,7 @@ export const createEmployeeSchema = z.object({
   croppedPhoto: z.string().nullable().optional(),
 });
 
-// Esquema de validación Zod para actualizar empleado
+// Esquema de validación Zod para actualizar colaborador
 export const updateEmployeeSchema = createEmployeeSchema.extend({
   id: z.number(),
   uuid: z.string().optional(),

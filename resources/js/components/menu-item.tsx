@@ -56,7 +56,7 @@ export function MenuItem({ item, isActive = false, variant = 'header', className
         return <TicketCheck className={iconClass} />;
       case 'Proveedores':
         return <Truck className={iconClass} />;
-      case 'Empleados':
+      case 'Colaboradores':
         return <UserRound className={iconClass} />;
       case 'Roles':
       case 'Administración':

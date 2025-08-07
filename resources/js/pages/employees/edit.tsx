@@ -13,7 +13,7 @@ interface EditEmployeeProps {
 
 export default function EditEmployee({ employee, providers = [], errors = {} }: EditEmployeeProps) {
   const formOptions = {
-    title: "Editar Empleado",
+    title: "Editar Colaborador",
     subtitle: `Modificando información de ${employee.first_name} ${employee.last_name}`,
     endpoint: `/employees/${employee.uuid}`,
     moduleName: "employees",
@@ -25,7 +25,7 @@ export default function EditEmployee({ employee, providers = [], errors = {} }: 
         href: "/dashboard",
       },
       {
-        title: "Empleados",
+        title: "Colaboradores",
         href: "/employees",
       },
       {
@@ -40,8 +40,8 @@ export default function EditEmployee({ employee, providers = [], errors = {} }: 
     ],
     permissions: {
       // Siguiendo la estructura de permisos similar a proveedores
-      edit: "employee.manage_own_provider", // Permiso para administrar empleados del área
-      view: "employee.view", // Permiso para ver empleados
+      edit: "employee.manage_own_provider", // Permiso para administrar colaboradores del área
+      view: "employee.view", // Permiso para ver colaboradores
     },
     beforeSubmit: (data: Partial<Employee>) => {
       // Convertir la foto en base64 al campo correcto para el backend
@@ -57,8 +57,8 @@ export default function EditEmployee({ employee, providers = [], errors = {} }: 
     },
     actions: {
       save: {
-        label: "Actualizar Empleado",
-        disabledText: "No tienes permisos para editar empleados",
+        label: "Actualizar Colaborador",
+        disabledText: "No tienes permisos para editar colaboradores",
       },
       cancel: {
         label: "Volver",
@@ -78,7 +78,7 @@ export default function EditEmployee({ employee, providers = [], errors = {} }: 
 
   return (
     <>
-      <Head title={`Editar Empleado - ${employee.first_name} ${employee.last_name}`} />
+      <Head title={`Editar Colaborador - ${employee.first_name} ${employee.last_name}`} />
       <BaseFormPage
         options={formOptions}
         schema={updateEmployeeSchema}

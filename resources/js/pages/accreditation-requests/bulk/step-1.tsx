@@ -51,7 +51,7 @@ export default function BulkStep1({ events }: BulkStep1Props) {
       totalSteps: 4,
       steps: [
         { label: "Evento", isActive: true, isComplete: false },
-        { label: "Empleados", isActive: false, isComplete: false },
+        { label: "Colaboradores", isActive: false, isComplete: false },
         { label: "Zonas", isActive: false, isComplete: false },
         { label: "Confirmación", isActive: false, isComplete: false },
       ]

@@ -134,6 +134,20 @@ export interface BaseIndexOptions<T extends Entity> {
       confirmTitle?: string;
     }>;
   };
+  
+  // Configuración de acciones masivas
+  bulkActions?: Array<{
+    label: string;
+    icon?: React.ReactNode;
+    permission?: string | string[];
+    showCondition?: (selectedRows: T[]) => boolean;
+    confirmMessage?: string | ((selectedRows: T[]) => string);
+    confirmTitle?: string;
+    requiresReason?: boolean;
+    reasonLabel?: string;
+    reasonPlaceholder?: string;
+    handler: (selectedRows: T[], reason?: string) => void;
+  }>;
 }
 
 // Props para el componente BaseIndexPage
@@ -589,6 +603,9 @@ export function BaseIndexPage<T extends Entity>({
             defaultSorting={options.defaultSorting || [{ id: "id", desc: true }]}
             renderRowActions={renderRowActions}
             exportOptions={options.exportOptions || { enabled: false }}
+            // Configuración de acciones masivas
+            enableRowSelection={!!(options.bulkActions && options.bulkActions.length > 0)}
+            bulkActions={options.bulkActions || []}
             toolbarProps={{
               showNewButton: false,
               filterConfig: options.filterConfig,

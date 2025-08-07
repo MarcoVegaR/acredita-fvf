@@ -22,9 +22,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DataTablePagination } from "@/components/base-index/data-table-pagination";
 import { DataTableToolbar } from "@/components/base-index/data-table-toolbar";
 import { FilterConfig } from "@/components/base-index/filter-toolbar";
+import { BulkActionsBar } from "@/components/base-index/bulk-actions-bar";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -83,6 +85,22 @@ interface DataTableProps<TData, TValue> {
   loading?: boolean;
   loadingMessage?: string;
   emptyMessage?: string;
+  
+  // Configuración de acciones masivas
+  enableRowSelection?: boolean;
+  bulkActions?: Array<{
+    label: string;
+    icon?: React.ReactNode;
+    permission?: string | string[];
+    showCondition?: (selectedRows: TData[]) => boolean;
+    confirmMessage?: string | ((selectedRows: TData[]) => string);
+    confirmTitle?: string;
+    requiresReason?: boolean;
+    reasonLabel?: string;
+    reasonPlaceholder?: string;
+    handler: (selectedRows: TData[], reason?: string) => void;
+  }>;
+  onSelectionChange?: (selectedRows: TData[]) => void;
 }
 
 export function DataTable<TData, TValue>({
@@ -105,6 +123,10 @@ export function DataTable<TData, TValue>({
   loadingMessage = "Cargando datos...",
   emptyMessage = "No hay datos disponibles",
   */
+  // Nuevos parámetros para acciones masivas
+  enableRowSelection = false,
+  bulkActions = [],
+  onSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>(defaultSorting);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -171,9 +193,41 @@ export function DataTable<TData, TValue>({
     [serverSide, searchableColumns]
   );
   
+  // Configurar columnas dinámicamente agregando columna de selección si está habilitada
+  const tableColumns = React.useMemo(() => {
+    if (enableRowSelection) {
+      // Columna de selección que se agrega al inicio
+      const selectionColumn: ColumnDef<TData, TValue> = {
+        id: "select",
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Seleccionar todas las filas"
+            className="translate-y-[2px]"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Seleccionar fila"
+            className="translate-y-[2px]"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      };
+      
+      return [selectionColumn, ...columns];
+    }
+    
+    return columns;
+  }, [enableRowSelection, columns]);
+  
   const table = useReactTable({
     data,
-    columns,
+    columns: tableColumns,
     state: {
       sorting,
       columnFilters,
@@ -185,7 +239,7 @@ export function DataTable<TData, TValue>({
         pageSize,
       },
     },
-    enableRowSelection: true,
+    enableRowSelection: enableRowSelection,
     onRowSelectionChange: setRowSelection,
     onSortingChange: handleSortingChange,
     onColumnFiltersChange: setColumnFilters,
@@ -202,6 +256,15 @@ export function DataTable<TData, TValue>({
     manualFiltering: !!serverSide,
     pageCount: serverSide?.pageCount || Math.ceil(data.length / pageSize),
   });
+
+  // Manejar cambios en la selección de filas
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selectedRowIndexes = Object.keys(rowSelection).filter(key => (rowSelection as Record<string, boolean>)[key]);
+      const selectedRows = selectedRowIndexes.map(index => data[parseInt(index)]).filter(Boolean);
+      onSelectionChange(selectedRows);
+    }
+  }, [rowSelection, data, onSelectionChange]);
 
   return (
     <div className="space-y-4">
@@ -221,6 +284,20 @@ export function DataTable<TData, TValue>({
           filters={toolbarProps?.filters}
           endpoint={toolbarProps?.endpoint}
         />
+        
+        {/* Barra de acciones masivas */}
+        {enableRowSelection && bulkActions.length > 0 && (
+          <BulkActionsBar
+            selectedRows={Object.keys(rowSelection)
+              .filter(key => (rowSelection as Record<string, boolean>)[key])
+              .map(index => data[parseInt(index)])
+              .filter(Boolean)
+            }
+            bulkActions={bulkActions}
+            onClearSelection={() => setRowSelection({})}
+          />
+        )}
+        
       <div className="mx-1 rounded-md border overflow-hidden">
         <Table className="w-full">
           <TableHeader>

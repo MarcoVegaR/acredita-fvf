@@ -855,5 +855,260 @@ class AccreditationRequestController extends BaseController
             ->header('Pragma', 'no-cache')
             ->header('Expires', '0');
     }
-
+    
+    /**
+     * ===============================================
+     * BULK ACTIONS / ACCIONES MASIVAS
+     * ===============================================
+     */
+    
+    /**
+     * Enviar múltiples solicitudes para aprobación
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkSubmit(Request $request)
+    {
+        $validated = $request->validate([
+            'uuids' => 'required|array|min:1',
+            'uuids.*' => 'required|string|exists:accreditation_requests,uuid'
+        ]);
+        
+        try {
+            $requests = AccreditationRequest::whereIn('uuid', $validated['uuids'])->get();
+            
+            $successCount = 0;
+            $errors = [];
+            
+            foreach ($requests as $accreditationRequest) {
+                try {
+                    // Verificar permisos individuales
+                    Gate::authorize('submit', $accreditationRequest);
+                    
+                    // Verificar estado válido
+                    if ($accreditationRequest->status !== AccreditationStatus::Draft) {
+                        $errors[] = "La solicitud {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name} no está en estado borrador.";
+                        continue;
+                    }
+                    
+                    $this->accreditationRequestService->submitRequest($accreditationRequest);
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    Log::error('Error enviando solicitud en bulk submit', [
+                        'uuid' => $accreditationRequest->uuid,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "Error enviando solicitud de {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name}: {$e->getMessage()}";
+                }
+            }
+            
+            // Preparar mensaje de respuesta
+            $message = "{$successCount} solicitudes enviadas correctamente.";
+            if (count($errors) > 0) {
+                $message .= ' Errores: ' . implode(', ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $message .= ' y ' . (count($errors) - 3) . ' errores más.';
+                }
+            }
+            
+            return redirect()->back()->with('success', $message);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en bulk submit', [
+                'uuids' => $validated['uuids'],
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Error procesando las solicitudes: ' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Dar visto bueno masivo (area manager)
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkReview(Request $request)
+    {
+        $validated = $request->validate([
+            'uuids' => 'required|array|min:1',
+            'uuids.*' => 'required|string|exists:accreditation_requests,uuid',
+            'comments' => 'nullable|string|max:1000'
+        ]);
+        
+        try {
+            $requests = AccreditationRequest::whereIn('uuid', $validated['uuids'])->get();
+            
+            $successCount = 0;
+            $errors = [];
+            
+            foreach ($requests as $accreditationRequest) {
+                try {
+                    // Verificar permisos individuales
+                    Gate::authorize('review', $accreditationRequest);
+                    
+                    // Verificar estado válido
+                    if ($accreditationRequest->status !== AccreditationStatus::Submitted) {
+                        $errors[] = "La solicitud {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name} no está en estado enviado.";
+                        continue;
+                    }
+                    
+                    $this->accreditationRequestService->reviewRequest($accreditationRequest, $validated['comments'] ?? null);
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    Log::error('Error dando visto bueno en bulk review', [
+                        'uuid' => $accreditationRequest->uuid,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "Error dando visto bueno a {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name}: {$e->getMessage()}";
+                }
+            }
+            
+            // Preparar mensaje de respuesta
+            $message = "{$successCount} solicitudes con visto bueno otorgado.";
+            if (count($errors) > 0) {
+                $message .= ' Errores: ' . implode(', ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $message .= ' y ' . (count($errors) - 3) . ' errores más.';
+                }
+            }
+            
+            return redirect()->back()->with('success', $message);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en bulk review', [
+                'uuids' => $validated['uuids'],
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Error procesando las solicitudes: ' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Aprobar múltiples solicitudes
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkApprove(Request $request)
+    {
+        $validated = $request->validate([
+            'uuids' => 'required|array|min:1',
+            'uuids.*' => 'required|string|exists:accreditation_requests,uuid'
+        ]);
+        
+        try {
+            $requests = AccreditationRequest::whereIn('uuid', $validated['uuids'])->get();
+            
+            $successCount = 0;
+            $errors = [];
+            
+            foreach ($requests as $accreditationRequest) {
+                try {
+                    // Verificar permisos individuales
+                    Gate::authorize('approve', $accreditationRequest);
+                    
+                    // Verificar estado válido
+                    if (!in_array($accreditationRequest->status, [AccreditationStatus::Submitted, AccreditationStatus::UnderReview])) {
+                        $errors[] = "La solicitud {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name} no está en un estado válido para aprobación.";
+                        continue;
+                    }
+                    
+                    $this->accreditationRequestService->approveRequest($accreditationRequest);
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    Log::error('Error aprobando solicitud en bulk approve', [
+                        'uuid' => $accreditationRequest->uuid,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "Error aprobando solicitud de {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name}: {$e->getMessage()}";
+                }
+            }
+            
+            // Preparar mensaje de respuesta
+            $message = "{$successCount} solicitudes aprobadas correctamente.";
+            if (count($errors) > 0) {
+                $message .= ' Errores: ' . implode(', ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $message .= ' y ' . (count($errors) - 3) . ' errores más.';
+                }
+            }
+            
+            return redirect()->back()->with('success', $message);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en bulk approve', [
+                'uuids' => $validated['uuids'],
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Error procesando las solicitudes: ' . $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Rechazar múltiples solicitudes
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function bulkReject(Request $request)
+    {
+        $validated = $request->validate([
+            'uuids' => 'required|array|min:1',
+            'uuids.*' => 'required|string|exists:accreditation_requests,uuid',
+            'reason' => 'required|string|min:3|max:1000'
+        ]);
+        
+        try {
+            $requests = AccreditationRequest::whereIn('uuid', $validated['uuids'])->get();
+            
+            $successCount = 0;
+            $errors = [];
+            
+            foreach ($requests as $accreditationRequest) {
+                try {
+                    // Verificar permisos individuales
+                    Gate::authorize('reject', $accreditationRequest);
+                    
+                    // Verificar estado válido
+                    if (!in_array($accreditationRequest->status, [AccreditationStatus::Submitted, AccreditationStatus::UnderReview])) {
+                        $errors[] = "La solicitud {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name} no está en un estado válido para rechazo.";
+                        continue;
+                    }
+                    
+                    $this->accreditationRequestService->rejectRequest($accreditationRequest, $validated['reason']);
+                    $successCount++;
+                    
+                } catch (\Exception $e) {
+                    Log::error('Error rechazando solicitud en bulk reject', [
+                        'uuid' => $accreditationRequest->uuid,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "Error rechazando solicitud de {$accreditationRequest->employee->first_name} {$accreditationRequest->employee->last_name}: {$e->getMessage()}";
+                }
+            }
+            
+            // Preparar mensaje de respuesta
+            $message = "{$successCount} solicitudes rechazadas correctamente.";
+            if (count($errors) > 0) {
+                $message .= ' Errores: ' . implode(', ', array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $message .= ' y ' . (count($errors) - 3) . ' errores más.';
+                }
+            }
+            
+            return redirect()->back()->with('success', $message);
+            
+        } catch (\Exception $e) {
+            Log::error('Error en bulk reject', [
+                'uuids' => $validated['uuids'],
+                'error' => $e->getMessage()
+            ]);
+            return redirect()->back()->withErrors(['error' => 'Error procesando las solicitudes: ' . $e->getMessage()]);
+        }
+    }
 }

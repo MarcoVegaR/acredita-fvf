@@ -468,44 +468,21 @@ export default function Index(props: AccreditationRequestsIndexProps) {
           permission: "accreditation_request.approve",
           showCondition: (request: AccreditationRequest) => {
             const canApprove = request.status === 'submitted' || request.status === 'under_review';
-            console.log('[APPROVE CONDITION] Verificando condición para aprobar:', {
-              uuid: request.uuid,
-              status: request.status,
-              canApprove: canApprove,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
             return canApprove;
           },
           confirmMessage: (request: AccreditationRequest) => 
             `¿Está seguro que desea aprobar la solicitud de acreditación para ${request.employee.first_name} ${request.employee.last_name}?`,
           confirmTitle: "Aprobar Solicitud",
           handler: (request: AccreditationRequest) => {
-            console.log('[APPROVE ACTION] Iniciando aprobación:', {
-              uuid: request.uuid,
-              status: request.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`,
-              url: `/accreditation-requests/${request.uuid}/approve`
-            });
-            
             router.post(`/accreditation-requests/${request.uuid}/approve`, {}, {
               preserveState: false,
               preserveScroll: true,
-              onStart: () => {
-                console.log('[APPROVE ACTION] Petición POST iniciada');
-              },
-              onSuccess: (page) => {
-                console.log('[APPROVE ACTION] Éxito - Solicitud aprobada:', page);
+              onSuccess: () => {
               },
               onError: (errors) => {
                 console.error('[APPROVE ACTION] Error en la petición:', errors);
-                console.error('[APPROVE ACTION] Detalles del error:', {
-                  uuid: request.uuid,
-                  errors: errors,
-                  timestamp: new Date().toISOString()
-                });
               },
               onFinish: () => {
-                console.log('[APPROVE ACTION] Petición finalizada');
               }
             });
           }
@@ -517,22 +494,9 @@ export default function Index(props: AccreditationRequestsIndexProps) {
           permission: "accreditation_request.reject",
           showCondition: (request: AccreditationRequest) => {
             const canReject = request.status === 'submitted' || request.status === 'under_review';
-            console.log('[REJECT CONDITION] Verificando condición para rechazar:', {
-              uuid: request.uuid,
-              status: request.status,
-              canReject: canReject,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
             return canReject;
           },
           handler: (request: AccreditationRequest) => {
-            console.log('[REJECT ACTION] Abriendo diálogo de rechazo:', {
-              uuid: request.uuid,
-              status: request.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
-            
-            // Abrir diálogo de acción para rechazar
             setActionDialog({
               isOpen: true,
               requestData: request,
@@ -550,43 +514,18 @@ export default function Index(props: AccreditationRequestsIndexProps) {
             `¿Está seguro que desea dar visto bueno a la solicitud de ${request.employee.first_name} ${request.employee.last_name}?`,
           confirmTitle: "Dar Visto Bueno",
           handler: (request: AccreditationRequest) => {
-            console.log('[REVIEW ACTION] Iniciando visto bueno:', {
-              uuid: request.uuid,
-              status: request.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
-            
             const comments = window.prompt('Comentarios del visto bueno (opcional):');
-            console.log('[REVIEW ACTION] Comentarios ingresados:', comments);
-            
-            // Continuar aunque el usuario cancele el prompt (comentarios son opcionales)
             const finalComments = comments || ''; // Si es null, usar string vacío
-            
-            console.log('[REVIEW ACTION] Enviando petición POST:', {
-              url: `/accreditation-requests/${request.uuid}/review`,
-              data: { comments: finalComments }
-            });
             
             router.post(`/accreditation-requests/${request.uuid}/review`, { comments: finalComments }, {
               preserveState: false,
               preserveScroll: true,
-              onStart: () => {
-                console.log('[REVIEW ACTION] Petición POST iniciada');
-              },
-              onSuccess: (page) => {
-                console.log('[REVIEW ACTION] Éxito - Visto bueno otorgado:', page);
+              onSuccess: () => {
               },
               onError: (errors) => {
                 console.error('[REVIEW ACTION] Error en la petición:', errors);
-                console.error('[REVIEW ACTION] Detalles del error:', {
-                  uuid: request.uuid,
-                  errors: errors,
-                  comments: finalComments,
-                  timestamp: new Date().toISOString()
-                });
               },
               onFinish: () => {
-                console.log('[REVIEW ACTION] Petición finalizada');
               }
             });
           }
@@ -600,13 +539,6 @@ export default function Index(props: AccreditationRequestsIndexProps) {
             return request.status === 'approved';
           },
           handler: (request: AccreditationRequest) => {
-            console.log('[SUSPEND ACTION] Iniciando diálogo de suspensión:', {
-              uuid: request.uuid,
-              status: request.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
-            
-            // Abrir diálogo de suspensión
             setSuspensionDialog({
               isOpen: true,
               requestData: request
@@ -620,23 +552,9 @@ export default function Index(props: AccreditationRequestsIndexProps) {
           permission: "accreditation_request.return",
           showCondition: (request: AccreditationRequest) => {
             const canReturn = request.status === 'submitted' || request.status === 'under_review';
-            console.log('[RETURN CONDITION] Verificando condición para devolver:', {
-              uuid: request.uuid,
-              status: request.status,
-              canReturn: canReturn,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
             return canReturn;
           },
-          // No confirmMessage ni confirmTitle aquí porque usamos ActionDialog personalizado
           handler: (request: AccreditationRequest) => {
-            console.log('[RETURN ACTION] Abriendo diálogo de devolución:', {
-              uuid: request.uuid,
-              status: request.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
-            
-            // Abrir diálogo de acción para devolver
             setActionDialog({
               isOpen: true,
               requestData: request,
@@ -653,45 +571,210 @@ export default function Index(props: AccreditationRequestsIndexProps) {
             const hasCredential = request.status === 'approved' && 
                                  request.credential != null && 
                                  request.credential.status === 'ready';
-            console.log('[REGENERATE CONDITION] Verificando condición para regenerar:', {
-              uuid: request.uuid,
-              status: request.status,
-              hasCredential: hasCredential,
-              credentialStatus: request.credential?.status,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
             return hasCredential;
           },
           confirmMessage: (request: AccreditationRequest) => 
             `¿Está seguro de regenerar la credencial de ${request.employee.first_name} ${request.employee.last_name}?\n\nEsto actualizará la credencial con el diseño actual de la plantilla.`,
           confirmTitle: "Regenerar Credencial",
           handler: (request: AccreditationRequest) => {
-            console.log('[REGENERATE ACTION] Iniciando regeneración de credencial:', {
-              uuid: request.uuid,
-              credentialId: request.credential?.id,
-              employee: `${request.employee.first_name} ${request.employee.last_name}`
-            });
-            
             router.post(`/accreditation-requests/${request.uuid}/credential/regenerate`, {}, {
               preserveState: false,
               preserveScroll: true,
-              onStart: () => {
-                console.log('[REGENERATE ACTION] Petición POST iniciada');
-              },
-              onSuccess: (page) => {
-                console.log('[REGENERATE ACTION] Éxito - Credencial regenerada:', page);
+              onSuccess: () => {
               },
               onError: (errors) => {
                 console.error('[REGENERATE ACTION] Error en la petición:', errors);
               },
               onFinish: () => {
-                console.log('[REGENERATE ACTION] Petición finalizada');
               }
             });
           }
         }
       ]
-    }
+    },
+    
+    // Configuración de acciones masivas
+    bulkActions: [
+      // Enviar solicitudes masivo
+      {
+        label: "Enviar solicitudes",
+        icon: <TicketCheck className="h-4 w-4" />,
+        permission: "accreditation_request.submit",
+        showCondition: (selectedRows: AccreditationRequest[]) => {
+          return selectedRows.some(r => r.status === 'draft');
+        },
+        confirmMessage: (selectedRows: AccreditationRequest[]) => {
+          const validRequests = selectedRows.filter(r => r.status === 'draft');
+          const totalSelected = selectedRows.length;
+          const validCount = validRequests.length;
+          const skippedCount = totalSelected - validCount;
+          
+          let message = `¿Está seguro que desea enviar ${validCount} solicitud${validCount !== 1 ? 'es' : ''} de acreditación?`;
+          
+          if (skippedCount > 0) {
+            message += ` Se omitirán ${skippedCount} solicitud${skippedCount !== 1 ? 'es' : ''} que no están en borrador.`;
+          }
+          
+          return message;
+        },
+        confirmTitle: "Enviar Solicitudes",
+        handler: async (selectedRows: AccreditationRequest[]) => {
+          // Filtrar solo las solicitudes que pueden enviarse (solo draft)
+          const validRequests = selectedRows.filter(r => r.status === 'draft');
+          
+          if (validRequests.length === 0) {
+            // No hay solicitudes válidas para enviar
+            return;
+          }
+          
+          const uuids = validRequests.map(r => r.uuid);
+          router.post('/accreditation-requests/bulk/submit', { uuids }, {
+            preserveState: false,
+            preserveScroll: true,
+            onError: (errors) => {
+              console.error('[BULK SUBMIT] Error:', errors);
+            }
+          });
+        }
+      },
+      // Dar visto bueno masivo
+      {
+        label: "Dar visto bueno masivo",
+        icon: <CheckCircle className="h-4 w-4" />,
+        permission: "accreditation_request.review",
+        showCondition: (selectedRows: AccreditationRequest[]) => {
+          return selectedRows.some(r => r.status === 'submitted');
+        },
+        confirmMessage: (selectedRows: AccreditationRequest[]) => {
+          const validRequests = selectedRows.filter(r => r.status === 'submitted');
+          const totalSelected = selectedRows.length;
+          const validCount = validRequests.length;
+          const skippedCount = totalSelected - validCount;
+          
+          let message = `¿Está seguro que desea dar visto bueno a ${validCount} solicitud${validCount !== 1 ? 'es' : ''}?`;
+          
+          if (skippedCount > 0) {
+            message += ` Se omitirán ${skippedCount} solicitud${skippedCount !== 1 ? 'es' : ''} que no están enviadas.`;
+          }
+          
+          return message;
+        },
+        confirmTitle: "Dar Visto Bueno Masivo",
+        requiresReason: true,
+        reasonLabel: "Comentarios (opcional)",
+        reasonPlaceholder: "Ingrese comentarios sobre el visto bueno...",
+        handler: async (selectedRows: AccreditationRequest[], reason?: string) => {
+          // Filtrar solo las solicitudes que pueden revisarse (solo submitted)
+          const validRequests = selectedRows.filter(r => r.status === 'submitted');
+          
+          if (validRequests.length === 0) {
+            // No hay solicitudes válidas para revisar
+            return;
+          }
+          
+          const uuids = validRequests.map(r => r.uuid);
+          router.post('/accreditation-requests/bulk/review', { uuids, comments: reason || '' }, {
+            preserveState: false,
+            preserveScroll: true,
+            onError: (errors) => {
+              console.error('[BULK REVIEW] Error:', errors);
+            }
+          });
+        }
+      },
+      // Aprobar masivo
+      {
+        label: "Aprobar seleccionadas",
+        icon: <CheckCircle className="h-4 w-4" />,
+        permission: "accreditation_request.approve",
+        showCondition: (selectedRows: AccreditationRequest[]) => {
+          return selectedRows.some(r => ['submitted', 'under_review'].includes(r.status));
+        },
+        confirmMessage: (selectedRows: AccreditationRequest[]) => {
+          const validRequests = selectedRows.filter(r => ['submitted', 'under_review'].includes(r.status));
+          const totalSelected = selectedRows.length;
+          const validCount = validRequests.length;
+          const skippedCount = totalSelected - validCount;
+          
+          let message = `¿Está seguro que desea aprobar ${validCount} solicitud${validCount !== 1 ? 'es' : ''} de acreditación?`;
+          
+          if (skippedCount > 0) {
+            message += ` Se omitirán ${skippedCount} solicitud${skippedCount !== 1 ? 'es' : ''} que ya están aprobadas.`;
+          }
+          
+          return message;
+        },
+        confirmTitle: "Aprobar Solicitudes",
+        handler: async (selectedRows: AccreditationRequest[]) => {
+          // Filtrar solo las solicitudes que pueden aprobarse
+          const validRequests = selectedRows.filter(r => ['submitted', 'under_review'].includes(r.status));
+          
+          if (validRequests.length === 0) {
+            // No hay solicitudes válidas para aprobar
+            return;
+          }
+          
+          const uuids = validRequests.map(r => r.uuid);
+          router.post('/accreditation-requests/bulk/approve', {
+            uuids: uuids
+          }, {
+            preserveState: false,
+            preserveScroll: true,
+            onError: (errors) => {
+              console.error('[BULK APPROVE] Error:', errors);
+            }
+          });
+        }
+      },
+      // Rechazar masivo
+      {
+        label: "Rechazar seleccionadas",
+        icon: <XCircle className="h-4 w-4" />,
+        permission: "accreditation_request.reject",
+        showCondition: (selectedRows: AccreditationRequest[]) => {
+          return selectedRows.some(r => ['submitted', 'under_review'].includes(r.status));
+        },
+        confirmMessage: (selectedRows: AccreditationRequest[]) => {
+          const validRequests = selectedRows.filter(r => ['submitted', 'under_review'].includes(r.status));
+          const totalSelected = selectedRows.length;
+          const validCount = validRequests.length;
+          const skippedCount = totalSelected - validCount;
+          
+          let message = `¿Está seguro que desea rechazar ${validCount} solicitud${validCount !== 1 ? 'es' : ''} de acreditación?`;
+          
+          if (skippedCount > 0) {
+            message += ` Se omitirán ${skippedCount} solicitud${skippedCount !== 1 ? 'es' : ''} que no están en estado válido.`;
+          }
+          
+          return message;
+        },
+        confirmTitle: "Rechazar Solicitudes",
+        requiresReason: true,
+        reasonLabel: "Motivo del rechazo",
+        reasonPlaceholder: "Ingrese el motivo del rechazo...",
+        handler: async (selectedRows: AccreditationRequest[], reason?: string) => {
+          // Filtrar solo las solicitudes que pueden rechazarse
+          const validRequests = selectedRows.filter(r => ['submitted', 'under_review'].includes(r.status));
+          
+          if (validRequests.length === 0) {
+            // No hay solicitudes válidas para rechazar
+            return;
+          }
+          
+          const uuids = validRequests.map(r => r.uuid);
+          router.post('/accreditation-requests/bulk/reject', {
+            uuids: uuids,
+            reason: reason
+          }, {
+            preserveState: false,
+            preserveScroll: true,
+            onError: (errors) => {
+              console.error('[BULK REJECT] Error:', errors);
+            }
+          });
+        }
+      }
+    ]
   };
 
   // Verificar permisos usando la información de auth ya declarada
@@ -772,7 +855,7 @@ export default function Index(props: AccreditationRequestsIndexProps) {
                 <div className="flex flex-col">
                   <span className="font-medium">Solicitud Masiva</span>
                   <span className="text-xs text-muted-foreground">
-                    Crear solicitudes para múltiples empleados
+                    Crear solicitudes para múltiples colaboradores
                   </span>
                 </div>
               </DropdownMenuItem>

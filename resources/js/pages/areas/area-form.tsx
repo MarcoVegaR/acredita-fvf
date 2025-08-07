@@ -192,7 +192,7 @@ export function AreaForm({ options }: { options: BaseFormOptions<Area> }) {
                   ></div>
                 </div>
                 <FormDescription>
-                  Este color se usará como fondo del rol en las credenciales generadas para empleados de esta área.
+                  Este color se usará como fondo del rol en las credenciales generadas para colaboradores de esta área.
                 </FormDescription>
                 <FormMessage />
               </FormItem>

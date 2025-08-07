@@ -36,15 +36,15 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
   console.log('[EMPLOYEES INDEX] currentUserRole:', currentUserRole);
   console.log('[EMPLOYEES INDEX] isProvider:', isProvider);
   
-  // Configuración centralizada para el índice de empleados
+  // Configuración centralizada para el índice de colaboradores
   const indexOptions = {
     // Información principal
-    title: isProvider ? "Mis Empleados" : "Empleados de Proveedores",
+    title: isProvider ? "Mis Colaboradores" : "Colaboradores de Proveedores",
     subtitle: isProvider 
-      ? "Administra los empleados de tu organización" 
+      ? "Administra los colaboradores de tu organización" 
       : currentUserRole === "area_manager" 
-        ? "Administra los empleados de los proveedores de tu área" 
-        : "Administra los empleados de todos los proveedores",
+        ? "Administra los colaboradores de los proveedores de tu área" 
+        : "Administra los colaboradores de todos los proveedores",
     endpoint: "/employees",
     
     // Configuración de filtros personalizados
@@ -79,19 +79,19 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
     stats: [
       { 
         value: stats?.total || 0, 
-        label: "Total de empleados",
+        label: "Total de colaboradores",
         icon: "users",
         color: "text-blue-500"
       },
       { 
         value: stats?.active || 0, 
-        label: "Empleados activos",
+        label: "Colaboradores activos",
         icon: "user-check",
         color: "text-green-500"
       },
       { 
         value: stats?.inactive || 0, 
-        label: "Empleados inactivos",
+        label: "Colaboradores inactivos",
         icon: "user-x",
         color: "text-red-500"
       }
@@ -107,7 +107,7 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
         href: "/dashboard",
       },
       {
-        title: isProvider ? "Mis Empleados" : "Empleados",
+        title: isProvider ? "Mis Colaboradores" : "Colaboradores",
         href: "/employees",
       },
     ],
@@ -116,12 +116,12 @@ export default function Index({ employees, stats, filters = {}, currentUserRole,
     defaultSorting: [{ id: "id", desc: true }],
     exportOptions: {
       enabled: true,
-      fileName: isProvider ? "mis-empleados" : "empleados-proveedores",
+      fileName: isProvider ? "mis-colaboradores" : "colaboradores-proveedores",
       exportTypes: ["excel", "csv", "print", "copy"] as ("excel" | "csv" | "print" | "copy")[],
     },
     newButton: {
       show: true,
-      label: "Nuevo Empleado",
+      label: "Nuevo Colaborador",
       permission: isProvider || currentUserRole === "area_manager" ? "employee.manage_own_provider" : "employee.manage",
     },
     rowActions: {

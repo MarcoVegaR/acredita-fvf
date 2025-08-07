@@ -88,7 +88,7 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
             ? <UserCheck className="h-3.5 w-3.5 mr-1" /> 
             : <UserPlus className="h-3.5 w-3.5 mr-1" />
           }
-          {isEditing ? 'Edición de empleado' : 'Nuevo empleado'}
+          {isEditing ? 'Edición de colaborador' : 'Nuevo colaborador'}
         </Badge>
       </div>
       
@@ -98,8 +98,8 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
       >
         <FormTab value="general" label="Información General" icon={<UserIcon className="h-4 w-4" />}>
           <FormSection 
-            title="Datos del empleado" 
-            description="Información personal del empleado" 
+            title="Datos del colaborador" 
+            description="Información personal del colaborador" 
             columns={2}
           >
             {/* Nombre del empleado */}
@@ -113,7 +113,7 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        placeholder="Nombre del empleado" 
+                        placeholder="Nombre del colaborador" 
                         {...field} 
                         className="pl-9 transition-all focus-within:ring-2 focus-within:ring-primary/20"
                       />
@@ -135,7 +135,7 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        placeholder="Apellido del empleado" 
+                        placeholder="Apellido del colaborador" 
                         {...field} 
                         className="pl-9 transition-all focus-within:ring-2 focus-within:ring-primary/20"
                       />
@@ -247,7 +247,7 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        placeholder="Función o cargo del empleado" 
+                        placeholder="Función o cargo del colaborador" 
                         {...field} 
                         className="pl-9 transition-all focus-within:ring-2 focus-within:ring-primary/20"
                       />
@@ -272,10 +272,10 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel>
-                      Empleado activo
+                      Colaborador activo
                     </FormLabel>
                     <FormDescription>
-                      Los empleados inactivos no aparecerán en las listas
+                      Los colaboradores inactivos no aparecerán en las listas
                     </FormDescription>
                   </div>
                 </FormItem>
@@ -286,7 +286,7 @@ export function EmployeeForm({ options, availableProviders = [] }: EmployeeFormP
 
         <FormTab value="photo" label="Fotografía" icon={<ClipboardList className="h-4 w-4" />}>
           <FormSection 
-            title="Fotografía del empleado" 
+            title="Fotografía del colaborador" 
             description="Sube y recorta la fotografía en proporción 3×4 cm"
           >
             <div className="w-full">

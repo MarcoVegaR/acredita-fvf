@@ -99,7 +99,7 @@ export function BulkStep1Form({ events }: BulkStep1FormProps) {
   );
 }
 
-// Paso 2: Selección masiva de empleados
+// Paso 2: Selección masiva de colaboradores
 export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
   const { control, setValue } = useFormContext();
   const getInitials = useInitials();
@@ -109,7 +109,7 @@ export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
   const [filters, setFilters] = useState<EmployeeFilters>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Filtrar empleados solo por búsqueda (nombre o documento)
+  // Filtrar colaboradores solo por búsqueda (nombre o documento)
   const filteredEmployees = employees.filter(employee => {
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
@@ -142,9 +142,9 @@ export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
   return (
     <div className="space-y-6 max-w-full">
       <div className="text-center">
-        <h3 className="text-lg font-medium mb-2">Seleccionar Empleados</h3>
+        <h3 className="text-lg font-medium mb-2">Seleccionar Colaboradores</h3>
         <p className="text-sm text-muted-foreground">
-          Seleccione los empleados para los cuales desea solicitar acreditación para <strong>{event?.name}</strong>
+          Seleccione los colaboradores para los cuales desea solicitar acreditación para <strong>{event?.name}</strong>
         </p>
       </div>
 
@@ -159,7 +159,7 @@ export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
         <CardContent>
           <div className="max-w-md">
             <div>
-              <label className="text-sm font-medium">Buscar empleado</label>
+              <label className="text-sm font-medium">Buscar colaborador</label>
               <Input
                 placeholder="Buscar por nombre o documento..."
                 value={filters.search || ''}
@@ -171,13 +171,13 @@ export function BulkStep2Form({ event, employees }: BulkStep2FormProps) {
         </CardContent>
       </Card>
 
-      {/* Lista de empleados */}
+      {/* Lista de colaboradores */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Empleados ({filteredEmployees.length})
+              Colaboradores ({filteredEmployees.length})
             </CardTitle>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">
@@ -311,7 +311,7 @@ export function BulkStep3Form({ event, selectedEmployees, zones }: BulkStep3Form
       <div>
         <h3 className="text-lg font-medium mb-2">Configurar Zonas de Acceso</h3>
         <p className="text-sm text-muted-foreground">
-          Configure las zonas de acceso para cada empleado seleccionado para <strong>{event?.name}</strong>
+          Configure las zonas de acceso para cada colaborador seleccionado para <strong>{event?.name}</strong>
         </p>
       </div>
 
@@ -338,7 +338,7 @@ export function BulkStep3Form({ event, selectedEmployees, zones }: BulkStep3Form
         </CardContent>
       </Card>
 
-      {/* Lista de empleados con zonas */}
+      {/* Lista de colaboradores con zonas */}
       <div className="space-y-4">
         {selectedEmployees.map(employee => (
           <Card key={employee.id}>

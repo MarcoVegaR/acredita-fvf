@@ -52,9 +52,9 @@ export const moduleTranslations: Record<string, string> = {
   provider: "Proveedor",
   providers: "Proveedores",
   
-  // Gestión de empleados
-  employee: "Empleado",
-  employees: "Empleados",
+  // Gestión de colaboradores
+  employee: "Colaborador",
+  employees: "Colaboradores",
   
   // Eventos y zonas
   events: "Eventos",
@@ -159,13 +159,13 @@ export function formatPermissionName(permission: string): string {
   // 1. Permisos de gestión por área/proveedor
   if (action === 'manage_own_area') {
     if (module === 'provider') return 'Administrar proveedores de su área';
-    if (module === 'employee') return 'Administrar empleados de su área';
+    if (module === 'employee') return 'Administrar colaboradores de su área';
     if (module === 'accreditation_request') return 'Administrar solicitudes de su área';
     return `Administrar ${moduleTrans} de su área`;
   }
   
   if (action === 'manage_own_provider') {
-    if (module === 'employee') return 'Administrar empleados de su proveedor';
+    if (module === 'employee') return 'Administrar colaboradores de su proveedor';
     if (module === 'accreditation_request') return 'Administrar solicitudes de su proveedor';
     return `Administrar ${moduleTrans} de su proveedor`;
   }

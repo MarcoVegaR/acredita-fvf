@@ -35,10 +35,10 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         permission: 'provider.view', // Requiere permiso para ver listado de proveedores
     },
     {
-        title: 'Empleados',
+        title: 'Colaboradores',
         href: '/employees',
-        icon: UserRound, // Usamos un icono específico para Empleados
-        permission: 'employee.view', // Requiere permiso para ver listado de empleados
+        icon: UserRound, // Usamos un icono específico para Colaboradores
+        permission: 'employee.view', // Requiere permiso para ver listado de colaboradores
     },
     {
         title: 'Roles',

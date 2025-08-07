@@ -12,7 +12,7 @@ interface BulkStep2Props {
 export default function BulkStep2({ event, employees }: BulkStep2Props) {
   const formOptions = {
     title: "Solicitud Masiva de Acreditación",
-    subtitle: "Paso 2: Seleccionar Empleados",
+    subtitle: "Paso 2: Seleccionar Colaboradores",
     endpoint: "/accreditation-requests/bulk/step-2",
     moduleName: "accreditation-requests",
     isEdit: false,
@@ -30,7 +30,7 @@ export default function BulkStep2({ event, employees }: BulkStep2Props) {
         href: "/accreditation-requests/bulk",
       },
       {
-        title: "Paso 2: Empleados",
+        title: "Paso 2: Colaboradores",
         href: "/accreditation-requests/bulk/step-2",
       },
     ],
@@ -52,7 +52,7 @@ export default function BulkStep2({ event, employees }: BulkStep2Props) {
       totalSteps: 4,
       steps: [
         { label: "Evento", isActive: true, isComplete: true },
-        { label: "Empleados", isActive: true, isComplete: false },
+        { label: "Colaboradores", isActive: true, isComplete: false },
         { label: "Zonas", isActive: false, isComplete: false },
         { label: "Confirmación", isActive: false, isComplete: false },
       ]

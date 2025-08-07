@@ -42,7 +42,7 @@ export default function BulkStep3({ event, selectedEmployees, zones }: BulkStep3
     actions: {
       save: {
         label: "Siguiente",
-        disabledText: "Debe configurar zonas para todos los empleados",
+        disabledText: "Debe configurar zonas para todos los colaboradores",
       },
       cancel: {
         label: "Anterior",
@@ -54,7 +54,7 @@ export default function BulkStep3({ event, selectedEmployees, zones }: BulkStep3
       totalSteps: 4,
       steps: [
         { label: "Evento", isActive: true, isComplete: true },
-        { label: "Empleados", isActive: true, isComplete: true },
+        { label: "Colaboradores", isActive: true, isComplete: true },
         { label: "Zonas", isActive: true, isComplete: false },
         { label: "Confirmación", isActive: false, isComplete: false },
       ]

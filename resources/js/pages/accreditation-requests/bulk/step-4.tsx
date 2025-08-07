@@ -53,7 +53,7 @@ export default function BulkStep4({ event, employeesWithZones, zones }: BulkStep
       totalSteps: 4,
       steps: [
         { label: "Evento", isActive: true, isComplete: true },
-        { label: "Empleados", isActive: true, isComplete: true },
+        { label: "Colaboradores", isActive: true, isComplete: true },
         { label: "Zonas", isActive: true, isComplete: true },
         { label: "Confirmación", isActive: true, isComplete: false },
       ]

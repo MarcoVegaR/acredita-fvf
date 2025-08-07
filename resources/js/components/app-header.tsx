@@ -67,7 +67,7 @@ const mainNavItems: (NavItem & { permission?: string })[] = [
         // Elementos relacionados con personas
         items: [
             {
-                title: 'Empleados',
+                title: 'Colaboradores',
                 href: '/employees',
                 icon: UserRound,
                 permission: 'employee.view',

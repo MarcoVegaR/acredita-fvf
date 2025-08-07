@@ -298,6 +298,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.index')
             ->name('accreditation-requests.index');
             
+        // ================================
+        // ACCIONES MASIVAS (BULK ACTIONS) - DEBEN IR ANTES DE LAS RUTAS CON UUID
+        // ================================
+        
+        // Enviar múltiples solicitudes para aprobación
+        Route::post('accreditation-requests/bulk/submit', 'bulkSubmit')
+            ->middleware('permission:accreditation_request.submit')
+            ->name('accreditation-requests.bulk.submit');
+            
+        // Dar visto bueno masivo (area manager)
+        Route::post('accreditation-requests/bulk/review', 'bulkReview')
+            ->middleware('permission:accreditation_request.review')
+            ->name('accreditation-requests.bulk.review');
+            
+        // Aprobar múltiples solicitudes
+        Route::post('accreditation-requests/bulk/approve', 'bulkApprove')
+            ->middleware('permission:accreditation_request.approve')
+            ->name('accreditation-requests.bulk.approve');
+            
+        // Rechazar múltiples solicitudes
+        Route::post('accreditation-requests/bulk/reject', 'bulkReject')
+            ->middleware('permission:accreditation_request.reject')
+            ->name('accreditation-requests.bulk.reject');
+
+        // Exportar reporte detallado completo (Solo admin/security_manager)
+        Route::get('accreditation-requests/detailed-export', 'detailedExport')
+            ->name('accreditation-requests.detailed-export');
+            
+        // ================================
+        // RUTAS INDIVIDUALES
+        // ================================
+        
         // Crear nueva solicitud (redirección al wizard)
         Route::get('accreditation-requests/create', function() {
             return redirect()->route('accreditation-requests.wizard.step1');
@@ -348,9 +380,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('permission:accreditation_request.delete')
             ->name('accreditation-requests.destroy');
 
-        // Exportar reporte detallado completo (Solo admin/security_manager)
-        Route::get('accreditation-requests/detailed-export', 'detailedExport')
-            ->name('accreditation-requests.detailed-export');
+
             
         // Ver detalles de una solicitud específica (SIEMPRE AL FINAL)
         Route::get('accreditation-requests/{accreditation_request:uuid}', 'show')

@@ -95,7 +95,7 @@ export default function ShowEmployee({ employee, documentTypes = [], imageTypes 
   // Configuración de la página de detalle
   const showOptions = {
     title: `${employee.first_name} ${employee.last_name}`,
-    subtitle: "Ficha del empleado",
+    subtitle: "Ficha del colaborador",
     headerContent: (
       <div className="flex items-center space-x-4 py-3">
         <div className="flex-shrink-0">
@@ -141,7 +141,7 @@ export default function ShowEmployee({ employee, documentTypes = [], imageTypes 
     ),
     breadcrumbs: [
       { title: "Inicio", href: "/" },
-      { title: "Empleados", href: route('employees.index') },
+      { title: "Colaboradores", href: route('employees.index') },
       { title: `${employee.first_name} ${employee.last_name}`, href: route('employees.show', { uuid: employee.uuid }) },
     ],
     entity: employee,

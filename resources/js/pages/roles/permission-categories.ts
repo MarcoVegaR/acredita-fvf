@@ -21,9 +21,9 @@ export const permissionCategories = [
   },
   {
     id: 'employees',
-    label: 'Gestión de Empleados',
+    label: 'Gestión de Colaboradores',
     icon: 'Users',
-    description: 'Permisos para gestionar empleados de proveedores',
+    description: 'Permisos para gestionar colaboradores de proveedores',
     modules: ['employee']
   },
   {

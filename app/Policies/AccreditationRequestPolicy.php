@@ -164,4 +164,106 @@ class AccreditationRequestPolicy
         return $this->update($user, $accreditationRequest) && 
                $user->can('accreditation_request.submit');
     }
+
+    /**
+     * Determine whether the user can approve the accreditation request.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\AccreditationRequest  $accreditationRequest
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function approve(User $user, AccreditationRequest $accreditationRequest)
+    {
+        // Solo admin puede aprobar solicitudes
+        if (!$user->hasRole('admin') || !$user->can('accreditation_request.approve')) {
+            return false;
+        }
+
+        // Solo se pueden aprobar solicitudes enviadas o bajo revisión
+        return in_array($accreditationRequest->status->value, ['submitted', 'under_review']);
+    }
+
+    /**
+     * Determine whether the user can reject the accreditation request.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\AccreditationRequest  $accreditationRequest
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function reject(User $user, AccreditationRequest $accreditationRequest)
+    {
+        // Solo admin puede rechazar solicitudes
+        if (!$user->hasRole('admin') || !$user->can('accreditation_request.reject')) {
+            return false;
+        }
+
+        // Solo se pueden rechazar solicitudes enviadas o bajo revisión
+        return in_array($accreditationRequest->status->value, ['submitted', 'under_review']);
+    }
+
+    /**
+     * Determine whether the user can review the accreditation request.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\AccreditationRequest  $accreditationRequest
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function review(User $user, AccreditationRequest $accreditationRequest)
+    {
+        // Solo se puede revisar si tiene el permiso base
+        if (!$user->can('accreditation_request.review')) {
+            return false;
+        }
+
+        // Solo se pueden revisar solicitudes enviadas
+        if ($accreditationRequest->status->value !== 'submitted') {
+            return false;
+        }
+
+        // Admin puede revisar todas
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        // Area manager puede dar visto bueno a solicitudes de su área
+        if ($user->hasRole('area_manager')) {
+            return $user->managedArea && 
+                   $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine whether the user can return the accreditation request to draft.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\AccreditationRequest  $accreditationRequest
+     * @return \Illuminate\Auth\Access\Response|bool
+     */
+    public function returnToDraft(User $user, AccreditationRequest $accreditationRequest)
+    {
+        // Solo se puede devolver si tiene el permiso base
+        if (!$user->can('accreditation_request.return')) {
+            return false;
+        }
+
+        // Solo se pueden devolver solicitudes enviadas o bajo revisión
+        if (!in_array($accreditationRequest->status->value, ['submitted', 'under_review'])) {
+            return false;
+        }
+
+        // Admin puede devolver todas
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+
+        // Area manager puede devolver solicitudes de su área
+        if ($user->hasRole('area_manager')) {
+            return $user->managedArea && 
+                   $accreditationRequest->employee->provider->area_id === $user->managedArea->id;
+        }
+
+        return false;
+    }
 }

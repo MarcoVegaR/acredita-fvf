@@ -34,7 +34,7 @@ export interface EmployeeWithZones {
     type: string;
   };
   selected: boolean;
-  zones: number[]; // IDs de zonas asignadas a este empleado
+  zones: number[]; // IDs de zonas asignadas a este colaborador
 }
 
 export interface BulkRequestSummary {
@@ -53,25 +53,25 @@ export const bulkStep1Schema = z.object({
   }),
 });
 
-// Paso 2: Selección masiva de empleados
+// Paso 2: Selección masiva de colaboradores
 export const bulkStep2Schema = z.object({
   event_id: z.string({
     required_error: "El evento es obligatorio",
   }),
-  employee_ids: z.array(z.string()).min(1, "Debe seleccionar al menos un empleado"),
+  employee_ids: z.array(z.string()).min(1, "Debe seleccionar al menos un colaborador"),
 });
 
-// Paso 3: Configuración de zonas por empleado
+// Paso 3: Configuración de zonas por colaborador
 export const bulkStep3Schema = z.object({
   event_id: z.string({
     required_error: "El evento es obligatorio",
   }),
   employee_zones: z.record(
     z.string(), // employee_id
-    z.array(z.string()).min(1, "Cada empleado debe tener al menos una zona")
+    z.array(z.string()).min(1, "Cada colaborador debe tener al menos una zona")
   ).refine(
     (data) => Object.keys(data).length > 0,
-    { message: "Debe configurar zonas para al menos un empleado" }
+    { message: "Debe configurar zonas para al menos un colaborador" }
   ),
 });
 
@@ -82,7 +82,7 @@ export const bulkStep4Schema = z.object({
   }),
   employee_zones: z.record(
     z.string(), // employee_id
-    z.array(z.string()).min(1, "Cada empleado debe tener al menos una zona")
+    z.array(z.string()).min(1, "Cada colaborador debe tener al menos una zona")
   ),
   confirm: z.boolean().refine(val => val === true, {
     message: "Debe confirmar que la información es correcta",
@@ -124,7 +124,7 @@ export interface ZoneTemplate {
   description?: string;
 }
 
-// Configuración de filtros para empleados
+// Configuración de filtros para colaboradores
 export interface EmployeeFilters {
   search?: string;
   department?: string;
