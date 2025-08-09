@@ -344,94 +344,26 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
         font_size: 11,
         alignment: "left" as "left" | "center" | "right"
       },
-      // Zonas individuales (1-9)
+      // Bloque dinámico de zonas (reemplaza zona1-zona9)
       {
-        id: 'zona1',
-        x: 560,
-        y: 275,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona2',
-        x: 606,
-        y: 275,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona3',
-        x: 652,
-        y: 275,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona4',
-        x: 698,
-        y: 275,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona5',
-        x: 744,
-        y: 275,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona6',
-        x: 583,
-        y: 335,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona7',
-        x: 629,
-        y: 335,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona8',
-        x: 675,
-        y: 335,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
-      },
-      {
-        id: 'zona9',
-        x: 721,
-        y: 335,
-        width: 46,
-        height: 60,
-        font_size: 24,
-        alignment: "center" as "left" | "center" | "right"
+        id: 'zones',
+        type: 'zones',
+        x: 500,
+        y: 250,
+        width: 300,
+        height: 180,
+        padding: 8,
+        gap: 10,
+        font_family: 'arial.ttf',
+        font_color: '#000000'
       }
     ];
 
-    // Remover cualquier campo 'zona' genérico existente
-    const filteredExistingBlocks = text_blocks.filter(block => 
-      block.id !== 'zona' && block.id !== 'zonas'
-    );
+    // Remover bloques de zonas antiguos (zona1-zona9) y campos genéricos 'zona'/'zonas'
+    const filteredExistingBlocks = text_blocks.filter(block => {
+      const id = (block as any).id ?? '';
+      return id !== 'zona' && id !== 'zonas' && !/^zona\d+$/.test(String(id));
+    });
     
     // Solo agregar campos que no existen
     const existingIds = filteredExistingBlocks.map(block => block.id);
@@ -891,45 +823,109 @@ export function LayoutEditor({ form, backgroundImage }: LayoutEditorProps) {
                             )}
                           />
                           
-                          <FormField
-                            control={form.control}
-                            name={`layout_meta.text_blocks.${index}.font_size`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Tamaño de fuente</FormLabel>
-                                <FormControl>
-                                  <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} min={1} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name={`layout_meta.text_blocks.${index}.alignment`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Alineación</FormLabel>
-                                <Select 
-                                  onValueChange={field.onChange}
-                                  defaultValue={field.value}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Seleccione alineación" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="left">Izquierda</SelectItem>
-                                    <SelectItem value="center">Centro</SelectItem>
-                                    <SelectItem value="right">Derecha</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                          {selectedItem !== 'zones' && (
+                            <>
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.font_size`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Tamaño de fuente</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} min={1} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.alignment`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Alineación</FormLabel>
+                                    <Select 
+                                      onValueChange={field.onChange}
+                                      defaultValue={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Seleccione alineación" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="left">Izquierda</SelectItem>
+                                        <SelectItem value="center">Centro</SelectItem>
+                                        <SelectItem value="right">Derecha</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </>
+                          )}
+
+                          {selectedItem === 'zones' && (
+                            <>
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.padding`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Padding (px)</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} min={0} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.gap`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Gap (px)</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} min={0} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.font_family`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Fuente</FormLabel>
+                                    <FormControl>
+                                      <Input type="text" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name={`layout_meta.text_blocks.${index}.font_color`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Color de fuente</FormLabel>
+                                    <FormControl>
+                                      <Input type="color" value={field.value || '#000000'} onChange={e => field.onChange(e.target.value)} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </>
+                          )}
                           
                           <div className="pt-4">
                             <Button 

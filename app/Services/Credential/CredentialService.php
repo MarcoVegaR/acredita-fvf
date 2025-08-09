@@ -22,7 +22,11 @@ class CredentialService implements CredentialServiceInterface
     public function __construct(CredentialRepositoryInterface $credentialRepository)
     {
         $this->credentialRepository = $credentialRepository;
-        $this->imageManager = new ImageManager(new Driver());
+        if (extension_loaded('imagick')) {
+            $this->imageManager = new ImageManager(new \Intervention\Image\Drivers\Imagick\Driver());
+        } else {
+            $this->imageManager = new ImageManager(new Driver());
+        }
     }
 
     /**
@@ -563,6 +567,74 @@ class CredentialService implements CredentialServiceInterface
         }
     }
 
+    // --- Rounded rectangle AA with soft shadow (GD safe) -----------------------
+    private function hexToRgbaArray(string $hex, float $alpha = 1.0): array {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) { $hex = preg_replace('/(.)/','$1$1',$hex); }
+        $r = hexdec(substr($hex,0,2));
+        $g = hexdec(substr($hex,2,2));
+        $b = hexdec(substr($hex,4,2));
+        return [$r,$g,$b,max(0,min(1,$alpha))];
+    }
+
+    /**
+     * Crea un layer PNG con un rectángulo redondeado ANTIALIAS + sombra suave.
+     * Retorna Intervention\Image\Image listo para place().
+     */
+    private function makeRoundedRectLayerAA(
+        int $w, int $h,
+        int $radius,
+        string $fill = '#FFFFFF',
+        string $stroke = '#8E8E8E', int $strokeW = 6,
+        bool $withShadow = true, int $shadowOffset = 12,
+        int $shadowBlur = 14, string $shadowColor = 'rgba(0,0,0,0.25)'
+    ) {
+        $scale = 3; // supermuestreo
+        $W = max(1, $w * $scale);
+        $H = max(1, $h * $scale);
+        $R = max(1, $radius * $scale);
+        $S = max(0, $strokeW * $scale);
+
+        // Área extra para la sombra (offset + blur)
+        $pad = $withShadow ? max(0, ($shadowBlur * $scale) + ($shadowOffset * $scale)) : 0;
+        $layerW = $W + $pad;
+        $layerH = $H + $pad;
+
+        $layer = $this->imageManager->create($layerW, $layerH)->fill('rgba(0,0,0,0)');
+
+        // --- Sombra difusa ---
+        if ($withShadow) {
+            $shadow = $this->imageManager->create($W, $H)->fill('rgba(0,0,0,0)');
+            // máscara de sombra con esquinas redondeadas
+            $this->fillRoundedRect($shadow, 0, 0, $W, $H, $R, $shadowColor);
+            $shadow->blur(max(1, $shadowBlur * $scale));
+            $layer->place($shadow, 'top-left', $shadowOffset * $scale, $shadowOffset * $scale);
+        }
+
+        // --- Figura principal (relleno + borde) ---
+        $base = $this->imageManager->create($W, $H)->fill('rgba(0,0,0,0)');
+        if ($S > 0) {
+            // capa de borde
+            $this->fillRoundedRect($base, 0, 0, $W, $H, $R, $stroke);
+            // capa de relleno (inset por stroke)
+            $ix = $S; $iy = $S;
+            $iw = max(1, $W - 2 * $S);
+            $ih = max(1, $H - 2 * $S);
+            $ir = max(0, $R - $S);
+            $this->fillRoundedRect($base, $ix, $iy, $iw, $ih, $ir, $fill);
+        } else {
+            $this->fillRoundedRect($base, 0, 0, $W, $H, $R, $fill);
+        }
+        $layer->place($base, 'top-left', 0, 0);
+
+        // Reducir con antialias al tamaño final
+        $finalW = max(1, intdiv($layerW, $scale));
+        $finalH = max(1, intdiv($layerH, $scale));
+        $layer->resize($finalW, $finalH);
+
+        return $layer;
+    }
+
     /**
      * Aplicar template por defecto
      */
@@ -611,6 +683,12 @@ class CredentialService implements CredentialServiceInterface
         
         $backgroundBlocks = ['provider', 'proveedor'];
         foreach ($textBlocks as $block) {
+            // Renderizado especial para bloque dinámico de zonas
+            if ((isset($block['type']) && $block['type'] === 'zones') || ($block['id'] ?? '') === 'zones') {
+                $this->renderZonesBlock($canvas, $block, $zones);
+                continue;
+            }
+
             $text = $this->getTextForBlock($block['id'], $employee, $event, $zones);
             
             if ($text) {
@@ -623,52 +701,165 @@ class CredentialService implements CredentialServiceInterface
                 
                 // Verificar si este bloque debe tener fondo de color
 
-                // Si el bloque está en la lista de fondos, aplicar fondo con el color del área
+                 // Si el bloque está en la lista de fondos, aplicar fondo con el color del área (banner proveedor)
                 if (in_array($block['id'], $backgroundBlocks, true)) {
-                    // Obtener el color del área del proveedor del empleado
-                    $areaColor = isset($employee['provider']['area']['color'])
-                        ? $employee['provider']['area']['color']
-                        : '#000000';
-
-                    // Preparando background para el bloque de proveedor
-
-                    // Calcular el tamaño real del texto para ajustar el fondo exactamente
+                    $areaColor = $employee['provider']['area']['color'] ?? '#000000';
+                    $text = preg_replace('/\s+/u', ' ', trim($text)); // normalizar espacios
                     $fontPath = public_path('fonts/arial.ttf');
-                    $bbox = imagettfbbox($fontSize, 0, $fontPath, $text);
-                    $textWidth  = abs($bbox[4] - $bbox[0]);
-                    $textHeight = abs($bbox[5] - $bbox[1]);
-                    
-                    // Padding extra para que el texto no quede pegado al borde
-                    $paddingX = 10;
-                    $paddingY = 6;
 
-                    $width  = $textWidth + $paddingX * 2;
-                    $height = $textHeight + $paddingY * 2;
+                    // Medir con el mismo motor que dibuja (Imagick si está activo, fallback GD)
+                    $metrics = $this->measureTextBox($text, (int) $fontSize, $fontPath);
+                    $minX = $metrics['minX'];
+                    $maxX = $metrics['maxX'];
+                    $minY = $metrics['minY'];
+                    $maxY = $metrics['maxY'];
+                    $textW = $metrics['w'];
+                    $textH = $metrics['h'];
 
-                    // Ajustar X e Y para que el texto quede centrado dentro del rectángulo
-                    $rectX = $x - $paddingX;
-                    $rectY = $y - $textHeight - $paddingY + 2; // +2 para compensar baseline
+                    // Padding por lado
+                    $padL = $block['bg_pad_left']  ?? ($block['bg_pad_x'] ?? 12);
+                    $padR = $block['bg_pad_right'] ?? ($block['bg_pad_x'] ?? 12);
+                    $padY = $block['bg_pad_y']     ?? 6;
 
-                    // Sobrescribir la coordenada X de texto dentro del rectángulo para respetar padding
-                    $textX = $x;
-                    $textY = $y;
+                    // Dimensiones iniciales del fondo
+                    $bgW = (int) ceil($textW + $padL + $padR);
+                    $bgH = (int) ceil($textH + 2 * $padY);
 
-                    // Dimensiones calculadas para el fondo
+                    // Posicionamiento del rect según alineación y línea base
+                    $align = strtolower($block['alignment'] ?? 'left');
+                    if ($align === 'center') {
+                        $rectX = (int) round($x - ($bgW / 2));
+                    } elseif ($align === 'right') {
+                        $rectX = (int) round($x - $bgW);
+                    } else { // left: considerar left-bearing
+                        $rectX = (int) round($x + $minX - $padL);
+                    }
+                    // Top del rect usando minY (arriba del texto respecto a la línea base)
+                    $rectY = (int) round($y + $minY - $padY);
+                    // Offset vertical opcional fino
+                    if (isset($block['bg_offset_y'])) {
+                        $rectY += (int) $block['bg_offset_y'];
+                    }
 
-                    // Crear una imagen de color sólido como fondo
-                    $backgroundRect = $this->imageManager->create($width, $height)->fill($areaColor);
+                    // si se fuerzan dimensiones desde layout_meta (opcionales)
+                    if (isset($block['bg_fixed_width']) && is_numeric($block['bg_fixed_width'])) {
+                        $bgW = (int) $block['bg_fixed_width'];
+                    } elseif (isset($block['bg_max_width']) && is_numeric($block['bg_max_width'])) {
+                        $bgW = min($bgW, (int) $block['bg_max_width']);
+                    }
+                    if (isset($block['bg_height']) && is_numeric($block['bg_height'])) {
+                        $bgH = (int) $block['bg_height'];
+                    }
 
-                    // Colocar el rectángulo de fondo
-                    $canvas->place($backgroundRect, 'top-left', $rectX, $rectY);
+                    // Auto-fit: si el fondo se desborda por la derecha del lienzo y NO hay ancho fijo, reducir fontSize
+                    $hasFixedWidth = isset($block['bg_fixed_width']) && is_numeric($block['bg_fixed_width']);
+                    if (!$hasFixedWidth) {
+                        // Restricción por borde derecho del lienzo
+                        $availableRight = isset($dimensions['width']) ? (int) $dimensions['width'] - $rectX : $bgW;
+                        $rightConstraint = ($availableRight > 0 && $bgW > $availableRight)
+                            ? max(1, $availableRight - ($padL + $padR))
+                            : null;
 
-                    // Rectángulo de fondo colocado
+                        // Restricción por bg_max_width (si definió un máximo menor que el ancho actual del texto)
+                        $maxWidthConstraint = null;
+                        if (isset($block['bg_max_width']) && is_numeric($block['bg_max_width'])) {
+                            $maxAllowedBgW = (int) $block['bg_max_width'];
+                            if ($maxAllowedBgW < (int) round($textW + $padL + $padR)) {
+                                $maxWidthConstraint = max(1, $maxAllowedBgW - ($padL + $padR));
+                            }
+                        }
 
-                    // Para el texto del bloque con fondo, usar color blanco y coordenadas ajustadas
-                    $canvas->text($text, $textX, $textY, function ($font) use ($fontSize, $block) {
-                        $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
+                        // Determinar el objetivo más estricto si aplica
+                        $targetTextW = null;
+                        if ($rightConstraint !== null && $maxWidthConstraint !== null) {
+                            $targetTextW = min($rightConstraint, $maxWidthConstraint);
+                        } elseif ($rightConstraint !== null) {
+                            $targetTextW = $rightConstraint;
+                        } elseif ($maxWidthConstraint !== null) {
+                            $targetTextW = $maxWidthConstraint;
+                        }
+
+                        if ($targetTextW !== null && $targetTextW < $textW) {
+                            $origFontSize = $fontSize;
+                            $fontSize = $this->findMaxFontSize($text, $fontPath, (int) $targetTextW, $textH + 100);
+
+                            // Recalcular bbox y dimensiones con el nuevo fontSize
+                            $metrics = $this->measureTextBox($text, (int) $fontSize, $fontPath);
+                            $minX = $metrics['minX'];
+                            $maxX = $metrics['maxX'];
+                            $minY = $metrics['minY'];
+                            $maxY = $metrics['maxY'];
+                            $textW = $metrics['w'];
+                            $textH = $metrics['h'];
+                            $bgW = (int) ceil($textW + $padL + $padR);
+                            $bgH = (int) ceil($textH + 2 * $padY);
+
+                            Log::debug('[CREDENTIAL SERVICE] Provider banner auto-fit applied', [
+                                'rightConstraint' => $rightConstraint,
+                                'maxWidthConstraint' => $maxWidthConstraint,
+                                'targetTextW' => $targetTextW,
+                                'origFontSize' => $origFontSize,
+                                'newFontSize' => $fontSize,
+                                'newBgW' => $bgW,
+                                'rectX' => $rectX,
+                                'canvasW' => $dimensions['width'] ?? null,
+                            ]);
+                        }
+                    } else {
+                        if ((isset($dimensions['width']) ? (int) $dimensions['width'] - $rectX : $bgW) < $bgW) {
+                            Log::debug('[CREDENTIAL SERVICE] Provider banner overflow with fixed width', [
+                                'bg_fixed_width' => $block['bg_fixed_width'],
+                                'rectX' => $rectX,
+                                'bgW' => $bgW,
+                                'canvasW' => $dimensions['width'] ?? null,
+                            ]);
+                        }
+                    }
+
+                    // Re-evaluar rect tras posibles cambios de tamaño de fuente/bbox
+                    if ($align === 'center') {
+                        $rectX = (int) round($x - ($bgW / 2));
+                    } elseif ($align === 'right') {
+                        $rectX = (int) round($x - $bgW);
+                    } else {
+                        $rectX = (int) round($x + $minX - $padL);
+                    }
+                    $rectY = (int) round($y + $minY - $padY);
+                    if (isset($block['bg_offset_y'])) {
+                        $rectY += (int) $block['bg_offset_y'];
+                    }
+
+                    // Fondo con esquinas redondeadas AA (sin sombra)
+                    $radius = $block['bg_radius'] ?? 8;
+                    $bgLayer = $this->makeRoundedRectLayerAA(
+                        $bgW, $bgH,
+                        $radius,
+                        $areaColor, $areaColor, 0,
+                        false, 0, 0, 'rgba(0,0,0,0)'
+                    );
+                    $canvas->place($bgLayer, 'top-left', $rectX, $rectY);
+
+                    // Dibujar el texto anclado al rectángulo de fondo (baseline)
+                    $drawX = (int) round($rectX + $padL - $minX);
+                    $drawY = (int) round($rectY + $padY - $minY); // baseline alineada al interior del rect
+
+                    // Métricas de depuración para validar el ajuste del fondo al texto
+                    Log::debug('[CREDENTIAL SERVICE] Provider banner metrics', [
+                        'align' => $align,
+                        'minX' => $minX, 'maxX' => $maxX,
+                        'minY' => $minY, 'maxY' => $maxY,
+                        'textW' => $textW, 'textH' => $textH,
+                        'rectX' => $rectX, 'rectY' => $rectY,
+                        'drawX' => $drawX, 'drawY' => $drawY,
+                        'bgW' => $bgW, 'bgH' => $bgH,
+                        'padL' => $padL, 'padR' => $padR, 'padY' => $padY,
+                        'color' => $areaColor,
+                    ]);
+                    $canvas->text($text, $drawX, $drawY, function ($font) use ($fontSize, $fontPath) {
+                        $font->file($fontPath);
                         $font->size($fontSize);
-                        $font->color('#FFFFFF'); // Texto blanco para contraste
-                        $font->align($block['alignment'] ?? 'left');
+                        $font->color('#FFFFFF');
+                        $font->align('left'); // evitar center/right para no desfasar bbox
                     });
                 } else {
                     // Para otros bloques, usar configuración normal
@@ -685,6 +876,568 @@ class CredentialService implements CredentialServiceInterface
         }
         
         Log::info('[CREDENTIAL SERVICE] Datos del empleado incrustados');
+    }
+
+    /**
+     * Renderizar bloque dinámico de zonas dentro de un rectángulo
+     */
+    private function renderZonesBlock($canvas, array $block, ?array $zones): void
+    {
+        try {
+            $rectX = isset($block['x']) ? intval($block['x']) : 0;
+            $rectY = isset($block['y']) ? intval($block['y']) : 0;
+            $rectW = isset($block['width']) ? intval($block['width']) : 0;
+            $rectH = isset($block['height']) ? intval($block['height']) : 0;
+
+            if ($rectW <= 0 || $rectH <= 0) {
+                Log::warning('[CREDENTIAL SERVICE] Zones block con dimensiones inválidas', [
+                    'block' => $block
+                ]);
+                return;
+            }
+
+            // Preparar datos de zonas
+            $zoneNumbers = [];
+            if ($zones && is_array($zones)) {
+                foreach ($zones as $z) {
+                    if (isset($z['id'])) {
+                        $zoneNumbers[] = intval($z['id']);
+                    }
+                }
+            }
+
+            if (empty($zoneNumbers)) {
+                Log::info('[CREDENTIAL SERVICE] Sin zonas aprobadas para renderizar en zones block');
+                return;
+            }
+
+            sort($zoneNumbers); // Orden ascendente para consistencia visual
+
+            $padding = isset($block['padding']) ? intval($block['padding']) : 8;
+            $gap = isset($block['gap']) ? intval($block['gap']) : 10;
+            $fontFileName = isset($block['font_family']) ? $block['font_family'] : 'arial.ttf';
+            $fontColor = isset($block['font_color']) ? $block['font_color'] : '#000000';
+
+            $fontPath = public_path('fonts/' . $fontFileName);
+            if (!file_exists($fontPath)) {
+                Log::warning('[CREDENTIAL SERVICE] Font no encontrada para zones, usando arial.ttf por defecto', [
+                    'requested' => $fontFileName
+                ]);
+                $fallback = public_path('fonts/arial.ttf');
+                if (file_exists($fallback)) {
+                    $fontPath = $fallback;
+                } else {
+                    Log::error('[CREDENTIAL SERVICE] No se encontró archivo de fuente arial.ttf en public/fonts');
+                    return;
+                }
+            }
+
+        $innerW = max(0, $rectW - 2 * $padding);
+        $innerH = max(0, $rectH - 2 * $padding);
+        
+        // Parámetros de caja y estilos (overrides desde layout_meta)
+        $boxMargin    = max(4, intval($gap / 3)); // margen dentro de la celda
+        $numPadding   = 6; // padding interno para cálculo de fuente
+        $borderWidth  = isset($block['border_width']) ? intval($block['border_width']) : 4;   // borde más fino
+        $boxFill      = $block['fill'] ?? '#FFFFFF';
+        $boxBorder    = $block['border_color'] ?? '#000000';                                   // negro
+        $cornerRadius = isset($block['corner_radius']) ? intval($block['corner_radius']) : 20; // radio más sobrio
+        $shadowOn     = isset($block['shadow']) ? (bool) $block['shadow'] : false;             // SIN sombra por defecto
+        $shadowOffset = 0;
+        $shadowColor  = 'rgba(0,0,0,0)';                                                       // sin sombra
+        $aspect       = isset($block['aspect']) ? floatval($block['aspect']) : 1.35; // relación alto/ancho
+
+        // Datos base
+        $n = count($zoneNumbers);
+        $gutterX = $gap; // separación horizontal constante
+        $gutterY = $gap; // separación vertical constante
+
+        // Modo AMPLIFICADO para 1–3 zonas (una fila, cajas grandes)
+        if ($n <= 3) {
+            $cols = $n;
+            $rows = 1;
+
+            $boxW = ($cols > 0)
+                ? intval(floor(($innerW - ($cols - 1) * $gutterX) / $cols))
+                : 0;
+            $boxW = max(1, $boxW);
+            $boxH = isset($block['box_height'])
+                ? intval(min($innerH, intval($block['box_height'])))
+                : intval(min($innerH, round($boxW * $aspect)));
+            $boxH = max(1, $boxH);
+
+            $contentW = $cols * $boxW + ($cols - 1) * $gutterX;
+            $startX   = $rectX + $padding + intval(floor(($innerW - $contentW) / 2));
+            $startY   = $rectY + $padding + intval(floor(($innerH - $boxH) / 2));
+
+            Log::info('[CREDENTIAL SERVICE] Renderizando zones block (MODO AMPLIFICADO N<=3)', [
+                'rect' => compact('rectX', 'rectY', 'rectW', 'rectH'),
+                'inner' => ['width' => $innerW, 'height' => $innerH],
+                'cols' => $cols,
+                'boxW' => $boxW,
+                'boxH' => $boxH,
+                'zones' => $zoneNumbers
+            ]);
+
+            // --- Ajustes especiales cuando hay UNA sola zona ---
+            $single = ($n === 1);
+
+            // Acolchado casi nulo para que el texto mida el cuadro
+            $boxMargin  = $single ? 0 : max(4, intval($gap / 3));
+            $numPadding = $single ? 0 : 6;
+
+            // Límites reales para el texto (dejamos casi todo el espacio)
+            $allowedTextW = max(1, ($boxW - 2 * $boxMargin) - 2 * $numPadding);
+            $allowedTextH = max(1, ($boxH - 2 * $boxMargin) - 2 * $numPadding);
+
+            // Tamaño de fuente uniforme
+            $uniformFontSize = 400;
+            foreach ($zoneNumbers as $zn) {
+                $candidate = $this->findMaxFontSize((string) $zn, $fontPath, $allowedTextW, $allowedTextH);
+                $uniformFontSize = min($uniformFontSize, $candidate);
+            }
+            $uniformFontSize = max(1, $uniformFontSize);
+
+            for ($i = 0; $i < $cols; $i++) {
+                $idx = $i;
+                if (!isset($zoneNumbers[$idx])) { continue; }
+                $text = strval($zoneNumbers[$idx]);
+
+                $x = $startX + $i * ($boxW + $gutterX);
+                $boxLeft = $x + $boxMargin;
+                $boxTop  = $startY + $boxMargin;
+                $drawW   = max(1, $boxW - 2 * $boxMargin);
+                $drawH   = max(1, $boxH - 2 * $boxMargin);
+
+                // Ajustes especiales cuando hay UNA sola zona: usar tamaño objetivo como si fueran 2 columnas
+                if ($single) {
+                    // 1) Calcula dimensiones objetivo como si fueran 2 columnas
+                    $targetCols = 2;
+                    $targetBoxW = ($targetCols > 0)
+                        ? intval(floor(($innerW - ($targetCols - 1) * $gutterX) / $targetCols))
+                        : $drawW; // fallback
+                    $targetBoxW = max(1, $targetBoxW);
+
+                    $targetBoxH = isset($block['box_height'])
+                        ? intval(min($innerH, intval($block['box_height'])))
+                        : intval(min($innerH, round($targetBoxW * $aspect)));
+                    $targetBoxH = max(1, $targetBoxH);
+
+                    // 2) Re-centrar la caja con ese tamaño objetivo
+                    $boxLeft += intdiv($drawW - $targetBoxW, 2);
+                    $boxTop  += intdiv($drawH - $targetBoxH, 2);
+                    $drawW    = $targetBoxW;
+                    $drawH    = $targetBoxH;
+
+                    // 3) Recalcular límites de texto con márgenes/padding
+                    $allowedTextW = max(1, ($drawW - 2 * $boxMargin) - 2 * $numPadding);
+                    $allowedTextH = max(1, ($drawH - 2 * $boxMargin) - 2 * $numPadding);
+
+                    // 4) Tamaño de fuente máximo que llene bien este nuevo rectángulo
+                    $uniformFontSize = $this->findMaxFontSize($text, $fontPath, $allowedTextW, $allowedTextH);
+                    $uniformFontSize = max(1, $uniformFontSize);
+                }
+
+                // Caja AA supersample sin sombra. Ajustes para 1 zona.
+                $radiusPx = $single
+                    ? intval(max(14, round($drawH * 0.14)))
+                    : (isset($block['corner_radius']) ? intval($block['corner_radius']) : intval(round($drawH * 0.22)));
+                $strokePx = $single ? 4 : $borderWidth;
+                $shadowBlur = 0;
+                $offsetAA   = 0;
+
+                $boxLayer = $this->makeRoundedRectLayerAA(
+                    $drawW, $drawH,
+                    $radiusPx,
+                    $boxFill, $boxBorder, $strokePx,
+                    false, 0, 0, 'rgba(0,0,0,0)'
+                );
+                $canvas->place($boxLayer, 'top-left', $boxLeft, $boxTop);
+
+                // Texto centrado
+                $textX = intval($boxLeft + ($drawW / 2));
+                $textY = intval($boxTop + ($drawH / 2));
+                $canvas->text($text, $textX, $textY, function ($font) use ($uniformFontSize, $fontPath, $fontColor) {
+                    $font->file($fontPath);
+                    $font->size($uniformFontSize);
+                    $font->color($fontColor);
+                    $font->align('center');
+                    $font->valign('middle');
+                });
+            }
+
+            return; // no continuar con el layout de 5 columnas
+        }
+
+        // --- Layout balanceado especial: 6 -> 3+3, 8 -> 4+4 -----------------------
+        if ($n === 6 || $n === 8) {
+            $cols = intdiv($n, 2);   // 3 ó 4
+            $rows = 2;
+
+            // ancho/alto de cada caja en función del ancho disponible
+            $unitBoxW = ($cols > 0)
+                ? intval(floor(($innerW - ($cols - 1) * $gutterX) / $cols))
+                : 0;
+            $unitBoxW = max(1, $unitBoxW);
+
+            // usa box_height si viene en el template; si no, deriva por aspecto
+            $unitBoxH = isset($block['box_height'])
+                ? intval($block['box_height'])
+                : intval(round($unitBoxW * $aspect));
+            $unitBoxH = max(1, $unitBoxH);
+
+            // quepan 2 filas centradas verticalmente
+            $totalH = $rows * $unitBoxH + ($rows - 1) * $gutterY;
+            if ($totalH > $innerH) {
+                $unitBoxH = intval(floor(($innerH - ($rows - 1) * $gutterY) / $rows));
+                $unitBoxH = max(1, $unitBoxH);
+                $totalH   = $rows * $unitBoxH + ($rows - 1) * $gutterY;
+            }
+            $startY = $rectY + $padding + intval(floor(($innerH - $totalH) / 2));
+
+            // límites de texto (márgenes/padding actuales)
+            $allowedTextW = max(1, ($unitBoxW - 2 * $boxMargin) - 2 * $numPadding);
+            $allowedTextH = max(1, ($unitBoxH - 2 * $boxMargin) - 2 * $numPadding);
+
+            // font-size uniforme para todos los números
+            $uniformFontSize = 400;
+            foreach ($zoneNumbers as $zn) {
+                $candidate = $this->findMaxFontSize((string) $zn, $fontPath, $allowedTextW, $allowedTextH);
+                $uniformFontSize = min($uniformFontSize, $candidate);
+            }
+            $uniformFontSize = max(1, $uniformFontSize);
+
+            // render de 2 filas idénticas centradas
+            for ($r = 0; $r < $rows; $r++) {
+                $itemsInRow = $cols; // 3 o 4 fijos
+                $contentW   = $itemsInRow * $unitBoxW + ($itemsInRow - 1) * $gutterX;
+                $startX     = $rectX + $padding + intval(floor(($innerW - $contentW) / 2));
+                $top        = $startY + $r * ($unitBoxH + $gutterY);
+
+                for ($i = 0; $i < $itemsInRow; $i++) {
+                    $idx = $r * $cols + $i;
+                    if (!isset($zoneNumbers[$idx])) { continue; }
+                    $text = strval($zoneNumbers[$idx]);
+
+                    $x = $startX + $i * ($unitBoxW + $gutterX);
+                    $boxLeft = $x + $boxMargin;
+                    $boxTop  = $top + $boxMargin;
+                    $drawW   = max(1, $unitBoxW - 2 * $boxMargin);
+                    $drawH   = max(1, $unitBoxH - 2 * $boxMargin);
+
+                    // caja redondeada (misma estética que el layout estándar)
+                    $radiusPx   = isset($block['corner_radius']) ? intval($block['corner_radius']) : intval(round($drawH * 0.18));
+                    $strokePx   = $borderWidth;
+                    $shadowBlur = 0;
+                    $offsetAA   = 0;
+
+                    $boxLayer = $this->makeRoundedRectLayerAA(
+                        $drawW, $drawH,
+                        $radiusPx,
+                        $boxFill, $boxBorder, $strokePx,
+                        $shadowOn, $offsetAA, $shadowBlur, $shadowColor
+                    );
+                    $canvas->place($boxLayer, 'top-left', $boxLeft, $boxTop);
+
+                    // texto centrado
+                    $textX = intval($boxLeft + ($drawW / 2));
+                    $textY = intval($boxTop  + ($drawH / 2));
+                    $canvas->text($text, $textX, $textY, function ($font) use ($uniformFontSize, $fontPath, $fontColor) {
+                        $font->file($fontPath);
+                        $font->size($uniformFontSize);
+                        $font->color($fontColor);
+                        $font->align('center');
+                        $font->valign('middle');
+                    });
+                }
+            }
+
+            return; // evita que caiga al layout de 5 por fila
+        }
+
+        // ---- Layout estándar (máx 5 por fila, ancho de unidad fijo) ----
+        $unitCols = 5;
+        $rows = ($n > 0) ? (int) ceil($n / $unitCols) : 0;
+
+        // Ancho/alto de caja por unidad
+        $unitBoxW = ($unitCols > 0)
+            ? intval(floor(($innerW - ($unitCols - 1) * $gutterX) / $unitCols))
+            : 0;
+        $unitBoxW = max(1, $unitBoxW);
+        $unitBoxH = isset($block['box_height'])
+            ? intval($block['box_height'])
+            : intval(round($unitBoxW * 1.4));
+        $unitBoxH = max(1, $unitBoxH);
+
+        // Ajuste para que todas las filas quepan dentro del bloque y centrado vertical
+        $totalH = ($rows > 0) ? ($rows * $unitBoxH + ($rows - 1) * $gutterY) : 0;
+        if ($totalH > $innerH && $rows > 0) {
+            $unitBoxH = intval(floor(($innerH - ($rows - 1) * $gutterY) / $rows));
+            $unitBoxH = max(1, $unitBoxH);
+            $totalH = $rows * $unitBoxH + ($rows - 1) * $gutterY;
+        }
+        $startY = $rectY + $padding + intval(floor(($innerH - $totalH) / 2));
+
+        Log::info('[CREDENTIAL SERVICE] Renderizando zones block (filas máx 5, ancho unidad y centrado por fila)', [
+            'rect' => compact('rectX', 'rectY', 'rectW', 'rectH'),
+            'inner' => ['width' => $innerW, 'height' => $innerH],
+            'rows' => $rows,
+            'unitBoxW' => $unitBoxW,
+            'unitBoxH' => $unitBoxH,
+            'zones' => $zoneNumbers
+        ]);
+
+        // Límites de texto dentro de la caja de unidad
+        $allowedTextW = max(1, ($unitBoxW - 2 * $boxMargin) - 2 * $numPadding);
+        $allowedTextH = max(1, ($unitBoxH - 2 * $boxMargin) - 2 * $numPadding);
+
+        // Tamaño de fuente uniforme
+        $uniformFontSize = 400;
+        foreach ($zoneNumbers as $zn) {
+            $candidate = $this->findMaxFontSize((string) $zn, $fontPath, $allowedTextW, $allowedTextH);
+            $uniformFontSize = min($uniformFontSize, $candidate);
+        }
+        $uniformFontSize = max(1, $uniformFontSize);
+
+        // Renderizado por filas (máx 5 por fila), centrado por fila
+        for ($r = 0; $r < $rows; $r++) {
+            $itemsInRow = min($unitCols, max(0, $n - $r * $unitCols));
+            if ($itemsInRow <= 0) { continue; }
+
+            $contentW = $itemsInRow * $unitBoxW + ($itemsInRow - 1) * $gutterX;
+            $startX   = $rectX + $padding + intval(floor(($innerW - $contentW) / 2));
+            $top      = $startY + $r * ($unitBoxH + $gutterY);
+
+            for ($i = 0; $i < $itemsInRow; $i++) {
+                $idx = $r * $unitCols + $i;
+                if (!isset($zoneNumbers[$idx])) { continue; }
+                $text = strval($zoneNumbers[$idx]);
+
+                $x = $startX + $i * ($unitBoxW + $gutterX);
+                $boxLeft = $x + $boxMargin;
+                $boxTop  = $top + $boxMargin;
+                $drawW   = max(1, $unitBoxW - 2 * $boxMargin);
+                $drawH   = max(1, $unitBoxH - 2 * $boxMargin);
+
+                // Caja AA supersample + sombra suave
+                $radiusPx   = isset($block['corner_radius']) ? intval($block['corner_radius']) : intval(round($drawH * 0.18));
+                $strokePx   = $borderWidth;
+                $shadowBlur = 0;
+                $offsetAA   = 0;
+
+                $boxLayer = $this->makeRoundedRectLayerAA(
+                    $drawW, $drawH,
+                    $radiusPx,
+                    $boxFill, $boxBorder, $strokePx,
+                    $shadowOn, $offsetAA, $shadowBlur, $shadowColor
+                );
+                $canvas->place($boxLayer, 'top-left', $boxLeft, $boxTop);
+
+                // Texto centrado
+                $textX = intval($boxLeft + ($drawW / 2));
+                $textY = intval($boxTop + ($drawH / 2));
+                $canvas->text($text, $textX, $textY, function ($font) use ($uniformFontSize, $fontPath, $fontColor) {
+                    $font->file($fontPath);
+                    $font->size($uniformFontSize);
+                    $font->color($fontColor);
+                    $font->align('center');
+                    $font->valign('middle');
+                });
+            }
+        }
+    } catch (\Throwable $e) {
+        Log::error('[CREDENTIAL SERVICE] Error renderizando zones block', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+    }
+}
+
+    /**
+     * Calcular el layout (rows, cols) óptimo para N elementos dentro de un área
+     */
+    private function calculateGridLayout(int $n, int $width, int $height, int $gap): array
+    {
+        if ($n <= 0 || $width <= 0 || $height <= 0) {
+            return [0, 0];
+        }
+
+        $best = [1, $n];
+        $bestScore = -1.0;
+        $minWaste = PHP_INT_MAX;
+
+        for ($rows = 1; $rows <= $n; $rows++) {
+            $cols = (int) ceil($n / $rows);
+            // Dimensiones de celda con este layout
+            $cellW = ($cols > 0) ? ($width - ($cols - 1) * $gap) / $cols : 0;
+            $cellH = ($rows > 0) ? ($height - ($rows - 1) * $gap) / $rows : 0;
+            if ($cellW <= 0 || $cellH <= 0) {
+                continue;
+            }
+
+            $waste = $rows * $cols - $n;
+            $score = min($cellW, $cellH); // preferir celdas más grandes y cuadradas
+
+            if ($waste < $minWaste || ($waste === $minWaste && $score > $bestScore)) {
+                $minWaste = $waste;
+                $bestScore = $score;
+                $best = [$rows, $cols];
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * Medir ancho/alto y bbox relativo a la línea base usando el mismo motor de render.
+     * Si Imagick está disponible, usa queryFontMetrics; si no, fallback a GD (imagettfbbox).
+     * Retorna: [minX, maxX, minY, maxY, w, h]
+     */
+    private function measureTextBox(string $text, int $size, string $fontPath): array
+    {
+        if (extension_loaded('imagick')) {
+            try {
+                $draw = new \ImagickDraw();
+                $draw->setFont($fontPath);
+                $draw->setFontSize($size);
+                $im = new \Imagick();
+                $m = $im->queryFontMetrics($draw, $text);
+                $asc = isset($m['ascender']) ? (float) $m['ascender'] : 0.0;   // > 0
+                $desc = isset($m['descender']) ? (float) $m['descender'] : 0.0; // < 0
+                $w = (int) ceil($m['textWidth'] ?? 0);
+                $h = (int) ceil($asc - $desc);
+                return [
+                    'minX' => 0,
+                    'maxX' => $w,
+                    'minY' => -$asc,
+                    'maxY' => $desc,
+                    'w' => $w,
+                    'h' => $h,
+                ];
+            } catch (\Throwable $e) {
+                // Fallback a GD si falla Imagick por cualquier motivo
+            }
+        }
+
+        // Fallback GD
+        $bbox = imagettfbbox($size, 0, $fontPath, $text);
+        $xs = [$bbox[0], $bbox[2], $bbox[4], $bbox[6]];
+        $ys = [$bbox[1], $bbox[3], $bbox[5], $bbox[7]];
+        $minX = min($xs);
+        $maxX = max($xs);
+        $minY = min($ys);
+        $maxY = max($ys);
+        return [
+            'minX' => $minX,
+            'maxX' => $maxX,
+            'minY' => $minY,
+            'maxY' => $maxY,
+            'w' => $maxX - $minX,
+            'h' => $maxY - $minY,
+        ];
+    }
+
+    /**
+     * Encontrar tamaño máximo de fuente que quepa en el área dada
+     */
+    private function findMaxFontSize(string $text, string $fontPath, int $maxWidth, int $maxHeight): int
+    {
+        $low = 1;
+        $high = max(10, min($maxWidth, $maxHeight));
+        $best = 1;
+
+        // Intento rápido de aumentar high si cabe
+        while ($this->textFits($text, $fontPath, $high, $maxWidth, $maxHeight) && $high < 400) {
+            $best = $high;
+            $high *= 2;
+        }
+
+        // Búsqueda binaria
+        while ($low <= $high) {
+            $mid = intdiv($low + $high, 2);
+            if ($this->textFits($text, $fontPath, $mid, $maxWidth, $maxHeight)) {
+                $best = $mid;
+                $low = $mid + 1;
+            } else {
+                $high = $mid - 1;
+            }
+        }
+
+        return max(1, $best - 1); // pequeño margen para evitar cortes
+    }
+
+    private function textFits(string $text, string $fontPath, int $fontSize, int $maxWidth, int $maxHeight): bool
+    {
+        $m = $this->measureTextBox($text, $fontSize, $fontPath);
+        return $m['w'] <= $maxWidth && $m['h'] <= $maxHeight;
+    }
+
+    /**
+     * Dibuja un rectángulo redondeado con borde opcional y sombra (compatible con GD).
+     */
+    private function drawRoundedRect($canvas, int $x, int $y, int $w, int $h, int $radius,
+        string $fill = '#FFFFFF', ?string $border = null, int $borderWidth = 0,
+        bool $shadow = false, int $shadowOffset = 0, string $shadowColor = 'rgba(0,0,0,0.14)'): void
+    {
+        $r = max(0, min($radius, intdiv(min($w, $h), 2)));
+
+        // Sombra
+        if ($shadow && $shadowOffset > 0) {
+            $this->fillRoundedRect($canvas, $x + $shadowOffset, $y + $shadowOffset, $w, $h, $r, $shadowColor);
+        }
+
+        if ($border && $borderWidth > 0) {
+            // Capa de borde
+            $this->fillRoundedRect($canvas, $x, $y, $w, $h, $r, $border);
+
+            // Capa de relleno (inset)
+            $ix = $x + $borderWidth;
+            $iy = $y + $borderWidth;
+            $iw = max(1, $w - 2 * $borderWidth);
+            $ih = max(1, $h - 2 * $borderWidth);
+            $ir = max(0, $r - $borderWidth);
+            $this->fillRoundedRect($canvas, $ix, $iy, $iw, $ih, $ir, $fill);
+        } else {
+            // Solo relleno
+            $this->fillRoundedRect($canvas, $x, $y, $w, $h, $r, $fill);
+        }
+    }
+
+    /**
+     * Rellena un rectángulo redondeado (4 círculos + 3 rectángulos).
+     */
+    private function fillRoundedRect($canvas, int $x, int $y, int $w, int $h, int $r, string $color): void
+    {
+        // Centro
+        $canvas->drawRectangle($x + $r, $y, function ($rect) use ($w, $h, $r, $color) {
+            $rect->size(max(1, $w - 2 * $r), $h);
+            $rect->background($color);
+        });
+        // Laterales
+        if ($r > 0) {
+            $canvas->drawRectangle($x, $y + $r, function ($rect) use ($r, $h, $color) {
+                $rect->size($r, max(1, $h - 2 * $r));
+                $rect->background($color);
+            });
+            $canvas->drawRectangle($x + $w - $r, $y + $r, function ($rect) use ($r, $h, $color) {
+                $rect->size($r, max(1, $h - 2 * $r));
+                $rect->background($color);
+            });
+            // Esquinas (círculos)
+            $d = $r * 2;
+            $circles = [
+                [$x + $r,       $y + $r      ], // TL
+                [$x + $w - $r,  $y + $r      ], // TR
+                [$x + $r,       $y + $h - $r ], // BL
+                [$x + $w - $r,  $y + $h - $r ], // BR
+            ];
+            foreach ($circles as [$cx, $cy]) {
+                $canvas->drawEllipse($cx, $cy, function ($el) use ($d, $color) {
+                    $el->size($d, $d);
+                    $el->background($color);
+                });
+            }
+        }
     }
 
     /**

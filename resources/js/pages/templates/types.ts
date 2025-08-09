@@ -9,6 +9,13 @@ export interface TextBlock {
   height?: number;
   font_size?: number;
   alignment?: "left" | "center" | "right";
+  // Tipo opcional para bloques especiales (por ejemplo, 'zones')
+  type?: string;
+  // Propiedades específicas para el bloque dinámico de zonas
+  padding?: number;
+  gap?: number;
+  font_family?: string;
+  font_color?: string;
 }
 
 export interface Rectangle {

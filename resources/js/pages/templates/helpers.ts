@@ -100,15 +100,36 @@ export const preprocessTemplateFormData = (formData: FormData): FormData => {
     
     // 4. Procesar text_blocks
     if (Array.isArray(processedData.layout_meta.text_blocks)) {
-      processedData.layout_meta.text_blocks = processedData.layout_meta.text_blocks.map((block: Partial<TextBlock>) => ({
-        ...block,
-        id: (block.id ?? "") as string,
-        x: Number(block.x || 0),
-        y: Number(block.y || 0),
-        width: Number(block.width || 0),
-        height: Number(block.height || 0),
-        font_size: Number(block.font_size || 12)
-      })) as TextBlock[];
+      processedData.layout_meta.text_blocks = processedData.layout_meta.text_blocks.map((block: Partial<TextBlock>) => {
+        const base: Partial<TextBlock> = {
+          ...block,
+          id: (block.id ?? "") as string,
+          x: Number(block.x ?? 0),
+          y: Number(block.y ?? 0),
+          width: Number(block.width ?? 0),
+          height: Number(block.height ?? 0),
+        };
+        
+        // Manejo específico para el bloque dinámico de zonas
+        const isZones = (block as Partial<TextBlock>).type === 'zones' || (block.id === 'zones');
+        if (isZones) {
+          return {
+            ...base,
+            type: 'zones',
+            padding: block.padding !== undefined ? Number(block.padding) : undefined,
+            gap: block.gap !== undefined ? Number(block.gap) : undefined,
+            font_family: block.font_family,
+            font_color: block.font_color,
+          } as TextBlock;
+        }
+        
+        // Bloques de texto normales
+        return {
+          ...base,
+          font_size: Number(block.font_size ?? 12),
+          alignment: block.alignment,
+        } as TextBlock;
+      }) as TextBlock[];
     }
     
     // 5. Finalmente, aplicar conversión recursiva para cualquier otro valor que podría haber quedado

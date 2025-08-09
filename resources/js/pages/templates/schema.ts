@@ -30,6 +30,12 @@ export interface Template {
       height?: number;
       font_size?: number;
       alignment?: "left" | "center" | "right";
+      // Nuevos campos opcionales para el bloque dinámico de zonas
+      type?: string;
+      padding?: number;
+      gap?: number;
+      font_family?: string;
+      font_color?: string;
     }>;
   };
   is_default?: boolean;
@@ -85,10 +91,17 @@ export const templateSchema = z.object({
         y: z.coerce.number().min(0, "La posición Y debe ser mayor o igual a 0"),
         width: z.coerce.number().min(1, "El ancho debe ser mayor a 0"),
         height: z.coerce.number().min(1, "La altura debe ser mayor a 0"),
-        font_size: z.coerce.number().min(1, "El tamaño de fuente debe ser mayor a 0"),
+        // Para bloques de texto normales
+        font_size: z.coerce.number().min(1, "El tamaño de fuente debe ser mayor a 0").optional(),
         alignment: z.enum(["left", "center", "right"], {
           invalid_type_error: "La alineación debe ser izquierda, centro o derecha"
-        })
+        }).optional(),
+        // Campos adicionales para el bloque dinámico de zonas
+        type: z.string().optional(),
+        padding: z.coerce.number().min(0, "El padding debe ser 0 o mayor").optional(),
+        gap: z.coerce.number().min(0, "El gap debe ser 0 o mayor").optional(),
+        font_family: z.string().optional(),
+        font_color: z.string().optional(),
       })
     ).optional().default([])
   })

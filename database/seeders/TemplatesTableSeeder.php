@@ -37,10 +37,11 @@ class TemplatesTableSeeder extends Seeder
                 File::makeDirectory($eventDir, 0755, true);
             }
             
-            // Crear una imagen dummy para la plantilla (un rectángulo blanco con el nombre del evento)
-            $templateUuid = (string) Str::uuid();
-            $imagePath = $eventDir . '/' . $templateUuid . '.png';
-            $relativePath = 'events/' . $event->uuid . '/' . $templateUuid . '.png';
+            // Crear una imagen para la plantilla con nombre estándar template_<event_uuid>_<YYYYMMDD_HHMMSS>.png
+            $timestamp = now()->format('Ymd_His');
+            $fileName = 'template_' . $event->uuid . '_' . $timestamp . '.png';
+            $imagePath = $eventDir . '/' . $fileName;
+            $relativePath = 'events/' . $event->uuid . '/' . $fileName;
             
             // Si no existe, crear una imagen dummy
             if (!File::exists($imagePath)) {
@@ -88,7 +89,7 @@ class TemplatesTableSeeder extends Seeder
                     'text_blocks' => [
                         [
                             'id' => 'nombre',
-                            'x' => 1042,
+                            'x' => 986,
                             'y' => 273,
                             'width' => 464,
                             'height' => 22,
@@ -97,7 +98,7 @@ class TemplatesTableSeeder extends Seeder
                         ],
                         [
                             'id' => 'federacion',
-                            'x' => 1042,
+                            'x' => 990,
                             'y' => 318,
                             'width' => 464,
                             'height' => 22,
@@ -106,8 +107,8 @@ class TemplatesTableSeeder extends Seeder
                         ],
                         [
                             'id' => 'rol',
-                            'x' => 1042,
-                            'y' => 368,
+                            'x' => 997,
+                            'y' => 361,
                             'width' => 468,
                             'height' => 22,
                             'font_size' => 22,
@@ -115,7 +116,7 @@ class TemplatesTableSeeder extends Seeder
                         ],
                         [
                             'id' => 'proveedor',
-                            'x' => 1034,
+                            'x' => 978,
                             'y' => 457,
                             'width' => 473,
                             'height' => 20,
@@ -124,98 +125,29 @@ class TemplatesTableSeeder extends Seeder
                         ],
                         [
                             'id' => 'credential_uuid',
-                            'x' => 916,
-                            'y' => 1006,
+                            'x' => 144,
+                            'y' => 994,
                             'width' => 473,
                             'height' => 15,
                             'font_size' => 20,
                             'alignment' => 'left'
                         ],
-                        // Zonas individuales (1-9) - Ajustadas según servidor EC2
+                        // Bloque dinámico de zonas (reemplaza zona1-zona9)
                         [
-                            'id' => 'zona1',
-                            'x' => 841,
-                            'y' => 623,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona2',
-                            'x' => 976,
-                            'y' => 621,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona3',
-                            'x' => 1111,
-                            'y' => 623,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona4',
-                            'x' => 1242,
-                            'y' => 623,
-                            'width' => 84,
-                            'height' => 84,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona5',
-                            'x' => 1366,
-                            'y' => 624,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona6',
-                            'x' => 912,
-                            'y' => 760,
-                            'width' => 84,
-                            'height' => 84,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona7',
-                            'x' => 1045,
-                            'y' => 762,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona8',
-                            'x' => 1182,
-                            'y' => 760,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
-                        ],
-                        [
-                            'id' => 'zona9',
-                            'x' => 1312,
-                            'y' => 759,
-                            'width' => 84,
-                            'height' => 85,
-                            'font_size' => 100,
-                            'alignment' => 'center'
+                            'id' => 'zones',
+                            'type' => 'zones',
+                            'x' => 841,   // borde izquierdo de la cuadrícula original
+                            'y' => 510,   // ajustado según layout actual
+                            'width' => 555, // 1396 - 841 (derecha - izquierda)
+                            'height' => 290, // 847 - 621 (abajo - arriba)
+                            'padding' => 8,
+                            'gap' => 10,
+                            'font_family' => 'arial.ttf',
+                            'font_color' => '#000000'
                         ]
                     ]
                 ],
-                'version' => 1,
+                'version' => 3,
                 'is_default' => true
             ]);
             

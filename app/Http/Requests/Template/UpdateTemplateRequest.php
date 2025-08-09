@@ -61,11 +61,50 @@ class UpdateTemplateRequest extends FormRequest
             'layout_meta.text_blocks.*.y' => 'required|numeric|min:0',
             'layout_meta.text_blocks.*.width' => 'required|numeric|min:1',
             'layout_meta.text_blocks.*.height' => 'required|numeric|min:1',
-            'layout_meta.text_blocks.*.font_size' => 'required|numeric|min:1',
-            'layout_meta.text_blocks.*.alignment' => 'required|in:left,center,right',
+            'layout_meta.text_blocks.*.type' => 'nullable|string|in:zones',
+            'layout_meta.text_blocks.*.font_size' => 'nullable|numeric|min:1',
+            'layout_meta.text_blocks.*.alignment' => 'nullable|in:left,center,right',
+            // Propiedades específicas del bloque de zonas (opcionales)
+            'layout_meta.text_blocks.*.padding' => 'nullable|numeric|min:0',
+            'layout_meta.text_blocks.*.gap' => 'nullable|numeric|min:0',
+            'layout_meta.text_blocks.*.font_family' => 'nullable|string|max:255',
+            'layout_meta.text_blocks.*.font_color' => 'nullable|string|max:20',
             'is_default' => 'nullable|boolean',
             'version' => 'nullable|integer|min:1'
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    public function withValidator($validator): void
+    {
+        $blocks = data_get($this->all(), 'layout_meta.text_blocks', []);
+        if (is_array($blocks)) {
+            foreach (array_keys($blocks) as $index) {
+                // Para bloques que no son 'zones', font_size y alignment son requeridos
+                $validator->sometimes(
+                    "layout_meta.text_blocks.$index.font_size",
+                    'required|numeric|min:1',
+                    function () use ($index) {
+                        $type = data_get($this->all(), "layout_meta.text_blocks.$index.type");
+                        $id = data_get($this->all(), "layout_meta.text_blocks.$index.id");
+                        $isZones = ($type === 'zones') || ($id === 'zones');
+                        return !$isZones;
+                    }
+                );
+                $validator->sometimes(
+                    "layout_meta.text_blocks.$index.alignment",
+                    'required|in:left,center,right',
+                    function () use ($index) {
+                        $type = data_get($this->all(), "layout_meta.text_blocks.$index.type");
+                        $id = data_get($this->all(), "layout_meta.text_blocks.$index.id");
+                        $isZones = ($type === 'zones') || ($id === 'zones');
+                        return !$isZones;
+                    }
+                );
+            }
+        }
     }
 
     /**
