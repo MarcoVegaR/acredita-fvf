@@ -1,5 +1,5 @@
 # Imagen base para aplicación Laravel con React/Inertia
-FROM php:8.2-fpm-alpine AS php-base
+FROM php:8.3-fpm-alpine AS php-base
 
 # Instalar dependencias del sistema
 # Instalar dependencias del sistema y de desarrollo
