@@ -138,15 +138,23 @@ class GeneratePrintBatchJob implements ShouldQueue
             'dimensions_match' => (abs($actualPageWidth - $credentialMmWidth) < 0.1 && abs($actualPageHeight - $credentialMmHeight) < 0.1)
         ]);
         
-        // Configuración para mejor calidad de imagen
+        // Configuración para mejor tamaño de archivo (habilitar compresión)
         if (method_exists($pdf, 'SetCompression')) {
-            $pdf->SetCompression(false); // Sin compresión para mejor calidad
+            $pdf->SetCompression(true); // Habilitar compresión para reducir tamaño
         }
         
         // Limpiar la página temporal
         $pdf = new \FPDF('L', 'mm', [round($credentialMmWidth, 2), round($credentialMmHeight, 2)]);
         $pdf->SetAutoPageBreak(false);
         $pdf->SetMargins(0, 0, 0);
+
+        // Configuración de compresión y calidad (debe aplicarse antes de insertar imágenes)
+        if (method_exists($pdf, 'SetCompression')) {
+            $pdf->SetCompression(true);
+        }
+        if (method_exists($pdf, 'SetJPEGQuality')) {
+            $pdf->SetJPEGQuality(90); // Calidad alta pero no máxima, mejor desempeño
+        }
 
         // Configuración básica del PDF
         $credentialsPerPage = 1; // Una credencial por página para máxima fidelidad
@@ -181,8 +189,8 @@ class GeneratePrintBatchJob implements ShouldQueue
                 }
 
                 $fullImagePath = Storage::disk('public')->path($imagePath);
-
-                // Obtener información completa de la imagen incluyendo DPI si está disponible
+                
+                // Obtener información básica de la imagen (ancho/alto)
                 $imageInfo = getimagesize($fullImagePath);
                 if (!$imageInfo) {
                     Log::warning('[GENERATE PRINT BATCH JOB] No se pudo obtener información de la imagen', [
@@ -193,42 +201,10 @@ class GeneratePrintBatchJob implements ShouldQueue
                 }
                 
                 [$pixelWidth, $pixelHeight] = $imageInfo;
-                
-                // **OBTENER DPI REAL** usando imageresolution() disponible en PHP 7.2+
-                $actualDpi = $defaultDpi; // Valor por defecto
-                
-                if (function_exists('imageresolution')) {
-                    try {
-                        // Crear recurso de imagen temporal para obtener resolución
-                        $imageResource = imagecreatefromstring(file_get_contents($fullImagePath));
-                        if ($imageResource !== false) {
-                            $resolution = imageresolution($imageResource);
-                            $dpiX = $resolution[0] ?? $defaultDpi;
-                            $dpiY = $resolution[1] ?? $dpiX;
-                            $actualDpi = ($dpiX + $dpiY) / 2; // Promedio si son diferentes
-                            imagedestroy($imageResource);
-                        }
-                    } catch (\Exception $e) {
-                        Log::debug('[GENERATE PRINT BATCH JOB] No se pudo obtener DPI real, usando por defecto', [
-                            'credential_id' => $credential->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
-                
-                // Conversión exacta píxel → milímetro con DPI real o por defecto
-                $imageMmWidth = $pixelWidth * $mmPerInch / $actualDpi;
-                $imageMmHeight = $pixelHeight * $mmPerInch / $actualDpi;
-                
-                Log::info('[GENERATE PRINT BATCH JOB] Procesando imagen individual', [
+                Log::debug('[GENERATE PRINT BATCH JOB] Procesando imagen', [
                     'batch_uuid' => $this->batch->uuid,
                     'credential_id' => $credential->id,
-                    'image_pixels' => "{$pixelWidth}x{$pixelHeight}",
-                    'default_dpi' => $defaultDpi,
-                    'actual_dpi' => round($actualDpi, 1),
-                    'dpi_method' => function_exists('imageresolution') ? 'imageresolution()' : 'default_fallback',
-                    'calculated_mm' => round($imageMmWidth, 1) . 'x' . round($imageMmHeight, 1),
-                    'page_mm' => round($credentialMmWidth, 1) . 'x' . round($credentialMmHeight, 1)
+                    'image_pixels' => "{$pixelWidth}x{$pixelHeight}"
                 ]);
                 
                 // **MÉTODO FULL-WIDTH**: Hacer que la imagen ocupe exactamente todo el ancho de la página
@@ -239,7 +215,7 @@ class GeneratePrintBatchJob implements ShouldQueue
                 $imageAspectRatio = $pixelHeight / $pixelWidth;
                 $calculatedHeight = $pageWidth * $imageAspectRatio;
                 
-                Log::info('[GENERATE PRINT BATCH JOB] Colocación de imagen full-width', [
+                Log::debug('[GENERATE PRINT BATCH JOB] Colocación de imagen full-width', [
                     'batch_uuid' => $this->batch->uuid,
                     'credential_id' => $credential->id,
                     'page_dimensions' => "{$pageWidth}x{$pageHeight}mm",
@@ -254,7 +230,7 @@ class GeneratePrintBatchJob implements ShouldQueue
                     // **TÉCNICA RECOMENDADA**: width = página completa, height = 0 (proporción automática)
                     $pdf->Image($fullImagePath, 0, 0, $pageWidth, 0);
                     
-                    Log::info('[GENERATE PRINT BATCH JOB] Imagen colocada exitosamente con método full-width', [
+                    Log::debug('[GENERATE PRINT BATCH JOB] Imagen colocada exitosamente con método full-width', [
                         'credential_id' => $credential->id,
                         'original_pixels' => "{$pixelWidth}x{$pixelHeight}",
                         'final_width_mm' => $pageWidth,
@@ -290,26 +266,21 @@ class GeneratePrintBatchJob implements ShouldQueue
             gc_collect_cycles();
         }
 
-        // Optimizar la calidad final del PDF antes de guardarlo
-        if (method_exists($pdf, 'SetJPEGQuality')) {
-            $pdf->SetJPEGQuality(100); // Máxima calidad para JPEGs
-        }
+        // Generar nombre de archivo único y asegurar directorio
+        $dir = 'print_batches';
+        Storage::disk('public')->makeDirectory($dir);
+        $fileName = "$dir/batch_{$this->batch->uuid}.pdf";
         
-        // Generar nombre de archivo único
-        $fileName = "print_batches/batch_{$this->batch->uuid}.pdf";
-        
-        // Guardar PDF con la mayor calidad posible
+        // Guardar PDF directamente a disco para ahorrar memoria
         try {
-            // Usar Output('S') para obtener como string
-            $pdfContent = $pdf->Output('S');
-            $fileSize = strlen($pdfContent);
+            $fullPath = Storage::disk('public')->path($fileName);
+            $pdf->Output('F', $fullPath);
             
             // Verificar si el tamaño es razonable para evitar archivos corruptos
+            $fileSize = @filesize($fullPath) ?: 0;
             if ($fileSize < 1024) { // menos de 1KB es sospechoso
                 throw new \Exception("PDF generado demasiado pequeño: {$fileSize} bytes");
             }
-            
-            Storage::disk('public')->put($fileName, $pdfContent);
             
             // Registro detallado para verificación
             Log::info('[GENERATE PRINT BATCH JOB] PDF guardado exitosamente', [
@@ -317,7 +288,7 @@ class GeneratePrintBatchJob implements ShouldQueue
                 'file_name' => $fileName,
                 'file_size' => $fileSize,
                 'pages' => $pdf->PageNo(),
-                'path' => Storage::disk('public')->path($fileName)
+                'path' => $fullPath
             ]);
         } catch (\Exception $e) {
             Log::error('[GENERATE PRINT BATCH JOB] Error al guardar el PDF', [
@@ -326,11 +297,11 @@ class GeneratePrintBatchJob implements ShouldQueue
             ]);
             throw $e; // Re-lanzar para que el job falle adecuadamente
         }
-
+        
         Log::info('[GENERATE PRINT BATCH JOB] PDF generado exitosamente', [
             'batch_uuid' => $this->batch->uuid,
             'file_name' => $fileName,
-            'file_size' => strlen($pdfContent),
+            'file_size' => $fileSize,
             'total_pages' => $pdf->PageNo()
         ]);
 
