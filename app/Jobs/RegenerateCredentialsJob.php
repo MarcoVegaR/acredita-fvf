@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Models\Event;
 use App\Models\Template;
 use App\Models\Credential;
-use App\Services\Credential\CredentialServiceInterface;
+ 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,14 +28,16 @@ class RegenerateCredentialsJob implements ShouldQueue
     {
         $this->event = $event;
         $this->template = $template;
+        // Ejecutar este job en la cola dedicada de credenciales
+        $this->onQueue('credentials');
     }
 
     /**
      * Execute the job.
      */
-    public function handle(CredentialServiceInterface $credentialService): void
+    public function handle(): void
     {
-        Log::info('[REGENERATE JOB] Iniciando regeneración de credenciales', [
+        Log::info('[REGENERATE JOB] Iniciando despacho de regeneración de credenciales', [
             'event_id' => $this->event->id,
             'event_name' => $this->event->name,
             'template_id' => $this->template->id,
@@ -43,68 +45,30 @@ class RegenerateCredentialsJob implements ShouldQueue
         ]);
 
         try {
-            // Obtener todas las credenciales activas del evento
-            $credentials = Credential::whereHas('accreditationRequest', function ($query) {
-                $query->where('event_id', $this->event->id)
+            $chunkSize = 200; // tamaño de lote para despacho
+            $totalDispatched = 0;
+            $batches = 0;
+
+            $query = Credential::query()
+                ->whereHas('accreditationRequest', function ($q) {
+                    $q->where('event_id', $this->event->id)
                       ->where('status', 'approved');
-            })->get();
+                })
+                ->select('id');
 
-            $successCount = 0;
-            $errorCount = 0;
-
-            foreach ($credentials as $credential) {
-                try {
-                    Log::info('[REGENERATE JOB] Regenerando credencial', [
-                        'credential_id' => $credential->id,
-                        'credential_uuid' => $credential->uuid
-                    ]);
-
-                    // Actualizar el template snapshot con la nueva plantilla
-                    $templateSnapshot = [
-                        'id' => $this->template->id,
-                        'name' => $this->template->name,
-                        'file_path' => $this->template->file_path,
-                        'layout_meta' => $this->template->layout_meta,
-                        'version' => $this->template->version,
-                        'captured_at' => now()->toISOString()
-                    ];
-
-                    $credential->update([
-                        'template_snapshot' => $templateSnapshot,
-                        'status' => 'pending',
-                        'generated_at' => null,
-                        'credential_image_path' => null,
-                        'credential_pdf_path' => null,
-                        'qr_code_path' => null
-                    ]);
-
-                    // Regenerar archivos
-                    $credentialService->generateQRCode($credential);
-                    $credentialService->generateCredentialImage($credential);
-                    $credentialService->generateCredentialPDF($credential);
-
-                    // Marcar como completado
-                    $credential->update([
-                        'status' => 'ready',
-                        'generated_at' => now()
-                    ]);
-
-                    $successCount++;
-
-                } catch (Exception $e) {
-                    $errorCount++;
-                    Log::error('[REGENERATE JOB] Error regenerando credencial individual', [
-                        'credential_id' => $credential->id,
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
+            $query->chunkById($chunkSize, function ($rows) use (&$totalDispatched, &$batches) {
+                foreach ($rows as $row) {
+                    // Preservar QR por defecto y regenerar PDF
+                    RegenerateSingleCredentialJob::dispatch($row->id, $this->template->id, false, true);
+                    $totalDispatched++;
                 }
-            }
+                $batches++;
+            });
 
-            Log::info('[REGENERATE JOB] Regeneración completada', [
-                'total_credentials' => $credentials->count(),
-                'success_count' => $successCount,
-                'error_count' => $errorCount
+            Log::info('[REGENERATE JOB] Despacho de regeneración completado', [
+                'total_dispatched' => $totalDispatched,
+                'batches' => $batches,
+                'chunk_size' => $chunkSize
             ]);
 
         } catch (Exception $e) {
