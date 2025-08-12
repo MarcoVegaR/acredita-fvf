@@ -862,7 +862,49 @@ class CredentialService implements CredentialServiceInterface
                         $font->align('left'); // evitar center/right para no desfasar bbox
                     });
                 } else {
-                    // Para otros bloques, usar configuración normal
+                    // Para otros bloques, usar configuración normal con auto-ajuste opcional
+                    $fontPath = public_path('fonts/arial.ttf'); // TTF válido REQUERIDO
+
+                    // Auto-fit para: nombre, federacion, rol/position/function
+                    // Usa el rectángulo (width/height) del bloque si está definido
+                    $blockId = $block['id'] ?? null;
+                    // IDs soportados para auto-fit (solo ancho)
+                    $autoFitIds = [
+                        'nombre',
+                        'federacion', 'federation',
+                        'rol', 'role',
+                        'proveedor', 'provider',
+                        'position', 'function',
+                    ];
+                    $shouldAutoFit = $blockId && in_array($blockId, $autoFitIds, true);
+                    if ($shouldAutoFit && isset($block['width'], $block['height'])
+                        && is_numeric($block['width']) && is_numeric($block['height'])
+                    ) {
+                        $allowedW = max(1, (int) $block['width']);
+                        $allowedH = max(1, (int) $block['height']);
+
+                        // Medir con tamaño actual y solo reducir si EXCEDE el ANCHO permitido
+                        // (ignoramos la altura para no reducir nombres cortos innecesariamente)
+                        $metrics = $this->measureTextBox($text, (int) $fontSize, $fontPath);
+                        if ($metrics['w'] > $allowedW) {
+                            $origFontSize = (int) $fontSize;
+                            // Limitar por ancho; altura muy grande para que no sea restrictiva
+                            $computed = $this->findMaxFontSize($text, $fontPath, $allowedW, 10000);
+                            // Ajustar exactamente al tamaño que cabe (sin clamp) para evitar desbordes
+                            $fontSize = (int) $computed;
+
+                            Log::debug('[CREDENTIAL SERVICE] Auto-fit aplicado (width-only)', [
+                                'block_id' => $blockId,
+                                'origFontSize' => $origFontSize,
+                                'newFontSize' => $fontSize,
+                                'allowedW' => $allowedW,
+                                'allowedH' => $allowedH,
+                                'measuredW' => $metrics['w'],
+                                'measuredH' => $metrics['h'],
+                            ]);
+                        }
+                    }
+
                     $canvas->text($text, $x, $y, function ($font) use ($fontSize, $block) {
                         $font->file(public_path('fonts/arial.ttf')); // TTF válido REQUERIDO
                         $font->size($fontSize);
