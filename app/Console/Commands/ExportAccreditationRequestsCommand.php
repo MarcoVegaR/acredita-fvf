@@ -177,7 +177,7 @@ class ExportAccreditationRequestsCommand extends Command
         $fotoColLetter = Coordinate::stringFromColumnIndex($fotoColIndex);
 
         $this->info('Exporting (XLSX)...');
-        $builder->chunk(500, function ($chunk) use ($sheet, &$rowIndex, $zonesMode, &$count, $fotoColLetter) {
+        $builder->chunk(300, function ($chunk) use ($sheet, &$rowIndex, $zonesMode, &$count, $fotoColLetter) {
             foreach ($chunk as $req) {
                 /** @var \App\Models\AccreditationRequest $req */
                 $emp = $req->employee;
@@ -209,10 +209,10 @@ class ExportAccreditationRequestsCommand extends Command
                     try {
                         $abs = Storage::disk('public')->path($emp->photo_path);
                         if (is_file($abs)) {
-                            // Downscale and embed as JPEG using MemoryDrawing to reduce memory footprint
-                            $this->attachResizedPhoto($sheet, $abs, $fotoColLetter . (string) $rowIndex, 80);
+                            // Downscale and embed from temp file (disk-backed) to minimize memory footprint
+                            $this->attachResizedPhoto($sheet, $abs, $fotoColLetter . (string) $rowIndex, 60);
                             // Adjust the row height to fit the display height
-                            try { $sheet->getRowDimension($rowIndex)->setRowHeight(65); } catch (\Throwable $e) {}
+                            try { $sheet->getRowDimension($rowIndex)->setRowHeight(50); } catch (\Throwable $e) {}
                         }
                     } catch (\Throwable $e) {
                         // Ignore photo errors and continue
@@ -254,7 +254,7 @@ class ExportAccreditationRequestsCommand extends Command
      * @param string $cellRef Target cell reference (e.g., 'I2')
      * @param int $displayHeight Target display height in points/pixels for the drawing
      */
-    private function attachResizedPhoto(Worksheet $sheet, string $filePath, string $cellRef, int $displayHeight = 80): void
+    private function attachResizedPhoto(Worksheet $sheet, string $filePath, string $cellRef, int $displayHeight = 60): void
     {
         try {
             $contents = @file_get_contents($filePath);
@@ -283,9 +283,9 @@ class ExportAccreditationRequestsCommand extends Command
                 return;
             }
 
-            // Fit within 300x400 preserving aspect ratio; do not upscale
-            $maxW = 300;
-            $maxH = 400;
+            // Fit within 240x320 preserving aspect ratio; do not upscale
+            $maxW = 240;
+            $maxH = 320;
             $scale = min($maxW / $srcW, $maxH / $srcH, 1.0);
             $dstW = max(1, (int) floor($srcW * $scale));
             $dstH = max(1, (int) floor($srcH * $scale));
@@ -313,21 +313,34 @@ class ExportAccreditationRequestsCommand extends Command
             imagecopyresampled($dst, $src, 0, 0, 0, 0, $dstW, $dstH, $srcW, $srcH);
             @imagedestroy($src);
 
-            $md = new MemoryDrawing();
-            $md->setImageResource($dst);
-            if ($preferPng) {
-                $md->setRenderingFunction(MemoryDrawing::RENDERING_PNG);
-                $md->setMimeType(MemoryDrawing::MIMETYPE_PNG);
-            } else {
-                $md->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
-                $md->setMimeType(MemoryDrawing::MIMETYPE_JPEG);
+            // Write to temp file to avoid keeping GD resources in memory via MemoryDrawing
+            $cacheDir = storage_path('app/phpspreadsheet-cache');
+            if (!is_dir($cacheDir)) { @mkdir($cacheDir, 0777, true); }
+            $ext = $preferPng ? 'png' : 'jpg';
+            $tmpPath = tempnam($cacheDir, 'img_');
+            if ($tmpPath === false) {
+                @imagedestroy($dst);
+                return;
             }
-            $md->setCoordinates($cellRef);
-            $md->setOffsetX(5);
-            $md->setOffsetY(5);
-            $md->setHeight($displayHeight);
-            $md->setWorksheet($sheet);
-            // Do not destroy $dst here; MemoryDrawing manages the resource lifecycle
+            $finalPath = $tmpPath . '.' . $ext;
+            @unlink($tmpPath);
+            if ($preferPng) {
+                imagepng($dst, $finalPath, 6);
+            } else {
+                imagejpeg($dst, $finalPath, 85);
+            }
+            @imagedestroy($dst);
+
+            // Ensure temp file removed at the end
+            register_shutdown_function(function() use ($finalPath) { @unlink($finalPath); });
+
+            $drawing = new Drawing();
+            $drawing->setPath($finalPath);
+            $drawing->setCoordinates($cellRef);
+            $drawing->setOffsetX(5);
+            $drawing->setOffsetY(5);
+            $drawing->setHeight($displayHeight);
+            $drawing->setWorksheet($sheet);
         } catch (\Throwable $e) {
             // Ignore image errors to keep export resilient
         }
