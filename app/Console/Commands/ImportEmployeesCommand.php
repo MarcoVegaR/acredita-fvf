@@ -59,17 +59,18 @@ class ImportEmployeesCommand extends Command
         $zonesHeadersOpt = $this->option('zones-cols');
         $truncate = (bool) $this->option('truncate');
 
-        $reqService = null; $event = null; $allowedZoneIds = []; $creatorUser = null;
+        $reqService = null; $defaultEvent = null; $defaultAllowedZoneIds = []; $creatorUser = null;
         $errorsLogPath = $this->option('errors-log');
         if ($createRequests) {
-            if (!$eventIdOpt) {
-                $this->error('When using --create-requests you must provide --event-id=<id>.');
-                return 1;
-            }
-            $event = Event::with('zones')->find((int) $eventIdOpt);
-            if (!$event) {
-                $this->error("Event not found: {$eventIdOpt}");
-                return 1;
+            if ($eventIdOpt) {
+                $defaultEvent = Event::with('zones')->find((int) $eventIdOpt);
+                if (!$defaultEvent) {
+                    $this->error("Event not found: {$eventIdOpt}");
+                    return 1;
+                }
+                $defaultAllowedZoneIds = $defaultEvent->zones->pluck('id')->map(fn ($v) => (int) $v)->all();
+            } else {
+                $this->warn('Requests will use per-row event ID from header ID_EVENT. No --event-id provided.');
             }
             if ($creatorOpt) {
                 // Resolve global fallback creator user (by id or email)
@@ -87,10 +88,13 @@ class ImportEmployeesCommand extends Command
             } else {
                 $this->warn('No --created-by provided. Will resolve creator per fila usando el usuario del proveedor (si existe).');
             }
-            $allowedZoneIds = $event->zones->pluck('id')->map(fn ($v) => (int) $v)->all();
             $reqService = app(AccreditationRequestServiceInterface::class);
-            $this->info("Requests creation enabled. Event: {$event->id} ({$event->name})" . ($creatorUser ? ", Default creator: {$creatorUser->email}" : ''));
-            $this->line('Allowed zone IDs for event: ' . implode(',', $allowedZoneIds));
+            if ($defaultEvent) {
+                $this->info("Requests creation enabled. Default event: {$defaultEvent->id} ({$defaultEvent->name})" . ($creatorUser ? ", Default creator: {$creatorUser->email}" : ''));
+                $this->line('Allowed zone IDs for event: ' . implode(',', $defaultAllowedZoneIds));
+            } else {
+                $this->info('Requests creation enabled. Using per-row event ID (ID_EVENT)' . ($creatorUser ? ", Default creator: {$creatorUser->email}" : ''));
+            }
         }
 
         // Optional: truncate tables before import
@@ -165,6 +169,8 @@ class ImportEmployeesCommand extends Command
         // Track duplicates within the same file (by doc type + number) across all sheets
         $seenDocs = [];
         $errors = [];
+        // Cache events by ID to reduce DB queries when using per-row ID_EVENT
+        $eventCache = [];
 
         foreach ($sheets as $sheet) {
             $headerRow = 1;
@@ -181,6 +187,7 @@ class ImportEmployeesCommand extends Command
 
             $colMap = $this->resolveColumnMap($headers);
             $required = ['PROVEEDOR', 'CEDULA', 'NOMBRES', 'APELLIDOS'];
+            if ($createRequests && !$defaultEvent) { $required[] = 'ID_EVENT'; }
             $missing = array_values(array_filter($required, fn ($k) => !isset($colMap[$k])));
             if (!empty($missing)) {
                 $this->warn("Sheet '" . $sheet->getTitle() . "': Missing required headers: " . implode(', ', $missing));
@@ -191,6 +198,7 @@ class ImportEmployeesCommand extends Command
             $processedSheets++;
             $processedSheetTitles[] = $sheet->getTitle();
             $fotoCol = $colMap['FOTO'] ?? null; // if null we will fallback to F (6)
+            $eventIdCol = $colMap['ID_EVENT'] ?? null; // Optional per-row event id
 
             // Determine zones column indexes if requests creation is enabled
             $zonesCols = [];
@@ -351,20 +359,61 @@ class ImportEmployeesCommand extends Command
                 continue;
             }
 
+            // Determine event for this row (default from --event-id or from ID_EVENT column)
+            $eventForRow = $defaultEvent;
+            $allowedZoneIdsRow = $defaultAllowedZoneIds;
+            if ($createRequests && !$eventForRow && isset($eventIdCol)) {
+                $eventIdRaw = $this->readCell($sheet, $eventIdCol, $row);
+                if ($eventIdRaw !== null && $eventIdRaw !== '') {
+                    $eid = (int) preg_replace('/\D+/', '', (string) $eventIdRaw);
+                    if ($eid > 0) {
+                        if (!isset($eventCache[$eid])) {
+                            $eventCache[$eid] = Event::with('zones')->find($eid);
+                        }
+                        $eventForRow = $eventCache[$eid] ?? null;
+                        if ($eventForRow) {
+                            $allowedZoneIdsRow = $eventForRow->zones->pluck('id')->map(fn ($v) => (int) $v)->all();
+                        }
+                    }
+                }
+            }
+
+            // In dry-run, validate request feasibility and count metrics as if creating
             if ($dryRun) {
-                // Would create a new employee (no updates allowed)
                 $created++;
                 if (isset($imagesByRow[$row])) { $photoSaved++; }
-                if ($createRequests) { $reqCreated++; }
+                if ($createRequests) {
+                    if (!$eventForRow) {
+                        $reqSkipped++;
+                        $errors[] = [
+                            'file' => $fileBase,
+                            'sheet' => $sheetTitle,
+                            'row' => $row,
+                            'field' => 'ID_EVENT',
+                            'error' => 'Solicitud: ID_EVENT ausente o evento no encontrado',
+                        ];
+                    } else {
+                        $zoneIds = !empty($allowedZoneIdsRow)
+                            ? array_values(array_intersect($rowZoneIdsRaw, $allowedZoneIdsRow))
+                            : $rowZoneIdsRaw;
+                        if (!empty($zoneIds)) { $reqWithZones++; } else { $reqWithoutZones++; }
+                        $reqCreated++;
+                    }
+                }
                 continue;
             }
+
+            // Normalize text fields to UPPERCASE without accents as requested
+            $firstNameNorm = $this->upperNoAccents($firstName) ?? '';
+            $lastNameNorm  = $this->upperNoAccents($lastName) ?? '';
+            $functionNorm  = Str::limit($this->upperNoAccents($funcCell) ?? '', 100, '');
 
             try {
                 DB::transaction(function () use (
                     $provider,
-                    $firstName,
-                    $lastName,
-                    $funcCell,
+                    $firstNameNorm,
+                    $lastNameNorm,
+                    $functionNorm,
                     $docType,
                     $docNumber,
                     &$imagesByRow,
@@ -373,9 +422,9 @@ class ImportEmployeesCommand extends Command
                     &$photoSaved,
                     $createRequests,
                     $reqService,
-                    $event,
+                    $eventForRow,
                     $rowZoneIdsRaw,
-                    $allowedZoneIds,
+                    $allowedZoneIdsRow,
                     &$reqCreated,
                     &$reqSkipped,
                     &$errors,
@@ -389,9 +438,9 @@ class ImportEmployeesCommand extends Command
                         'provider_id' => $provider->id,
                         'document_type' => $docType,
                         'document_number' => $docNumber,
-                        'first_name' => trim((string) $firstName),
-                        'last_name' => trim((string) $lastName),
-                        'function' => Str::limit(trim((string) $funcCell), 100, ''),
+                        'first_name' => $firstNameNorm,
+                        'last_name' => $lastNameNorm,
+                        'function' => $functionNorm,
                         'active' => true,
                     ]);
 
@@ -421,7 +470,7 @@ class ImportEmployeesCommand extends Command
                     }
 
                     // Create accreditation request if enabled
-                    if ($createRequests && $reqService && $event) {
+                    if ($createRequests && $reqService) {
                         // Determine acting user: provider->user_id, fallback to global --created-by
                         $actingUser = null;
                         if ($provider && $provider->user_id) {
@@ -440,16 +489,25 @@ class ImportEmployeesCommand extends Command
                                 'field' => 'SOLICITUD',
                                 'error' => 'Solicitud: no se encontró usuario creador (proveedor sin user y sin --created-by)'
                             ];
+                        } elseif (!$eventForRow) {
+                            $reqSkipped++;
+                            $errors[] = [
+                                'file' => $fileBase,
+                                'sheet' => $sheetTitle,
+                                'row' => $row,
+                                'field' => 'ID_EVENT',
+                                'error' => 'Solicitud: ID_EVENT ausente o evento no encontrado',
+                            ];
                         } else {
                             Auth::setUser($actingUser);
-                            $zoneIds = !empty($allowedZoneIds)
-                                ? array_values(array_intersect($rowZoneIdsRaw, $allowedZoneIds))
+                            $zoneIds = !empty($allowedZoneIdsRow)
+                                ? array_values(array_intersect($rowZoneIdsRaw, $allowedZoneIdsRow))
                                 : $rowZoneIdsRaw;
                             if (!empty($zoneIds)) { $reqWithZones++; } else { $reqWithoutZones++; }
                             try {
                                 $reqService->createRequest([
                                     'employee_id' => $employee->id,
-                                    'event_id' => (int) $event->id,
+                                    'event_id' => (int) $eventForRow->id,
                                     'zones' => $zoneIds,
                                     'comments' => 'Creada automáticamente desde importación de empleados',
                                 ]);
@@ -657,13 +715,14 @@ class ImportEmployeesCommand extends Command
         $map = [];
         $aliases = [
             'PROVEEDOR' => ['PROVEEDOR', 'PROVEEDOR AL QUE PRESTA SERVICIOS', 'PROVEEDORALQUEPRESTASERVICIOS'],
-            'TIPO_DOCUMENTO' => ['TIPO_DOCUMENTO', 'TIPO DE DOCUMENTO', 'TIPO DOCUMENTO', 'TIPO'],
+            'TIPO_DOCUMENTO' => ['TIPO_DOCUMENTO', 'TIPO DE DOCUMENTO', 'TIPO DOCUMENTO', 'TIPO', 'TPDOC'],
             'CEDULA' => ['CEDULA', 'CÉDULA'],
             'NOMBRES' => ['NOMBRES', 'NOMBRE'],
             'APELLIDOS' => ['APELLIDOS', 'APELLIDO'],
             'FUNCION' => ['FUNCION', 'FUNCIÓN', 'CARGO EN SU ORGANIZACION', 'CARGO EN SU ORGANIZACIÓN', 'CARGO'],
             'FOTO' => ['FOTO', 'FOTOGRAFIA', 'FOTOGRAFÍA'],
-            'ZONAS' => ['ZONAS', 'ZONAS AUTORIZADAS', 'ZONAS SOLICITADAS']
+            'ZONAS' => ['ZONAS', 'ZONAS AUTORIZADAS', 'ZONAS SOLICITADAS'],
+            'ID_EVENT' => ['ID_EVENT']
         ];
         foreach ($aliases as $key => $syns) {
             foreach ($syns as $s) {
@@ -716,10 +775,10 @@ class ImportEmployeesCommand extends Command
             return [$tipoFinal, $num, null];
         }
 
-        // V/E: numeric only, 3-20 digits
+        // V/E: numeric only, 2-20 digits
         $num = preg_replace('/\D+/', '', (string) $raw);
         if ($num === '') { return [null, null, 'Número de documento vacío']; }
-        if (!preg_match('/^\d{3,20}$/', (string) $num)) { return [null, null, 'Número de documento inválido (solo dígitos, 3-20)']; }
+        if (!preg_match('/^\d{2,20}$/', (string) $num)) { return [null, null, 'Número de documento inválido (solo dígitos, 2-20)']; }
         return [$tipoFinal, $num, null];
     }
 
@@ -747,6 +806,27 @@ class ImportEmployeesCommand extends Command
         $t = preg_replace('/\s+/', ' ', (string) $t);
         $t = trim((string) $t);
         return $t === '' ? null : $t;
+    }
+
+    private function upperNoAccents(?string $text): ?string
+    {
+        if ($text === null) { return null; }
+        $t = trim($text);
+        if ($t === '') { return null; }
+        $t = mb_strtoupper($t, 'UTF-8');
+        $t = strtr($t, [
+            'Á' => 'A','É' => 'E','Í' => 'I','Ó' => 'O','Ú' => 'U','Ü' => 'U','Ñ' => 'N',
+            'Â' => 'A','Ê' => 'E','Î' => 'I','Ô' => 'O','Û' => 'U',
+            'À' => 'A','È' => 'E','Ì' => 'I','Ò' => 'O','Ù' => 'U',
+            'Ã' => 'A','Õ' => 'O','Ç' => 'C',
+            'á' => 'A','é' => 'E','í' => 'I','ó' => 'O','ú' => 'U','ü' => 'U','ñ' => 'N',
+            'â' => 'A','ê' => 'E','î' => 'I','ô' => 'O','û' => 'U',
+            'à' => 'A','è' => 'E','ì' => 'I','ò' => 'O','ù' => 'U',
+            'ã' => 'A','õ' => 'O','ç' => 'C',
+        ]);
+        // Collapse internal whitespace to single space
+        $t = preg_replace('/\s+/', ' ', (string) $t);
+        return trim((string) $t);
     }
 
     private function findProviderByName(?string $name): ?Provider

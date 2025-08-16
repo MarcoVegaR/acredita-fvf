@@ -81,8 +81,7 @@ class Area extends Model
      */
     public function providers()
     {
-        // Esta relación se implementará cuando se cree el módulo de proveedores
-        // return $this->hasMany(Provider::class);
+        return $this->hasMany(Provider::class);
     }
     
     /**

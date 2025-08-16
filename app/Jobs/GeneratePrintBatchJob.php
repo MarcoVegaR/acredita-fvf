@@ -14,6 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class GeneratePrintBatchJob implements ShouldQueue
 {
@@ -266,10 +267,10 @@ class GeneratePrintBatchJob implements ShouldQueue
             gc_collect_cycles();
         }
 
-        // Generar nombre de archivo único y asegurar directorio
+        // Generar nombre de archivo descriptivo y asegurar directorio
         $dir = 'print_batches';
         Storage::disk('public')->makeDirectory($dir);
-        $fileName = "$dir/batch_{$this->batch->uuid}.pdf";
+        $fileName = $this->buildDescriptiveFileName($dir);
         
         // Guardar PDF directamente a disco para ahorrar memoria
         try {
@@ -306,6 +307,66 @@ class GeneratePrintBatchJob implements ShouldQueue
         ]);
 
         return $fileName;
+    }
+
+    /**
+     * Construye un nombre de archivo descriptivo y seguro para el lote
+     * Formato: print_batches/batch_areas-<areas>__providers-<providers>__<uuid>.pdf
+     */
+    private function buildDescriptiveFileName(string $dir): string
+    {
+        // Segmentar áreas
+        $areaNames = collect($this->batch->areas)
+            ->pluck('name')
+            ->map(fn ($n) => Str::slug((string) $n))
+            ->filter()
+            ->values()
+            ->all();
+        if (empty($areaNames)) {
+            $areaNames = ['todas-las-areas'];
+        }
+        $areaSegment = 'areas-' . $this->joinLimited($areaNames);
+
+        // Segmentar proveedores
+        $providerNames = collect($this->batch->providers)
+            ->pluck('name')
+            ->map(fn ($n) => Str::slug((string) $n))
+            ->filter()
+            ->values()
+            ->all();
+        if (empty($providerNames)) {
+            $providerNames = ['todos-los-proveedores'];
+        }
+        $providerSegment = 'providers-' . $this->joinLimited($providerNames);
+
+        $base = "batch_{$areaSegment}__{$providerSegment}__{$this->batch->uuid}.pdf";
+
+        // Si el nombre es muy largo, reducir segmentos para evitar problemas con el filesystem
+        if (strlen($base) > 200) {
+            $areaSegment = 'areas-' . $this->joinLimited($areaNames, 1);
+            $providerSegment = 'providers-' . $this->joinLimited($providerNames, 1);
+            $base = "batch_{$areaSegment}__{$providerSegment}__{$this->batch->uuid}.pdf";
+        }
+
+        return rtrim($dir, '/') . '/' . $base;
+    }
+
+    /**
+     * Une hasta $limit nombres slugificados y agrega un sufijo "-y-N-mas" si hay más.
+     */
+    private function joinLimited(array $slugs, int $limit = 3): string
+    {
+        $slugs = array_values(array_unique(array_filter($slugs)));
+        $count = count($slugs);
+        $limit = max(1, $limit);
+
+        if ($count <= $limit) {
+            return implode('-', $slugs);
+        }
+
+        $first = array_slice($slugs, 0, $limit);
+        $rest = $count - $limit;
+        return implode('-', $first) . "-y-{$rest}-mas";
     }
 
     public function failed(\Throwable $exception): void
